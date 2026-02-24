@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API = '/api';
+import { API, parseJsonResponse, apiFriendlyMessage } from '../api';
 
 const DEFAULT_DATA = {
   payment_links: { plan_65: '', plan_297: '', plan_497: '' },
@@ -22,7 +21,7 @@ export default function Config() {
 
   useEffect(() => {
     fetch(API + '/dashboard')
-      .then((r) => r.json())
+      .then(parseJsonResponse)
       .then((d) => {
         const plans = Array.isArray(d.plans) ? d.plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' })) : DEFAULT_DATA.plans;
         setData({
@@ -76,11 +75,10 @@ export default function Config() {
           plans: data.plans,
         }),
       });
-      const body = await res.json();
-      if (body.error) throw new Error(body.error);
+      await parseJsonResponse(res);
       setMsg('Configurações salvas com sucesso.');
     } catch (e) {
-      setMsg('Erro: ' + e.message);
+      setMsg('Erro: ' + apiFriendlyMessage(e));
     } finally {
       setSaving(false);
     }

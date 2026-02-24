@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-
-const API = '/api';
+import { API, parseJsonResponse, apiFriendlyMessage } from '../api';
 
 const FIELDS = [
   { key: 'name', label: 'Nome (imobiliária ou corretor)', required: true },
@@ -51,7 +50,7 @@ export default function ClienteForm() {
 
   useEffect(() => {
     fetch(API + '/dashboard')
-      .then((r) => r.json())
+      .then(parseJsonResponse)
       .then((d) => setPlans(Array.isArray(d.plans) ? d.plans : []))
       .catch(() => setPlans([]));
   }, []);
@@ -59,7 +58,7 @@ export default function ClienteForm() {
   useEffect(() => {
     if (isEdit && id) {
       fetch(API + '/clients/' + id)
-        .then((r) => r.json())
+        .then(parseJsonResponse)
         .then((c) => {
           const next = initial();
           FIELDS.forEach((f) => {
@@ -93,12 +92,9 @@ export default function ClienteForm() {
     if (body.credits_remaining === '' || body.credits_remaining === undefined) body.credits_remaining = null;
     else body.credits_remaining = Number(body.credits_remaining) || 0;
     fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        navigate('/');
-      })
-      .catch((e) => setError(e.message))
+      .then(parseJsonResponse)
+      .then(() => navigate('/'))
+      .catch((e) => setError(apiFriendlyMessage(e)))
       .finally(() => setLoading(false));
   }
 
