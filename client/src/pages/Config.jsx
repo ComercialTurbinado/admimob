@@ -87,7 +87,6 @@ export default function Config() {
   }
 
   const plans = data.plans || [];
-  const payment_links = data.payment_links || DEFAULT_DATA.payment_links;
 
   return (
     <>
@@ -217,26 +216,6 @@ export default function Config() {
             onChange={(e) => update('webhook_producao', null, e.target.value)}
             placeholder="https://seu-n8n.com/webhook/..."
           />
-        </div>
-      </section>
-
-      {/* Fallback: links de pagamento legados (opcional - podemos esconder se usar só planos) */}
-      <section className="card config-section" style={{ borderColor: 'var(--muted)', opacity: 0.9 }}>
-        <h2 className="config-section-title">Links de pagamento (legado)</h2>
-        <p className="config-section-desc">
-          Se você ainda usa os botões fixos R$ 65, R$ 297, R$ 497 no dashboard, configure aqui. Caso contrário, use o campo &quot;Link de pagamento&quot; em cada plano acima.
-        </p>
-        <div className="form-group">
-          <label>R$ 65</label>
-          <input type="url" value={payment_links.plan_65 ?? ''} onChange={(e) => update('payment_links', 'plan_65', e.target.value)} placeholder="https://..." />
-        </div>
-        <div className="form-group">
-          <label>R$ 297</label>
-          <input type="url" value={payment_links.plan_297 ?? ''} onChange={(e) => update('payment_links', 'plan_297', e.target.value)} placeholder="https://..." />
-        </div>
-        <div className="form-group">
-          <label>R$ 497</label>
-          <input type="url" value={payment_links.plan_497 ?? ''} onChange={(e) => update('payment_links', 'plan_497', e.target.value)} placeholder="https://..." />
         </div>
       </section>
 

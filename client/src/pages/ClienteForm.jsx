@@ -75,7 +75,7 @@ export default function ClienteForm() {
   function update(key, value) {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === 'plan' && plans.length) {
+      if (key === 'plan' && (plans || []).length) {
         const p = plans.find((x) => String(x.id) === String(value));
         if (p && (prev.credits_remaining === '' || prev.credits_remaining === undefined)) next.credits_remaining = p.credit_count ?? '';
       }
@@ -111,12 +111,13 @@ export default function ClienteForm() {
       id: key,
     };
     if (type === 'plan_select') {
+      const planValue = value === null || value === undefined ? '' : String(value);
       return (
-        <select {...common}>
+        <select {...common} value={planValue}>
           <option value="">Selecione o plano</option>
-          {plans.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label} — {p.credit_label} ({p.credit_count} créditos)
+          {(plans || []).map((p) => (
+            <option key={String(p.id)} value={String(p.id)}>
+              {p.label || p.id} — {p.credit_label || ''} ({p.credit_count ?? 0} créditos)
             </option>
           ))}
         </select>
