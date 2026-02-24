@@ -3,6 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const API = '/api';
 
+async function apiGet(url) {
+  const res = await fetch(API + url);
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    throw new Error('A API não está respondendo. Execute no terminal: npm run dev');
+  }
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
 const KPI_LABELS = {
   leads: 'Leads',
   clientes_ativos: 'Clientes Ativos',
@@ -27,16 +38,15 @@ export default function Dashboard() {
 
   function loadData() {
     setApiError(null);
-    return Promise.all([
-      fetch(API + '/dashboard').then((r) => r.json()),
-      fetch(API + '/clients').then((r) => r.json()),
-    ])
+    Promise.all([apiGet('/dashboard'), apiGet('/clients')])
       .then(([d, c]) => {
         setDashboard(d);
         setClients(Array.isArray(c) ? c : []);
       })
       .catch((e) => {
-        setApiError(e.message || 'Não foi possível conectar à API.');
+        const msg = e.message || 'Não foi possível conectar à API.';
+        setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? 'A API não está respondendo. Execute no terminal: npm run dev' : msg);
+        setDashboard(null);
         setClients([]);
       })
       .finally(() => setLoading(false));
@@ -51,11 +61,14 @@ export default function Dashboard() {
     setApiError(null);
     try {
       const res = await fetch(API + '/seed', { method: 'POST' });
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) throw new Error('A API não está respondendo. Execute no terminal: npm run dev');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       await loadData();
     } catch (e) {
-      setApiError(e.message || 'Erro ao carregar exemplo.');
+      const msg = e.message || 'Erro ao carregar exemplo.';
+      setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? 'A API não está respondendo. Execute no terminal: npm run dev' : msg);
     } finally {
       setLoadingSeed(false);
     }
@@ -64,11 +77,14 @@ export default function Dashboard() {
   if (loading) return <p className="muted">Carregando...</p>;
   const kpis = dashboard?.kpis || {};
   const links = dashboard?.payment_links || {};
+  const hasDashboard = dashboard != null;
 
   return (
     <>
       <h1 style={{ marginBottom: '1.5rem' }}>Dashboard Executivo</h1>
 
+      {hasDashboard && (
+      <>
       <section className="card" style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Indicadores</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
@@ -117,9 +133,11 @@ export default function Dashboard() {
           )}
         </div>
         <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-          Configure os links em <Link to="/config">Configurações</Link> (planos com URL ou links legado).
+          Configure os links em <Link to="/config">Configurações</Link> (planos com URL).
         </p>
       </section>
+      </>
+      )}
 
       <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
