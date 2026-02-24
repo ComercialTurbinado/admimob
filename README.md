@@ -47,6 +47,22 @@ cd client && npm install && cd ..
 - **Captação:** `POST /api/listings/import-from-url` (body: `{ url, client_id }`) — chama webhook e, se a resposta trouxer dados do imóvel, cadastra.
 - **Produção:** `POST /api/listings/:id/firemode` — envia o payload (dados + fotos selecionadas) para o webhook de produção.
 
+## Deploy no Amplify (frontend) + API em outro serviço
+
+O **Amplify** só publica o frontend (build estático). A **API Node/Express não roda no Amplify**. Para o painel funcionar em produção:
+
+1. **Hospedar a API** em um serviço que rode Node.js, por exemplo:
+   - **Railway** (railway.app) — conecte o repo, defina comando `npm run server` e variáveis `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
+   - **Render** (render.com) — Web Service, build `npm install`, start `node server/index.js`, e as mesmas env do Turso
+   - **Fly.io**, **Elastic Beanstalk**, etc.
+
+2. **No Amplify**, nas variáveis de ambiente do **build** do frontend, adicione:
+   - `VITE_API_URL` = URL base da sua API (ex.: `https://seu-app.railway.app`), **sem** barra no final.
+
+3. Faça um **novo build** no Amplify. O frontend passará a chamar essa URL em todas as requisições `/api/*`.
+
+O banco já é o **Turso** (configurado no servidor da API via `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`). Não é preciso configurar banco no Amplify.
+
 ## Dados
 
 - **clients:** nome, logo_url, status (lead | active | negotiation)

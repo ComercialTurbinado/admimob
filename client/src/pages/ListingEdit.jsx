@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
-const API = '/api';
+import { API } from '../api';
 
 function omitKeys(obj, keys) {
   const o = { ...obj };

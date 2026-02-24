@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const API = '/api';
+import { API } from '../api';
 
 export default function Listings() {
   const [listings, setListings] = useState([]);

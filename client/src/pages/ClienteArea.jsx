@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
-const API = '/api';
+import { API } from '../api';
 
 // Dados fictícios para exibir o layout quando não houver banco
 const MOCK_CLIENT = {

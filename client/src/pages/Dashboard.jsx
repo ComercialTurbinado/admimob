@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
-const API = '/api';
+import { API } from '../api';
 
 async function apiGet(url) {
   const res = await fetch(API + url);
