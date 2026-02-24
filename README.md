@@ -47,14 +47,36 @@ cd client && npm install && cd ..
 - **Captação:** `POST /api/listings/import-from-url` (body: `{ url, client_id }`) — chama webhook e, se a resposta trouxer dados do imóvel, cadastra.
 - **Produção:** `POST /api/listings/:id/firemode` — envia o payload (dados + fotos selecionadas) para o webhook de produção.
 
+## Deploy da API no Railway
+
+1. Acesse [railway.com/new](https://railway.com/new) e faça login (GitHub é o mais simples).
+
+2. **Create new project** → **Deploy from GitHub repo** → escolha o repositório do projeto (ex.: `ComercialTurbinado/admimob`). Se não aparecer, autorize o Railway no GitHub em **Configure GitHub App**.
+
+3. Depois que o projeto for criado, clique no **service** (o retângulo do deploy). Em **Settings**:
+   - **Build Command:** use `npm run build:api` (evita build do frontend; só a API sobe aqui).
+   - **Start Command:** já usa `npm start` por padrão (ou `node server/index.js`).
+   - **Root Directory:** deixe em branco (raiz do repo).
+
+4. **Variables:** clique em **Variables** (ou **Variables** na aba do service) e adicione:
+   - `TURSO_DATABASE_URL` = `libsql://firemode-imob-comercialturbinado.aws-us-east-1.turso.io` (ou a URL do seu banco Turso).
+   - `TURSO_AUTH_TOKEN` = (o token JWT do Turso).
+
+5. **Domínio público:** em **Settings** do service, em **Networking** → **Generate Domain**. O Railway vai gerar uma URL tipo `https://seu-projeto.up.railway.app`. Anote essa URL.
+
+6. No **Amplify**, nas variáveis de ambiente do **build** do frontend, adicione:
+   - `VITE_API_URL` = a URL do Railway (ex.: `https://admimob-production.up.railway.app`), **sem** barra no final.
+
+7. Dê um **novo build** no Amplify. O painel passará a usar a API no Railway.
+
+O servidor já usa `process.env.PORT`; o Railway injeta a porta automaticamente.
+
 ## Deploy no Amplify (frontend) + API em outro serviço
 
 O **Amplify** só publica o frontend (build estático). A **API Node/Express não roda no Amplify**. Para o painel funcionar em produção:
 
-1. **Hospedar a API** em um serviço que rode Node.js, por exemplo:
-   - **Railway** (railway.app) — conecte o repo, defina comando `npm run server` e variáveis `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
-   - **Render** (render.com) — Web Service, build `npm install`, start `node server/index.js`, e as mesmas env do Turso
-   - **Fly.io**, **Elastic Beanstalk**, etc.
+1. **Hospedar a API** em um serviço que rode Node.js — ver acima **Deploy da API no Railway**, ou:
+   - **Render** (render.com) — Web Service, build `npm install`, start `node server/index.js`, e as mesmas env do Turso.
 
 2. **No Amplify**, nas variáveis de ambiente do **build** do frontend, adicione:
    - `VITE_API_URL` = URL base da sua API (ex.: `https://seu-app.railway.app`), **sem** barra no final.

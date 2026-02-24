@@ -9,6 +9,7 @@
     "server": "node server/index.js",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build",
+    "build:api": "echo 'API only'",
     "seed": "node server/seed.js"
   },
   "dependencies": {
