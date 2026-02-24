@@ -77,20 +77,18 @@ export default function Dashboard() {
   if (loading) return <p className="muted">Carregando...</p>;
   const kpis = dashboard?.kpis || {};
   const links = dashboard?.payment_links || {};
-  const hasDashboard = dashboard != null;
+  const plans = dashboard?.plans || [];
 
   return (
     <>
       <h1 style={{ marginBottom: '1.5rem' }}>Dashboard Executivo</h1>
 
-      {hasDashboard && (
-      <>
       <section className="card" style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Indicadores</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
           {Object.entries(KPI_LABELS).map(([key, label]) => (
             <div key={key} className="kpi-card">
-              <div className="kpi-value">{Number(kpis[key]) ?? 0}</div>
+              <div className="kpi-value">{dashboard ? (Number(kpis[key]) ?? 0) : '—'}</div>
               <div className="kpi-label">{label}</div>
             </div>
           ))}
@@ -100,7 +98,7 @@ export default function Dashboard() {
       <section className="card" style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Links de Pagamento</h2>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {(dashboard?.plans || []).filter((p) => p.payment_url).map((p) => (
+          {plans.filter((p) => p.payment_url).map((p) => (
             <a
               key={p.id}
               href={p.payment_url}
@@ -111,7 +109,7 @@ export default function Dashboard() {
               {p.label}
             </a>
           ))}
-          {(!dashboard?.plans || dashboard.plans.filter((p) => p.payment_url).length === 0) && (
+          {plans.filter((p) => p.payment_url).length === 0 && (
             <>
               {[
                 { key: 'plan_65', label: 'R$ 65', url: links.plan_65 },
@@ -136,8 +134,6 @@ export default function Dashboard() {
           Configure os links em <Link to="/config">Configurações</Link> (planos com URL).
         </p>
       </section>
-      </>
-      )}
 
       <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
