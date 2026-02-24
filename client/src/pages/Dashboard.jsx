@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { API } from '../api';
+import { API, API_NOT_RESPONDING_MSG, isLocalhost } from '../api';
 
 async function apiGet(url) {
   const res = await fetch(API + url);
@@ -44,7 +44,7 @@ export default function Dashboard() {
       })
       .catch((e) => {
         const msg = e.message || 'Não foi possível conectar à API.';
-        setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? 'A API não está respondendo. Execute no terminal: npm run dev' : msg);
+        setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? API_NOT_RESPONDING_MSG : msg);
         setDashboard(null);
         setClients([]);
       })
@@ -61,13 +61,13 @@ export default function Dashboard() {
     try {
       const res = await fetch(API + '/seed', { method: 'POST' });
       const ct = res.headers.get('content-type') || '';
-      if (!ct.includes('application/json')) throw new Error('A API não está respondendo. Execute no terminal: npm run dev');
+      if (!ct.includes('application/json')) throw new Error(API_NOT_RESPONDING_MSG);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       await loadData();
     } catch (e) {
       const msg = e.message || 'Erro ao carregar exemplo.';
-      setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? 'A API não está respondendo. Execute no terminal: npm run dev' : msg);
+      setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? API_NOT_RESPONDING_MSG : msg);
     } finally {
       setLoadingSeed(false);
     }
@@ -142,9 +142,11 @@ export default function Dashboard() {
         {apiError && (
           <div className="card" style={{ borderColor: 'var(--danger)', marginBottom: '1rem' }}>
             <p style={{ color: 'var(--danger)', margin: 0 }}>{apiError}</p>
-            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-              Certifique-se de que o servidor está rodando: no terminal, execute <code style={{ background: 'var(--border)', padding: '0.2rem 0.4rem', borderRadius: 4 }}>npm run dev</code> na pasta do projeto.
-            </p>
+            {apiError === API_NOT_RESPONDING_MSG && (
+              <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                {isLocalhost ? 'No terminal, na pasta do projeto: npm run dev' : 'Veja no README a seção "Deploy no Amplify".'}
+              </p>
+            )}
           </div>
         )}
         {clients.length === 0 && (
