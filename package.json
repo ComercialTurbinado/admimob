@@ -1,0 +1,23 @@
+{
+  "name": "divulgaimob",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "seed": "node server/seed.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "better-sqlite3": "^11.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
