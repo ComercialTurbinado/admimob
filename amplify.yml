@@ -7,6 +7,7 @@ frontend:
         - cd client && npm ci && cd ..
     build:
       commands:
+        - node -e "require('fs').writeFileSync('client/.env.production','VITE_API_URL='+(process.env.VITE_API_URL||'')+'\n')"
         - npm run build
   artifacts:
     baseDirectory: client/dist
