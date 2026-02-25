@@ -31,9 +31,21 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [clients, setClients] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [loadingSeed, setLoadingSeed] = useState(false);
+
+  const searchLower = (search || '').trim().toLowerCase();
+  const filtered = searchLower
+    ? clients.filter((c) => {
+        const name = (c.name || '').toLowerCase();
+        const contact = (c.contact_name || '').toLowerCase();
+        return name.includes(searchLower) || contact.includes(searchLower);
+      })
+    : clients;
+  const leads = filtered.filter((c) => (c.status || 'lead') === 'lead');
+  const clientes = filtered.filter((c) => (c.status || '') !== 'lead');
 
   function loadData() {
     setApiError(null);
@@ -135,9 +147,19 @@ export default function Dashboard() {
       </section>
 
       <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Clientes cadastrados</h2>
-          <Link to="/cliente/novo" className="btn btn-primary">Novo cliente</Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <input
+              type="search"
+              placeholder="Buscar por nome ou contato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ minWidth: 220, padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
+              aria-label="Buscar clientes"
+            />
+            <Link to="/cliente/novo" className="btn btn-primary">Novo cliente</Link>
+          </div>
         </div>
         {apiError && (
           <div className="card" style={{ borderColor: 'var(--danger)', marginBottom: '1rem' }}>
@@ -160,28 +182,111 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        <div className="client-grid">
-          {(clients.length > 0 ? clients : [MOCK_CLIENT]).map((c) => (
-            <div
-              key={c.id}
-              role="button"
-              tabIndex={0}
-              className="client-card"
-              onClick={() => navigate('/cliente/' + c.id + '/area')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/' + c.id + '/area'); } }}
-            >
-              <div className="client-card-logo">
-                {c.logo_url ? (
-                  <img src={c.logo_url} alt="" />
-                ) : (
-                  <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
-                )}
+
+        {searchLower && filtered.length === 0 && clients.length > 0 && (
+          <p className="muted" style={{ marginBottom: '1rem' }}>Nenhum resultado para &quot;{search}&quot;.</p>
+        )}
+
+        {filtered.length > 0 && (
+          <>
+            {leads.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Leads</h3>
+                <div className="client-grid">
+                  {leads.map((c) => (
+                    <div
+                      key={c.id}
+                      role="button"
+                      tabIndex={0}
+                      className="client-card"
+                      onClick={() => navigate('/cliente/' + c.id + '/area')}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/' + c.id + '/area'); } }}
+                    >
+                      <div className="client-card-logo">
+                        {c.logo_url ? (
+                          <img src={c.logo_url} alt="" />
+                        ) : (
+                          <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="client-card-name">{c.name || 'Sem nome'}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <span className="client-card-name">{c.name || 'Sem nome'}</span>
-              {c.id === 'demo' && <span className="badge" style={{ marginTop: 4 }}>exemplo</span>}
+            )}
+
+            {clientes.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Clientes</h3>
+                <div className="client-grid">
+                  {clientes.map((c) => (
+                    <div
+                      key={c.id}
+                      role="button"
+                      tabIndex={0}
+                      className="client-card"
+                      onClick={() => navigate('/cliente/' + c.id + '/area')}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/' + c.id + '/area'); } }}
+                    >
+                      <div className="client-card-logo">
+                        {c.logo_url ? (
+                          <img src={c.logo_url} alt="" />
+                        ) : (
+                          <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="client-card-name">{c.name || 'Sem nome'}</span>
+                      {(c.status === 'negotiation') && <span className="badge" style={{ marginTop: 4 }}>negociação</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {clients.length === 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Exemplo</h3>
+                <div className="client-grid">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="client-card"
+                    onClick={() => navigate('/cliente/demo/area')}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/demo/area'); } }}
+                  >
+                    <div className="client-card-logo">
+                      <img src={MOCK_CLIENT.logo_url} alt="" />
+                    </div>
+                    <span className="client-card-name">{MOCK_CLIENT.name}</span>
+                    <span className="badge" style={{ marginTop: 4 }}>exemplo</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {clients.length === 0 && filtered.length === 0 && (
+          <div style={{ marginTop: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Exemplo</h3>
+            <div className="client-grid">
+              <div
+                role="button"
+                tabIndex={0}
+                className="client-card"
+                onClick={() => navigate('/cliente/demo/area')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/demo/area'); } }}
+              >
+                <div className="client-card-logo">
+                  <img src={MOCK_CLIENT.logo_url} alt="" />
+                </div>
+                <span className="client-card-name">{MOCK_CLIENT.name}</span>
+                <span className="badge" style={{ marginTop: 4 }}>exemplo</span>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </section>
     </>
   );
