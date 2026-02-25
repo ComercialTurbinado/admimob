@@ -47,6 +47,8 @@ cd client && npm install && cd ..
 - **Captação:** `POST /api/listings/import-from-url` (body: `{ url, client_id }`) — chama webhook e, se a resposta trouxer dados do imóvel, cadastra.
 - **Produção:** `POST /api/listings/:id/firemode` — envia o payload (dados + fotos selecionadas) para o webhook de produção.
 
+Estrutura completa do JSON enviado e esperado por cada webhook: **[docs/webhooks-json.md](docs/webhooks-json.md)**.
+
 ## Deploy da API no Railway
 
 1. Acesse [railway.com/new](https://railway.com/new) e faça login (GitHub é o mais simples).
