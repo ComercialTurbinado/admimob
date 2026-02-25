@@ -323,17 +323,24 @@ app.post('/api/listings/import', async (req, res) => {
 });
 
 // Importar a partir de URL: dispara webhook n8n (captação); se o n8n devolver dados do imóvel, cadastramos
+// Timeout longo (2 min) para o n8n processar o link e responder com "Respond to Webhook"
+const WEBHOOK_CAPTACAO_TIMEOUT_MS = 120000;
+
 app.post('/api/listings/import-from-url', async (req, res) => {
   try {
     const { url, client_id } = req.body;
     if (!url || typeof url !== 'string') return res.status(400).json({ error: 'URL do anúncio é obrigatória.' });
     const webhookUrl = await getSetting('webhook_captacao', '');
     if (!webhookUrl) return res.status(400).json({ error: 'Configure a URL do webhook de captação em Configurações.' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_CAPTACAO_TIMEOUT_MS);
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, client_id: client_id || null }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     const text = await response.text();
     let data;
     try {
@@ -352,6 +359,9 @@ app.post('/api/listings/import-from-url', async (req, res) => {
     }
     res.json({ ok: true, message: 'Webhook disparado.', raw: text });
   } catch (e) {
+    if (e.name === 'AbortError') {
+      return res.status(504).json({ error: 'O webhook de captação demorou mais de 2 minutos para responder. No n8n, use o nó "Respond to Webhook" ao final do fluxo e retorne o JSON do imóvel.' });
+    }
     res.status(500).json({ error: e.message });
   }
 });

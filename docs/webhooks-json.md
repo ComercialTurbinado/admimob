@@ -5,6 +5,17 @@
 **URL configurada em:** Configurações → URL do webhook de captação  
 **Quando é chamado:** Ao clicar em "Importar por link" na área do cliente (Adicionar imóvel).
 
+### Importante: usar "Respond to Webhook" no n8n
+
+Para o sistema **receber a resposta** e cadastrar o imóvel automaticamente:
+
+1. No n8n, use o trigger **"Webhook"** com a opção **"Respond to Webhook"** ativada (ou o nó **"Respond to Webhook"**).
+2. O fluxo deve **esperar o processamento terminar** e só então enviar a resposta. Se usar só "Webhook" (sem Respond), o n8n devolve na hora algo como `{"message":"Workflow was started"}` e o resto do fluxo roda em segundo plano — aí o sistema não recebe os dados do imóvel.
+3. No **final do fluxo**, o nó que responde deve devolver o **corpo em JSON** com o objeto do imóvel (com pelo menos `title` ou `carousel_images`). Esse mesmo JSON é o que o sistema usa para cadastrar o listing.
+4. O sistema espera até **2 minutos** pela resposta. Se o fluxo demorar mais, aumente o tempo de timeout no servidor ou otimize o fluxo no n8n.
+
+Resumo: **Respond to Webhook** = n8n só responde quando o fluxo chega ao fim e envia o JSON do imóvel; assim o sistema recebe a resposta e cadastra o imóvel.
+
 ### O que o sistema ENVIA para o n8n (POST, JSON)
 
 ```json
