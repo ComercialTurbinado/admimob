@@ -203,8 +203,11 @@ export default function Config() {
             type="url"
             value={data.webhook_captacao ?? ''}
             onChange={(e) => update('webhook_captacao', null, e.target.value)}
-            placeholder="https://seu-n8n.com/webhook/..."
+            placeholder="https://n8n.../webhook/..."
           />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Usado quando o cliente usa <strong>Adicionar imóvel → Importar por link</strong>. O sistema envia o link do anúncio e o <code>client_id</code>; se o n8n devolver os dados do imóvel, ele é cadastrado para esse cliente.
+          </p>
         </div>
         <div className="form-group">
           <label>URL do webhook de produção (FireMode Now)</label>
