@@ -1,5 +1,6 @@
-// Em desenvolvimento: /api (proxy do Vite). Em produção (Amplify): use VITE_API_URL nas variáveis de ambiente do build.
-const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') || '/api';
+// Em desenvolvimento: /api (proxy do Vite). Em produção: VITE_API_URL = URL base do servidor (ex.: https://xxx.railway.app); o /api é acrescentado automaticamente.
+const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API = base ? base + '/api' : '/api';
 
 export const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 

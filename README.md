@@ -65,7 +65,7 @@ cd client && npm install && cd ..
 5. **Domínio público:** em **Settings** do service, em **Networking** → **Generate Domain**. O Railway vai gerar uma URL tipo `https://seu-projeto.up.railway.app`. Anote essa URL.
 
 6. No **Amplify**, nas variáveis de ambiente do **build** do frontend, adicione:
-   - `VITE_API_URL` = a URL do Railway (ex.: `https://admimob-production.up.railway.app`), **sem** barra no final.
+   - `VITE_API_URL` = URL do Railway **sem** `/api` no final (ex.: `https://admimob-production.up.railway.app`). O app acrescenta `/api` às requisições.
 
 7. Dê um **novo build** no Amplify. O painel passará a usar a API no Railway.
 
