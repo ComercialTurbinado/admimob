@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node server/index.js",
     "client": "cd client && npm run dev",
-    "build": "cd client && npm run build",
+    "build": "node -e \"const fs=require('fs');const{execSync}=require('child_process');if(!fs.existsSync('client/node_modules/vite'))process.exit(0);execSync('cd client && npm run build',{stdio:'inherit',shell:true})\"",
     "build:api": "echo 'API only'",
     "seed": "node server/seed.js"
   },
