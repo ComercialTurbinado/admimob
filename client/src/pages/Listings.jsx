@@ -61,8 +61,8 @@ export default function Listings() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <Link to={'/listing/' + l.id} className="btn">Editar</Link>
-                  <Link to={'/listing/' + l.id + '/webhook'} className="btn btn-primary">Formatar e enviar webhook</Link>
+                  <Link to={l.client_id != null ? '/cliente/' + l.client_id + '/produto/' + l.id : '/producao/' + l.id} className="btn">Editar</Link>
+                  <Link to={l.client_id != null ? '/cliente/' + l.client_id + '/produto/' + l.id : '/producao/' + l.id} className="btn btn-primary">Formatar e enviar webhook</Link>
                   <button type="button" className="btn btn-danger" onClick={() => remove(l.id)}>Excluir</button>
                 </div>
               </div>

@@ -19,6 +19,7 @@ export default function App() {
           <Route path="/cliente/novo" element={<ClienteForm />} />
           <Route path="/cliente/:id/area" element={<ClienteArea />} />
           <Route path="/cliente/:id" element={<ClienteForm />} />
+          <Route path="/cliente/:clientId/produto/:id" element={<Producao />} />
           <Route path="/producao/:id" element={<Producao />} />
         </Routes>
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 
 import { API } from '../api';
 
@@ -65,7 +65,8 @@ const MOCK_LISTING = {
 };
 
 export default function Producao() {
-  const { id } = useParams();
+  const { id, clientId: clientIdParam } = useParams();
+  const navigate = useNavigate();
   const isDemo = id === 'demo';
   const [listing, setListing] = useState(null);
   const [fieldIncluded, setFieldIncluded] = useState({});
@@ -88,6 +89,22 @@ export default function Producao() {
   useEffect(() => {
     if (isDemo && !listing) setListing(MOCK_LISTING);
   }, [isDemo, listing]);
+
+  // Busca o listing na API quando não é demo
+  useEffect(() => {
+    if (isDemo || !id) return;
+    setError(null);
+    fetch(API + '/listings/' + id)
+      .then((r) => r.json())
+      .then((data) => {
+        setListing(data);
+        // Se veio de /producao/:id, redireciona para /cliente/X/produto/Y
+        if (!clientIdParam && data.client_id != null) {
+          navigate('/cliente/' + data.client_id + '/produto/' + id, { replace: true });
+        }
+      })
+      .catch((e) => setError(e.message));
+  }, [id, isDemo]);
 
   // Inicializa fieldIncluded e fieldValues quando o listing carrega
   useEffect(() => {
@@ -275,9 +292,13 @@ export default function Producao() {
       <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
         <Link to="/">Dashboard</Link>
         <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-        {listing.client_id && <Link to={'/cliente/' + listing.client_id + '/area'}>Área do cliente</Link>}
-        {listing.client_id && <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>}
-        <span>Central de Produção</span>
+        {(clientIdParam || listing.client_id) && (
+          <>
+            <Link to={'/cliente/' + (clientIdParam || listing.client_id) + '/area'}>Cliente</Link>
+            <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
+          </>
+        )}
+        <span>Produto</span>
       </div>
       {isDemo && (
         <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--accent)', background: 'rgba(88, 166, 255, 0.08)' }}>
