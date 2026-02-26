@@ -32,7 +32,7 @@ export default function WebhookSend() {
             advertiserCode: data.advertiserCode,
             vivaRealCode: data.vivaRealCode,
             propertyCodes: data.propertyCodes,
-            amenities: data['amenities-list'],
+            amenities: data['amenities-list'] ?? data.amenitiesList,
             images: selected,
           };
           setPayload(JSON.stringify(built, null, 2));

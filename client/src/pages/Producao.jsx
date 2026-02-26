@@ -1,22 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
 import { API } from '../api';
 
-function buildPayload(listing, title, description, amenities, selectedImages) {
-  return {
-    title: title || listing?.title,
-    description: description ?? listing?.description,
-    salePrice: listing?.salePrice,
-    prices: listing?.prices,
-    imobname: listing?.imobname,
-    logoimob: listing?.logoimob,
-    advertiserCode: listing?.advertiserCode,
-    vivaRealCode: listing?.vivaRealCode,
-    propertyCodes: listing?.propertyCodes,
-    amenities: amenities ?? listing?.['amenities-list'],
-    images: selectedImages ?? listing?.carousel_images ?? [],
-  };
+const OMIT_KEYS = ['id', 'client_id', 'source_url', 'selected_images', 'webhook_payload', 'created_at', 'updated_at'];
+
+const FIELD_LABELS = {
+  title: 'Título',
+  description: 'Descrição',
+  description_data: 'Descrição (dados extras)',
+  carousel_images: 'Fotos',
+  salePrice: 'Preço de venda',
+  prices: 'Preços (Venda, Condomínio, IPTU)',
+  imobname: 'Nome da imobiliária',
+  logoimob: 'Logo (URL)',
+  advertiserCode: 'Código do anunciante',
+  vivaRealCode: 'Código Viva Real',
+  propertyCodes: 'Códigos do imóvel',
+  amenitiesList: 'Características (lista)',
+  'amenities-list': 'Características (lista)',
+  images: 'Imagens (URLs)',
+};
+
+function getPayloadKeys(listing) {
+  if (!listing || typeof listing !== 'object') return [];
+  return Object.keys(listing).filter((k) => !OMIT_KEYS.includes(k));
+}
+
+function getFieldLabel(key) {
+  return FIELD_LABELS[key] || key;
+}
+
+function isLongString(val) {
+  return typeof val === 'string' && val.length > 80;
+}
+
+function isPrimitive(val) {
+  return val === null || typeof val !== 'object';
 }
 
 const MOCK_LISTING = {
@@ -48,9 +68,8 @@ export default function Producao() {
   const { id } = useParams();
   const isDemo = id === 'demo';
   const [listing, setListing] = useState(null);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [amenities, setAmenities] = useState([]);
+  const [fieldIncluded, setFieldIncluded] = useState({});
+  const [fieldValues, setFieldValues] = useState({});
   const [selectedImages, setSelectedImages] = useState([]);
   const [payloadJson, setPayloadJson] = useState('');
   const [saving, setSaving] = useState(false);
@@ -58,37 +77,73 @@ export default function Producao() {
   const [error, setError] = useState(null);
   const [fireResult, setFireResult] = useState(null);
 
-  useEffect(() => {
-    if (isDemo) {
-      const data = MOCK_LISTING;
-      setListing(data);
-      setTitle(data.title || '');
-      setDescription(data.description || '');
-      setAmenities(Array.isArray(data['amenities-list']) ? data['amenities-list'] : []);
-      setSelectedImages(data.carousel_images || []);
-      setPayloadJson(JSON.stringify(buildPayload(data, data.title, data.description, data['amenities-list'], data.carousel_images), null, 2));
-      return;
-    }
-    fetch(API + '/listings/' + id)
-      .then((r) => r.json())
-      .then((data) => {
-        setListing(data);
-        setTitle(data.title || '');
-        setDescription(data.description || '');
-        setAmenities(Array.isArray(data['amenities-list']) ? data['amenities-list'] : []);
-        setSelectedImages(data.selected_images || (data.carousel_images || []).slice(0, 12));
-        const payload = data.webhook_payload && typeof data.webhook_payload === 'object'
-          ? data.webhook_payload
-          : buildPayload(data, data.title, data.description, data['amenities-list'], data.selected_images || data.carousel_images);
-        setPayloadJson(JSON.stringify(payload, null, 2));
-      })
-      .catch((e) => setError(e.message));
-  }, [id, isDemo]);
+  const payloadKeys = useMemo(() => getPayloadKeys(listing), [listing]);
 
-  function refreshPayloadFromForm() {
+  // Form pronto só quando listing carregou e os campos foram preenchidos
+  const formReady = listing && payloadKeys.length > 0 && Object.keys(fieldValues).length > 0;
+  // Loading: buscando listing OU já temos listing mas os campos ainda não foram preenchidos
+  const loadingData = !listing || (payloadKeys.length > 0 && Object.keys(fieldValues).length === 0);
+
+  // Demo: carrega listing mock para não depender de API
+  useEffect(() => {
+    if (isDemo && !listing) setListing(MOCK_LISTING);
+  }, [isDemo, listing]);
+
+  // Inicializa fieldIncluded e fieldValues quando o listing carrega
+  useEffect(() => {
     if (!listing) return;
-    const payload = buildPayload(listing, title, description, amenities, selectedImages);
-    setPayloadJson(JSON.stringify(payload, null, 2));
+    const keys = getPayloadKeys(listing);
+    const included = {};
+    const values = {};
+    keys.forEach((k) => {
+      included[k] = true;
+      values[k] = listing[k];
+    });
+    setFieldIncluded(included);
+    setFieldValues(values);
+    if (Array.isArray(listing.carousel_images)) {
+      setSelectedImages(listing.selected_images || listing.carousel_images.slice(0, 12));
+    }
+  }, [listing?.id]);
+
+  // Monta o payload a partir dos campos marcados
+  function buildPayloadFromFields() {
+    const out = {};
+    payloadKeys.forEach((key) => {
+      if (!fieldIncluded[key]) return;
+      if (key === 'carousel_images') {
+        out.images = selectedImages;
+      } else {
+        out[key] = fieldValues[key];
+      }
+    });
+    return out;
+  }
+
+  // JSON que deve aparecer no textarea: sempre derivado do formulário (campos + checkboxes)
+  const builtPayloadString = useMemo(() => {
+    if (payloadKeys.length === 0 || Object.keys(fieldValues).length === 0) return '';
+    return JSON.stringify(buildPayloadFromFields(), null, 2);
+  }, [payloadKeys, fieldIncluded, fieldValues, selectedImages]);
+
+  // Mantém o textarea sempre com o JSON ajustado (quando o formulário muda, atualiza o texto)
+  useEffect(() => {
+    if (!builtPayloadString) return;
+    setPayloadJson((prev) => (prev === builtPayloadString ? prev : builtPayloadString));
+  }, [builtPayloadString]);
+
+  function setIncluded(key, value) {
+    setFieldIncluded((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function setFieldValue(key, value) {
+    setFieldValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function setAllIncluded(value) {
+    const next = {};
+    payloadKeys.forEach((k) => { next[k] = value; });
+    setFieldIncluded(next);
   }
 
   function toggleImage(url) {
@@ -107,20 +162,24 @@ export default function Producao() {
     setSelectedImages(next);
   }
 
-  function addAmenity() {
-    setAmenities((prev) => [...prev, { name: 'custom', value: '' }]);
+  // Edição de itens em arrays de objetos (amenitiesList, description_data)
+  function setArrayItem(key, index, field, val) {
+    const arr = Array.isArray(fieldValues[key]) ? [...fieldValues[key]] : [];
+    if (!arr[index]) return;
+    arr[index] = typeof arr[index] === 'object' && arr[index] !== null
+      ? { ...arr[index], [field]: val }
+      : val;
+    setFieldValue(key, arr);
   }
 
-  function updateAmenity(i, field, val) {
-    setAmenities((prev) => {
-      const next = [...prev];
-      next[i] = { ...next[i], [field]: val };
-      return next;
-    });
+  function removeArrayItem(key, index) {
+    const arr = Array.isArray(fieldValues[key]) ? fieldValues[key].filter((_, i) => i !== index) : [];
+    setFieldValue(key, arr);
   }
 
-  function removeAmenity(i) {
-    setAmenities((prev) => prev.filter((_, idx) => idx !== i));
+  function addArrayItem(key, item = { name: '', value: '' }) {
+    const arr = Array.isArray(fieldValues[key]) ? [...fieldValues[key], item] : [item];
+    setFieldValue(key, arr);
   }
 
   function savePreview() {
@@ -138,9 +197,9 @@ export default function Producao() {
     const omit = ['id', 'client_id', 'source_url', 'selected_images', 'webhook_payload', 'created_at', 'updated_at'];
     const raw = { ...listing };
     omit.forEach((k) => delete raw[k]);
-    raw.title = title;
-    raw.description = description;
-    raw['amenities-list'] = amenities;
+    payloadKeys.forEach((k) => {
+      if (k !== 'carousel_images') raw[k] = fieldValues[k];
+    });
     fetch(API + '/listings/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -191,6 +250,25 @@ export default function Producao() {
   if (!listing) return <p className="muted">Carregando...</p>;
 
   const images = listing.carousel_images || [];
+  const textKeys = payloadKeys.filter((k) => k !== 'carousel_images');
+
+  // Loading: dados ainda não carregaram / campos não preenchidos
+  if (loadingData) {
+    return (
+      <>
+        <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+          <Link to="/">Dashboard</Link>
+          <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
+          <span>Central de Produção</span>
+        </div>
+        <h1>Central de Produção</h1>
+        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+          <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto 1rem' }} className="loading-spinner" />
+          <p className="muted" style={{ margin: 0 }}>Carregando dados do anúncio...</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -208,35 +286,122 @@ export default function Producao() {
       )}
       <h1>Central de Produção</h1>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Dados do anúncio (título, descrição, características)</h3>
-        <div className="form-group">
-          <label>Título</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Descrição</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
-        </div>
-        <div className="form-group">
-          <label>Características (ex: churrasqueira, ar-condicionado)</label>
-          {amenities.map((a, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input
-                value={a.value}
-                onChange={(e) => updateAmenity(i, 'value', e.target.value)}
-                placeholder="Nome"
-                style={{ flex: 1 }}
-              />
-              <button type="button" className="btn btn-danger" onClick={() => removeAmenity(i)}>Remover</button>
-            </div>
-          ))}
-          <button type="button" className="btn" onClick={addAmenity}>+ Característica</button>
+      {/* Campos do anúncio: cada um com checkbox "Incluir no webhook" e valor editável */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Campos do anúncio (marque os que deseja enviar no webhook)</h3>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          <button type="button" className="btn" style={{ marginRight: '0.5rem' }} onClick={() => setAllIncluded(true)}>Marcar todos</button>
+          <button type="button" className="btn" onClick={() => setAllIncluded(false)}>Desmarcar todos</button>
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {textKeys.map((key) => {
+            const val = fieldValues[key];
+            const included = fieldIncluded[key] !== false;
+            const label = getFieldLabel(key);
+
+            return (
+              <div key={key} className="card" style={{ padding: '1rem', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 180, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={included}
+                      onChange={(e) => setIncluded(key, e.target.checked)}
+                    />
+                    <strong>{label}</strong>
+                  </label>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    {key === 'carousel_images' ? (
+                      <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Seleção e ordem nas fotos abaixo</span>
+                    ) : Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && val[0] !== null && !Array.isArray(val[0]) ? (
+                      <div>
+                        {val.map((item, i) => (
+                          <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {typeof item === 'object' && item !== null && 'name' in item && 'value' in item ? (
+                              <>
+                                <input
+                                  value={item.name}
+                                  onChange={(e) => setArrayItem(key, i, 'name', e.target.value)}
+                                  placeholder="Nome"
+                                  style={{ width: 140 }}
+                                />
+                                <input
+                                  value={item.value}
+                                  onChange={(e) => setArrayItem(key, i, 'value', e.target.value)}
+                                  placeholder="Valor"
+                                  style={{ flex: 1, minWidth: 120 }}
+                                />
+                              </>
+                            ) : (
+                              <input
+                                value={typeof item === 'string' ? item : JSON.stringify(item)}
+                                onChange={(e) => {
+                                  let v = e.target.value;
+                                  try { v = JSON.parse(v); } catch {}
+                                  const arr = [...(fieldValues[key] || [])];
+                                  arr[i] = v;
+                                  setFieldValue(key, arr);
+                                }}
+                                style={{ flex: 1 }}
+                              />
+                            )}
+                            <button type="button" className="btn btn-danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={() => removeArrayItem(key, i)}>Remover</button>
+                          </div>
+                        ))}
+                        <button type="button" className="btn" style={{ fontSize: '0.85rem' }} onClick={() => addArrayItem(key)}>+ Item</button>
+                      </div>
+                    ) : Array.isArray(val) ? (
+                      <textarea
+                        value={JSON.stringify(val)}
+                        onChange={(e) => {
+                          try { setFieldValue(key, JSON.parse(e.target.value)); } catch {} 
+                        }}
+                        rows={3}
+                        style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%' }}
+                      />
+                    ) : typeof val === 'object' && val !== null ? (
+                      <textarea
+                        value={JSON.stringify(val, null, 2)}
+                        onChange={(e) => {
+                          try { setFieldValue(key, JSON.parse(e.target.value)); } catch {}
+                        }}
+                        rows={4}
+                        style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%' }}
+                      />
+                    ) : isLongString(val) ? (
+                      <textarea
+                        value={val == null ? '' : String(val)}
+                        onChange={(e) => setFieldValue(key, e.target.value)}
+                        rows={4}
+                        style={{ width: '100%' }}
+                      />
+                    ) : (
+                      <input
+                        type={typeof val === 'number' ? 'number' : 'text'}
+                        value={val == null ? '' : String(val)}
+                        onChange={(e) => setFieldValue(key, typeof val === 'number' ? Number(e.target.value) : e.target.value)}
+                        style={{ width: '100%', maxWidth: 400 }}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Fotos para o vídeo (marque e reordene)</h3>
+      {/* Fotos: grid com checkbox em cada uma + checkbox "Incluir no payload" */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fotos (marque as que entram no webhook e reordene)</h3>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={fieldIncluded.carousel_images !== false}
+            onChange={(e) => setIncluded('carousel_images', e.target.checked)}
+          />
+          <strong>Incluir fotos no payload (como &quot;images&quot;)</strong>
+        </label>
         <div className="grid-images">
           {images.map((url) => (
             <div key={url} className="img-thumb" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -256,15 +421,16 @@ export default function Producao() {
             </div>
           ))}
         </div>
-        <button type="button" className="btn" onClick={refreshPayloadFromForm} style={{ marginTop: '0.5rem' }}>
-          Atualizar payload abaixo com estes dados
-        </button>
+        <p style={{ marginTop: '0.75rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+          {selectedImages.length} foto(s) selecionada(s) — ordem = ordem no payload
+        </p>
       </div>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Payload que será enviado ao webhook (edite o JSON)</h3>
+      {/* JSON final que será enviado */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ marginTop: 0 }}>JSON que será enviado ao webhook (FireMode)</h3>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-          Este é o objeto que será enviado no POST. Edite se precisar antes de salvar ou disparar.
+          Montado a partir dos campos marcados acima. Você pode editar manualmente se precisar.
         </p>
         <textarea
           value={payloadJson}
@@ -275,6 +441,21 @@ export default function Producao() {
       </div>
 
       {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+
+      {saving && (
+        <div className="card" style={{ marginBottom: '1rem', padding: '1rem', textAlign: 'center' }}>
+          <div style={{ width: 28, height: 28, border: '2px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto 0.5rem' }} className="loading-spinner" />
+          <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>Salvando alterações...</p>
+        </div>
+      )}
+
+      {firing && (
+        <div className="card" style={{ marginBottom: '1rem', padding: '1.5rem', textAlign: 'center', borderColor: 'var(--accent)' }}>
+          <div style={{ width: 36, height: 36, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto 0.75rem' }} className="loading-spinner" />
+          <p style={{ margin: 0, fontWeight: 600 }}>Enviando para webhook...</p>
+          <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.9rem' }}>Aguarde a resposta.</p>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
         <button type="button" className="btn btn-primary" onClick={savePreview} disabled={saving || isDemo}>
@@ -291,9 +472,7 @@ export default function Producao() {
           <p style={{ marginBottom: '0.5rem' }}>
             <strong>Status HTTP:</strong> {fireResult.status} {fireResult.ok ? '✓' : '✗'}
           </p>
-          <p style={{ marginBottom: '0.5rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
-            Corpo da resposta:
-          </p>
+          <p style={{ marginBottom: '0.5rem', color: 'var(--muted)', fontSize: '0.9rem' }}>Corpo da resposta:</p>
           <pre style={{ fontSize: '0.85rem', overflow: 'auto', maxHeight: 300, padding: '1rem', background: 'var(--bg)', borderRadius: 6 }}>
             {typeof fireResult.body === 'string' ? fireResult.body : JSON.stringify(fireResult.body, null, 2)}
           </pre>

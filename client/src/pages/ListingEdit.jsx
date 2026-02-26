@@ -66,7 +66,7 @@ export default function ListingEdit() {
 
   const images = listing.carousel_images || [];
   const meta = omitKeys(listing, [
-    'id', 'carousel_images', 'description_data', 'selected_images', 'webhook_payload',
+    'id', 'carousel_images', 'selected_images', 'webhook_payload',
     'created_at', 'updated_at',
   ]);
 

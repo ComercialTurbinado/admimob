@@ -14,6 +14,14 @@ const MOCK_LISTINGS = [
   { id: 'demo', title: 'Casa com 2 Quartos e 2 banheiros à Venda, 82 m² por R$ 455.000', salePrice: 'R$ 455.000' },
 ];
 
+// Título para exibição: usa title, ou descrição completa, ou preço (quando n8n envia title null)
+function listingDisplayTitle(l) {
+  if (l.title && String(l.title).trim()) return l.title;
+  if (l.description && String(l.description).trim()) return l.description.trim();
+  if (l.salePrice) return l.salePrice;
+  return '(Sem título)';
+}
+
 export default function ClienteArea() {
   const { id } = useParams();
   const isDemo = id === 'demo';
@@ -185,12 +193,19 @@ export default function ClienteArea() {
           </div>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0 }}>
-            {listings.map((l) => (
+            {listings.map((l) => {
+              const img = (l.carousel_images && l.carousel_images[0]) || (l.images && l.images[0]);
+              return (
               <li key={l.id} className="card" style={{ marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <div>
-                    <strong>{l.title || '(Sem título)'}</strong>
-                    {l.salePrice && <span className="badge" style={{ marginLeft: '0.5rem' }}>{l.salePrice}</span>}
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    {img && (
+                      <img src={img} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <strong>{listingDisplayTitle(l)}</strong>
+                      {l.salePrice && <span className="badge" style={{ marginLeft: '0.5rem' }}>{l.salePrice}</span>}
+                    </div>
                   </div>
                   <Link to={'/producao/' + l.id} className="btn btn-primary">
                     Editar e enviar para webhook →
@@ -198,7 +213,8 @@ export default function ClienteArea() {
                   {isDemo && l.id === 'demo' && <span className="badge" style={{ marginLeft: '0.5rem' }}>exemplo</span>}
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>

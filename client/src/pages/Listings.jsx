@@ -3,6 +3,14 @@ import { Link } from 'react-router-dom';
 
 import { API } from '../api';
 
+// Título para exibição: usa title, ou descrição completa, ou preço, quando title vem null do n8n
+function listingDisplayTitle(l) {
+  if (l.title && String(l.title).trim()) return l.title;
+  if (l.description && String(l.description).trim()) return l.description.trim();
+  if (l.salePrice) return l.salePrice;
+  return '(Sem título)';
+}
+
 export default function Listings() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,14 +43,21 @@ export default function Listings() {
         </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
-          {listings.map((l) => (
+          {listings.map((l) => {
+            const img = (l.carousel_images && l.carousel_images[0]) || (l.images && l.images[0]);
+            return (
             <li key={l.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
-                  <strong>{l.title || '(Sem título)'}</strong>
-                  <div style={{ marginTop: '0.5rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
-                    {l.salePrice && <span className="badge">{l.salePrice}</span>}
-                    {l.imobname && <span className="badge" style={{ marginLeft: '0.5rem' }}>{l.imobname}</span>}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+                  {img && (
+                    <img src={img} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <strong>{listingDisplayTitle(l)}</strong>
+                    <div style={{ marginTop: '0.5rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+                      {l.salePrice && <span className="badge">{l.salePrice}</span>}
+                      {l.imobname && <span className="badge" style={{ marginLeft: '0.5rem' }}>{l.imobname}</span>}
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -52,7 +67,8 @@ export default function Listings() {
                 </div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </>
