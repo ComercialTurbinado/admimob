@@ -44,7 +44,24 @@ export default function Materiais() {
           {clientId && <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>}
           <span>Materiais</span>
         </div>
-        <p className="muted">Carregando...</p>
+        <h1 style={{ marginBottom: '1.5rem' }}>Materiais gerados</h1>
+        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+          <div
+            className="loading-spinner"
+            style={{
+              width: 40,
+              height: 40,
+              border: '3px solid var(--border)',
+              borderTopColor: 'var(--accent)',
+              borderRadius: '50%',
+              margin: '0 auto 1rem',
+            }}
+          />
+          <p className="muted" style={{ margin: 0 }}>Consultando webhook de materiais...</p>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
+            Aguarde a resposta do webhook para listar os arquivos.
+          </p>
+        </div>
       </>
     );
   }

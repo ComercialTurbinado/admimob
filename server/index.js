@@ -337,7 +337,8 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
     if (webhookUrl && (imobname || advertiserCode)) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutMs = 30000;
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const response = await fetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
