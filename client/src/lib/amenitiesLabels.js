@@ -24,7 +24,38 @@ export const AMENITIES_LABELS = {
   custom: 'Outro',
 };
 
+/** Ícones Material Symbols para características principais (grid tipo "3 Beds", "2 Baths") */
+export const CHARACTERISTIC_ICONS = {
+  numberOfRooms: 'bed',
+  numberOfSuites: 'bed',
+  numberOfBathroomsTotal: 'bathtub',
+  numberOfParkingSpaces: 'directions_car',
+  floorSize: 'square_foot',
+};
+
+/** Ícones Material Symbols para lazer/comodidades (seção Leisure & Amenities) */
+export const AMENITY_ICONS = {
+  POOL: 'pool',
+  GRILL: 'skillet',
+  GYM: 'fitness_center',
+  PARTY_HALL: 'celebration',
+  GARDEN: 'grass',
+  BACKYARD: 'yard',
+  SERVICE_AREA: 'cleaning_services',
+  KITCHEN: 'countertops',
+  CABLE_TV: 'tv',
+  AIR_CONDITIONING: 'ac_unit',
+  PETS_ALLOWED: 'pets',
+  FURNISHED: 'chair',
+  custom: 'miscellaneous_services',
+};
+
 export function getAmenityLabel(name) {
   if (!name || typeof name !== 'string') return name || '';
   return AMENITIES_LABELS[name] || name;
+}
+
+export function getAmenityIcon(name) {
+  if (!name || typeof name !== 'string') return 'miscellaneous_services';
+  return AMENITY_ICONS[name] || 'miscellaneous_services';
 }
