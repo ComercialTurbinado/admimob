@@ -10,12 +10,13 @@ export default function Materiais() {
   const [listing, setListing] = useState(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [files, setFiles] = useState({ videos: [], narration: [], music: [] });
-  const [webhookRaw, setWebhookRaw] = useState(null);
-  const [webhookStatus, setWebhookStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [videoUrl, setVideoUrl] = useState(null);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [animacaoKey, setAnimacaoKey] = useState(0);
+  const [animBg, setAnimBg] = useState('#f5f5f5');
+  const [animItemsPerRow, setAnimItemsPerRow] = useState(3);
+  const [animIconSize, setAnimIconSize] = useState(28);
 
   useEffect(() => {
     if (!id) return;
@@ -24,8 +25,6 @@ export default function Materiais() {
     setListing(null);
     setBaseUrl('');
     setFiles({ videos: [], narration: [], music: [] });
-    setWebhookRaw(null);
-    setWebhookStatus(null);
     const url = API + '/listings/' + id + '/materiais?t=' + Date.now();
     fetch(url, { cache: 'no-store' })
       .then((r) => r.json())
@@ -34,8 +33,6 @@ export default function Materiais() {
         setListing(data.listing);
         setBaseUrl(data.baseUrl || '');
         setFiles(data.files || { videos: [], narration: [], music: [] });
-        setWebhookRaw(data.webhook_raw_response != null ? data.webhook_raw_response : null);
-        setWebhookStatus(data.webhook_status != null ? data.webhook_status : null);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -111,39 +108,6 @@ export default function Materiais() {
 
       <h1 style={{ marginBottom: '1.5rem' }}>Materiais gerados</h1>
 
-      {/* Retorno bruto do webhook - primeiro na tela */}
-      {(webhookRaw != null || webhookStatus != null) && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Retorno do webhook</h3>
-          {webhookStatus != null && (
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: 'var(--muted)' }}>
-              HTTP {webhookStatus}
-            </p>
-          )}
-          <pre
-            style={{
-              margin: 0,
-              padding: '1rem',
-              background: 'var(--bg)',
-              borderRadius: 8,
-              fontSize: '0.8rem',
-              overflow: 'auto',
-              maxHeight: 360,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-            }}
-          >
-            {typeof webhookRaw === 'string' ? webhookRaw : JSON.stringify(webhookRaw, null, 2)}
-          </pre>
-        </div>
-      )}
-
-      {!webhookRaw && webhookStatus == null && (
-        <p className="muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Webhook de materiais não configurado. Configure em Configurações para ver o retorno aqui.
-        </p>
-      )}
-
       <div
         style={{
           display: 'grid',
@@ -156,9 +120,6 @@ export default function Materiais() {
         {/* Coluna 1: Materiais (vídeos, narração, música) - maior */}
         <div className="card">
           <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Materiais (S3)</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            Base: <code style={{ wordBreak: 'break-all' }}>{urlBase || '(sem advertiserCode)'}</code>
-          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <section>
               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Vídeos (sequência)</h4>
@@ -169,14 +130,6 @@ export default function Materiais() {
                   videoUrls.map((url, i) => (
                     <li key={i} style={{ marginBottom: '0.5rem' }}>
                       <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Vídeo {i + 1}</a>
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ marginLeft: 8, padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
-                        onClick={() => setVideoUrl(url)}
-                      >
-                        Ver no visor
-                      </button>
                     </li>
                   ))
                 )}
@@ -213,12 +166,59 @@ export default function Materiais() {
           </div>
         </div>
 
-        {/* Coluna 2: Características do imóvel + animação (moldura 1080×1920, arte 1080×1450) */}
+        {/* Coluna 2: Características do imóvel + animação + editor */}
         <div className="card materiais-col-phone">
           <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Características do imóvel</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
             Animação 5s — tela 1080×1920, arte 1080×1450
           </p>
+
+          {/* Editor: cor de fundo, itens por linha, tamanho do ícone */}
+          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: 8 }}>
+            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Ajustes</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                <span style={{ minWidth: 100 }}>Cor de fundo</span>
+                <input
+                  type="color"
+                  value={animBg}
+                  onChange={(e) => setAnimBg(e.target.value)}
+                  style={{ width: 36, height: 28, padding: 0, border: '1px solid var(--border)', borderRadius: 6 }}
+                />
+                <input
+                  type="text"
+                  value={animBg}
+                  onChange={(e) => setAnimBg(e.target.value)}
+                  style={{ width: 90, padding: '4px 8px', fontSize: '0.85rem' }}
+                />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                <span style={{ minWidth: 100 }}>Itens por linha</span>
+                <select
+                  value={animItemsPerRow}
+                  onChange={(e) => setAnimItemsPerRow(Number(e.target.value))}
+                  style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                >
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                </select>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                <span style={{ minWidth: 100 }}>Tamanho ícone (px)</span>
+                <input
+                  type="range"
+                  min={16}
+                  max={48}
+                  value={animIconSize}
+                  onChange={(e) => setAnimIconSize(Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span style={{ minWidth: 28 }}>{animIconSize}</span>
+              </label>
+            </div>
+          </div>
+
           {/* Moldura celular 9:16 (1080×1920) com arte 1080×1450 no topo */}
           <div
             className="materiais-phone-frame"
@@ -237,12 +237,12 @@ export default function Materiais() {
               style={{
                 width: '100%',
                 height: '100%',
-                background: 'var(--bg)',
                 borderRadius: 14,
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'stretch',
+                background: animBg,
               }}
             >
               {/* Área da arte 1080×1450 = proporção 1080/1450 */}
@@ -255,11 +255,18 @@ export default function Materiais() {
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'flex-start',
-                  background: 'var(--surface)',
+                  background: animBg,
                 }}
               >
                 <div style={{ transform: 'scale(0.333)', transformOrigin: 'top center' }}>
-                  <AnimacaoCaracteristicas key={animacaoKey} listing={listing} onEnd={() => {}} />
+                  <AnimacaoCaracteristicas
+                    key={animacaoKey}
+                    listing={listing}
+                    onEnd={() => {}}
+                    backgroundColor={animBg}
+                    itemsPerRow={animItemsPerRow}
+                    iconSize={animIconSize}
+                  />
                 </div>
               </div>
             </div>
@@ -274,7 +281,7 @@ export default function Materiais() {
           </button>
         </div>
 
-        {/* Coluna 3: Visor celular (9:16) - mesmo tamanho da coluna 2 */}
+        {/* Coluna 3: Visor celular (9:16) - vídeos em sequência */}
         <div className="card materiais-col-phone" style={{ position: 'sticky', top: '1rem' }}>
           <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Visor (celular)</h3>
           <div
@@ -302,20 +309,27 @@ export default function Materiais() {
                 justifyContent: 'center',
               }}
             >
-              {videoUrl ? (
+              {videoUrls.length > 0 ? (
                 <video
-                  src={videoUrl}
+                  key={currentVideoIndex}
+                  src={videoUrls[currentVideoIndex]}
                   controls
                   autoPlay
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  onEnded={() => setCurrentVideoIndex((i) => (i + 1) % videoUrls.length)}
                 />
               ) : (
                 <p className="muted" style={{ textAlign: 'center', padding: 16, fontSize: '0.9rem' }}>
-                  Clique em &quot;Ver no visor&quot; em um vídeo para exibir aqui.
+                  Nenhum vídeo para exibir em sequência.
                 </p>
               )}
             </div>
           </div>
+          {videoUrls.length > 1 && (
+            <p className="muted" style={{ marginTop: '0.5rem', fontSize: '0.85rem', textAlign: 'center' }}>
+              Vídeo {currentVideoIndex + 1} de {videoUrls.length} — reprodução em sequência
+            </p>
+          )}
         </div>
       </div>
 

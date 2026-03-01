@@ -9,12 +9,13 @@ const ART_WIDTH = 1080;
 const ART_HEIGHT = 1450;
 const DURATION_MS = 5000;
 
-export default function AnimacaoCaracteristicas({ listing, onEnd }) {
+export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor = 'var(--surface)', itemsPerRow = 3, iconSize = 28 }) {
   const [started, setStarted] = useState(false);
   const amenities = listing?.amenitiesList || listing?.['amenities-list'] || [];
   const logoimob = listing?.logoimob;
   const imobname = listing?.imobname;
   const propertyCodes = listing?.propertyCodes;
+  const fontScale = iconSize / 28;
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -38,7 +39,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
         height: ART_HEIGHT,
         maxWidth: '100%',
         boxSizing: 'border-box',
-        background: 'var(--surface)',
+        background: backgroundColor,
         borderRadius: 8,
         overflow: 'hidden',
         margin: '0 auto',
@@ -82,7 +83,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
               opacity: started ? 1 : 0,
               transform: started ? 'translateY(0)' : 'translateY(-10px)',
               transition: 'opacity 0.4s ease 0.2s, transform 0.4s ease 0.2s',
-              fontSize: 'clamp(1.1rem, 2.2vw, 1.5rem)',
+              fontSize: `${Math.round(24 * fontScale)}px`,
               fontWeight: 700,
               textAlign: 'center',
               color: 'var(--text)',
@@ -99,7 +100,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
             style={{
               opacity: started ? 1 : 0,
               transition: 'opacity 0.35s ease 0.4s',
-              fontSize: 'clamp(0.75rem, 1.5vw, 0.9rem)',
+              fontSize: `${Math.round(16 * fontScale)}px`,
               color: 'var(--muted)',
               textAlign: 'center',
               marginBottom: 24,
@@ -109,11 +110,11 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
           </div>
         )}
 
-        {/* 3 colunas: amenities com label traduzido + espaço para ícone */}
+        {/* grid: itemsPerRow colunas; ícone iconSize; fonte proporcional */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: `repeat(${itemsPerRow}, 1fr)`,
             gap: '12px 16px',
             flex: 1,
             alignContent: 'start',
@@ -123,6 +124,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
             const label = getAmenityLabel(item?.name);
             const value = item?.value ?? item;
             const delay = 0.6 + i * 0.08;
+            const fontSize = Math.round(14 * fontScale);
             return (
               <div
                 key={i}
@@ -133,14 +135,14 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  fontSize: 'clamp(0.7rem, 1.4vw, 0.85rem)',
+                  fontSize: `${fontSize}px`,
                   color: 'var(--text)',
                 }}
               >
                 <span
                   style={{
-                    width: 28,
-                    height: 28,
+                    width: iconSize,
+                    height: iconSize,
                     flexShrink: 0,
                     background: 'var(--border)',
                     borderRadius: 6,
@@ -175,7 +177,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
             justifyContent: 'center',
             gap: 24,
             flexWrap: 'wrap',
-            fontSize: 'clamp(0.75rem, 1.5vw, 0.9rem)',
+            fontSize: `${Math.round(16 * fontScale)}px`,
             color: 'var(--muted)',
           }}
         >
