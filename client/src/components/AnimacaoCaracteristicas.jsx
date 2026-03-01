@@ -3,9 +3,9 @@ import { getAmenityLabel } from '../lib/amenitiesLabels';
 
 /**
  * Animação de até 5s: logo, imobname, propertyCodes, amenitiesList em 3 colunas, rodapé.
- * Proporção 9:16 (1080x1920), área de arte 1000x1450.
+ * Área de arte 1080×1450 (exibida dentro de tela 9:16 1080×1920).
  */
-const ART_WIDTH = 1000;
+const ART_WIDTH = 1080;
 const ART_HEIGHT = 1450;
 const DURATION_MS = 5000;
 
@@ -37,9 +37,9 @@ export default function AnimacaoCaracteristicas({ listing, onEnd }) {
         width: ART_WIDTH,
         height: ART_HEIGHT,
         maxWidth: '100%',
-        aspectRatio: `${ART_WIDTH} / ${ART_HEIGHT}`,
+        boxSizing: 'border-box',
         background: 'var(--surface)',
-        borderRadius: 12,
+        borderRadius: 8,
         overflow: 'hidden',
         margin: '0 auto',
       }}

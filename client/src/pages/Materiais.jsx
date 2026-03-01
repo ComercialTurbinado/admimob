@@ -88,13 +88,13 @@ export default function Materiais() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr minmax(320px, 400px)',
+          gridTemplateColumns: 'minmax(320px, 2fr) 380px 380px',
           gap: '1.5rem',
           alignItems: 'start',
         }}
         className="materiais-layout"
       >
-        {/* Coluna 1: Materiais (vídeos, narração, música) */}
+        {/* Coluna 1: Materiais (vídeos, narração, música) - maior */}
         <div className="card">
           <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Materiais (S3)</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
@@ -154,41 +154,80 @@ export default function Materiais() {
           </div>
         </div>
 
-        {/* Coluna 2: Características do imóvel + animação */}
-        <div className="card">
+        {/* Coluna 2: Características do imóvel + animação (moldura 1080×1920, arte 1080×1450) */}
+        <div className="card materiais-col-phone">
           <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Características do imóvel</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            Animação de 5s (9:16 — área 1000×1450)
+            Animação 5s — tela 1080×1920, arte 1080×1450
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', transform: 'scale(0.6)', transformOrigin: 'top center' }}>
-            <AnimacaoCaracteristicas
-              key={animacaoKey}
-              listing={listing}
-              onEnd={() => {}}
-            />
+          {/* Moldura celular 9:16 (1080×1920) com arte 1080×1450 no topo */}
+          <div
+            className="materiais-phone-frame"
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              margin: '0 auto',
+              aspectRatio: '9 / 16',
+              background: '#111',
+              borderRadius: 24,
+              padding: 10,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                background: 'var(--bg)',
+                borderRadius: 14,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+              }}
+            >
+              {/* Área da arte 1080×1450 = proporção 1080/1450 */}
+              <div
+                style={{
+                  width: '100%',
+                  flex: '0 0 auto',
+                  aspectRatio: '1080 / 1450',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'flex-start',
+                  background: 'var(--surface)',
+                }}
+              >
+                <div style={{ transform: 'scale(0.333)', transformOrigin: 'top center' }}>
+                  <AnimacaoCaracteristicas key={animacaoKey} listing={listing} onEnd={() => {}} />
+                </div>
+              </div>
+            </div>
           </div>
           <button
             type="button"
             className="btn"
-            style={{ marginTop: '1rem' }}
+            style={{ marginTop: '1rem', width: '100%' }}
             onClick={() => setAnimacaoKey((k) => k + 1)}
           >
             Reproduzir novamente
           </button>
         </div>
 
-        {/* Coluna 3: Visor celular (9:16) com vídeo */}
-        <div className="card" style={{ position: 'sticky', top: '1rem' }}>
+        {/* Coluna 3: Visor celular (9:16) - mesmo tamanho da coluna 2 */}
+        <div className="card materiais-col-phone" style={{ position: 'sticky', top: '1rem' }}>
           <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Visor (celular)</h3>
           <div
+            className="materiais-phone-frame"
             style={{
               width: '100%',
-              maxWidth: 320,
+              maxWidth: 360,
               margin: '0 auto',
               aspectRatio: '9 / 16',
               background: '#111',
               borderRadius: 24,
-              padding: 12,
+              padding: 10,
               boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             }}
           >

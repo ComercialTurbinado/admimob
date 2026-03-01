@@ -6,6 +6,7 @@ const DEFAULT_DATA = {
   payment_links: { plan_65: '', plan_297: '', plan_497: '' },
   webhook_captacao: '',
   webhook_producao: '',
+  webhook_materiais: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -28,6 +29,7 @@ export default function Config() {
           payment_links: d.payment_links || DEFAULT_DATA.payment_links,
           webhook_captacao: d.webhook_captacao ?? '',
           webhook_producao: d.webhook_producao ?? '',
+          webhook_materiais: d.webhook_materiais ?? '',
           plans,
         });
       })
@@ -72,6 +74,7 @@ export default function Config() {
           payment_links: data.payment_links,
           webhook_captacao: data.webhook_captacao,
           webhook_producao: data.webhook_producao,
+          webhook_materiais: data.webhook_materiais,
           plans: data.plans,
         }),
       });
@@ -217,6 +220,18 @@ export default function Config() {
             onChange={(e) => update('webhook_producao', null, e.target.value)}
             placeholder="https://seu-n8n.com/webhook/..."
           />
+        </div>
+        <div className="form-group">
+          <label>URL do webhook de materiais (listagem de arquivos do vídeo)</label>
+          <input
+            type="url"
+            value={data.webhook_materiais ?? ''}
+            onChange={(e) => update('webhook_materiais', null, e.target.value)}
+            placeholder="https://n8n.../webhook/listagem-materiais"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Ao abrir a página <strong>Materiais</strong> de um produto, o sistema envia <code>imobname</code> e <code>advertiserCode</code> para essa URL. O webhook deve responder com um <strong>array de objetos</strong> no formato S3 (cada item com <code>Key</code>, <code>LastModified</code>, etc.). Exemplo: <code>[{`{"Key": "firemode/imob/Nome Imob/CA1541/arquivo.mp4", ...}`}]</code>
+          </p>
         </div>
       </section>
 

@@ -42,13 +42,14 @@ app.get('/api/dashboard', async (req, res) => {
     const payment_links = await getSetting('payment_links', { plan_65: '', plan_297: '', plan_497: '' });
     const webhook_captacao = (await getSetting('webhook_captacao', '')) || '';
     const webhook_producao = (await getSetting('webhook_producao', '')) || '';
+    const webhook_materiais = (await getSetting('webhook_materiais', '')) || '';
     let plans = await getSetting('plans', [
       { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
       { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -56,10 +57,11 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
+    if (webhook_materiais !== undefined) await setSetting('webhook_materiais', webhook_materiais);
     if (plans !== undefined) await setSetting('plans', plans);
     res.json({ ok: true });
   } catch (e) {
@@ -284,8 +286,37 @@ app.get('/api/listings/:id', async (req, res) => {
   }
 });
 
-// Materiais: baseUrl S3 por advertiserCode + opcional manifest.json
+// Materiais: webhook retorna lista no formato S3 (Key, LastModified, etc.) ou fallback manifest.json
+const MATERIAIS_S3_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/';
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
+
+function classifyKey(key) {
+  const k = (key || '').replace(/\/$/, '').toLowerCase();
+  if (k.endsWith('.mp4')) return 'videos';
+  if (k.endsWith('.mp3')) {
+    if (k.includes('narracao') || k.includes('narration')) return 'narration';
+    return 'music';
+  }
+  return null;
+}
+
+function parseWebhookMateriaisResponse(arr) {
+  if (!Array.isArray(arr)) return { videos: [], narration: [], music: [] };
+  const files = { videos: [], narration: [], music: [] };
+  arr
+    .filter((o) => o && o.Key)
+    .sort((a, b) => (a.Key || '').localeCompare(b.Key || ''))
+    .forEach((o) => {
+      const key = o.Key.replace(/\/$/, '');
+      const type = classifyKey(key);
+      const url = key.startsWith('http') ? key : MATERIAIS_S3_BASE + key;
+      if (type === 'videos') files.videos.push(url);
+      else if (type === 'narration') files.narration.push(url);
+      else if (type === 'music') files.music.push(url);
+    });
+  return files;
+}
+
 app.get('/api/listings/:id/materiais', async (req, res) => {
   try {
     const r = await db.prepare(`
@@ -294,9 +325,39 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
     if (!r) return res.status(404).json({ error: 'Não encontrado' });
     const raw = JSON.parse(r.raw_data);
     const advertiserCode = raw.advertiserCode || '';
-    const baseUrl = advertiserCode ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/` : '';
+    const imobname = raw.imobname || '';
+    const baseUrl = (imobname && advertiserCode)
+      ? `${MATERIAIS_S3_BASE}firemode/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/`
+      : advertiserCode
+        ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/`
+        : '';
     let files = { videos: [], narration: [], music: [] };
-    if (baseUrl) {
+
+    const webhookUrl = await getSetting('webhook_materiais', '');
+    if (webhookUrl && (imobname || advertiserCode)) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imobname, advertiserCode, listing_id: Number(req.params.id) }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const ct = response.headers.get('content-type') || '';
+        const text = await response.text();
+        if (ct.includes('application/json')) {
+          const data = JSON.parse(text);
+          const arr = Array.isArray(data) ? data : (data.Contents || data.files || data.items || []);
+          files = parseWebhookMateriaisResponse(arr);
+        }
+      } catch (err) {
+        console.error('Webhook materiais:', err.message);
+      }
+    }
+
+    if (files.videos.length === 0 && files.narration.length === 0 && files.music.length === 0 && baseUrl) {
       try {
         const manifestRes = await fetch(baseUrl + 'manifest.json', { signal: AbortSignal.timeout(5000) });
         if (manifestRes.ok) {
@@ -307,10 +368,9 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
             music: Array.isArray(manifest.music) ? manifest.music : manifest.music ? [manifest.music] : [],
           };
         }
-      } catch (_) {
-        // manifest opcional
-      }
+      } catch (_) {}
     }
+
     res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw } });
   } catch (e) {
     res.status(500).json({ error: e.message });
