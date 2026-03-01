@@ -334,6 +334,8 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
         : '';
     let files = { videos: [], narration: [], music: [] };
     let webhook_consulted = false;
+    let webhook_raw_response = null;
+    let webhook_status = null;
 
     const webhookUrl = (await getSetting('webhook_materiais', '')) || '';
     const urlToCall = webhookUrl.trim();
@@ -351,8 +353,10 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
+        webhook_status = response.status;
         const ct = response.headers.get('content-type') || '';
         const text = await response.text();
+        webhook_raw_response = text;
         if (ct.includes('application/json')) {
           const data = JSON.parse(text);
           const arr = Array.isArray(data) ? data : (data.Contents || data.files || data.items || []);
@@ -360,6 +364,7 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
         }
       } catch (err) {
         console.error('Webhook materiais:', err.message);
+        webhook_raw_response = `Erro: ${err.message}`;
       }
     }
 
@@ -377,7 +382,7 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
       } catch (_) {}
     }
 
-    res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw }, webhook_consulted });
+    res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw }, webhook_consulted, webhook_raw_response: webhook_raw_response, webhook_status: webhook_status });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

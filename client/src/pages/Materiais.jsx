@@ -10,6 +10,8 @@ export default function Materiais() {
   const [listing, setListing] = useState(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [files, setFiles] = useState({ videos: [], narration: [], music: [] });
+  const [webhookRaw, setWebhookRaw] = useState(null);
+  const [webhookStatus, setWebhookStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
@@ -22,6 +24,8 @@ export default function Materiais() {
     setListing(null);
     setBaseUrl('');
     setFiles({ videos: [], narration: [], music: [] });
+    setWebhookRaw(null);
+    setWebhookStatus(null);
     const url = API + '/listings/' + id + '/materiais?t=' + Date.now();
     fetch(url, { cache: 'no-store' })
       .then((r) => r.json())
@@ -30,6 +34,8 @@ export default function Materiais() {
         setListing(data.listing);
         setBaseUrl(data.baseUrl || '');
         setFiles(data.files || { videos: [], narration: [], music: [] });
+        setWebhookRaw(data.webhook_raw_response != null ? data.webhook_raw_response : null);
+        setWebhookStatus(data.webhook_status != null ? data.webhook_status : null);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -104,6 +110,39 @@ export default function Materiais() {
       </div>
 
       <h1 style={{ marginBottom: '1.5rem' }}>Materiais gerados</h1>
+
+      {/* Retorno bruto do webhook - primeiro na tela */}
+      {(webhookRaw != null || webhookStatus != null) && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Retorno do webhook</h3>
+          {webhookStatus != null && (
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: 'var(--muted)' }}>
+              HTTP {webhookStatus}
+            </p>
+          )}
+          <pre
+            style={{
+              margin: 0,
+              padding: '1rem',
+              background: 'var(--bg)',
+              borderRadius: 8,
+              fontSize: '0.8rem',
+              overflow: 'auto',
+              maxHeight: 360,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+            }}
+          >
+            {typeof webhookRaw === 'string' ? webhookRaw : JSON.stringify(webhookRaw, null, 2)}
+          </pre>
+        </div>
+      )}
+
+      {!webhookRaw && webhookStatus == null && (
+        <p className="muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Webhook de materiais não configurado. Configure em Configurações para ver o retorno aqui.
+        </p>
+      )}
 
       <div
         style={{
