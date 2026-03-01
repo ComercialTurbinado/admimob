@@ -210,6 +210,9 @@ export default function ClienteArea() {
                   <Link to={'/cliente/' + id + '/produto/' + l.id} className="btn btn-primary">
                     Editar e enviar para webhook →
                   </Link>
+                  <Link to={'/cliente/' + id + '/produto/' + l.id + '/materiais'} className="btn">
+                    Ver materiais
+                  </Link>
                   {isDemo && l.id === 'demo' && <span className="badge" style={{ marginLeft: '0.5rem' }}>exemplo</span>}
                 </div>
               </li>

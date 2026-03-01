@@ -284,6 +284,39 @@ app.get('/api/listings/:id', async (req, res) => {
   }
 });
 
+// Materiais: baseUrl S3 por advertiserCode + opcional manifest.json
+const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
+app.get('/api/listings/:id/materiais', async (req, res) => {
+  try {
+    const r = await db.prepare(`
+      SELECT id, client_id, raw_data FROM listings WHERE id = ?
+    `).get(Number(req.params.id));
+    if (!r) return res.status(404).json({ error: 'Não encontrado' });
+    const raw = JSON.parse(r.raw_data);
+    const advertiserCode = raw.advertiserCode || '';
+    const baseUrl = advertiserCode ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/` : '';
+    let files = { videos: [], narration: [], music: [] };
+    if (baseUrl) {
+      try {
+        const manifestRes = await fetch(baseUrl + 'manifest.json', { signal: AbortSignal.timeout(5000) });
+        if (manifestRes.ok) {
+          const manifest = await manifestRes.json();
+          files = {
+            videos: Array.isArray(manifest.videos) ? manifest.videos : [],
+            narration: Array.isArray(manifest.narration) ? manifest.narration : manifest.narration ? [manifest.narration] : [],
+            music: Array.isArray(manifest.music) ? manifest.music : manifest.music ? [manifest.music] : [],
+          };
+        }
+      } catch (_) {
+        // manifest opcional
+      }
+    }
+    res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw } });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/listings', async (req, res) => {
   try {
     const { client_id, source_url, raw_data, selected_images, webhook_payload } = req.body;

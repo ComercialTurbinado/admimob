@@ -299,6 +299,12 @@ export default function Producao() {
           </>
         )}
         <span>Produto</span>
+        {(clientIdParam || listing.client_id) && (
+          <>
+            <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>|</span>
+            <Link to={'/cliente/' + (clientIdParam || listing.client_id) + '/produto/' + id + '/materiais'}>Materiais</Link>
+          </>
+        )}
       </div>
       {isDemo && (
         <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--accent)', background: 'rgba(88, 166, 255, 0.08)' }}>

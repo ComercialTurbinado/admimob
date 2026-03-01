@@ -345,3 +345,9 @@ input, textarea {
 .loading-spinner {
   animation: spin 0.8s linear infinite;
 }
+
+@media (max-width: 900px) {
+  .materiais-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
