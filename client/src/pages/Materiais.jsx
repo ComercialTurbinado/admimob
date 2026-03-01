@@ -19,7 +19,11 @@ export default function Materiais() {
     if (!id) return;
     setLoading(true);
     setError(null);
-    fetch(API + '/listings/' + id + '/materiais')
+    setListing(null);
+    setBaseUrl('');
+    setFiles({ videos: [], narration: [], music: [] });
+    const url = API + '/listings/' + id + '/materiais?t=' + Date.now();
+    fetch(url, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
@@ -44,8 +48,7 @@ export default function Materiais() {
           {clientId && <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>}
           <span>Materiais</span>
         </div>
-        <h1 style={{ marginBottom: '1.5rem' }}>Materiais gerados</h1>
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '2rem', textAlign: 'center', maxWidth: 420, margin: '2rem auto' }}>
           <div
             className="loading-spinner"
             style={{
@@ -59,7 +62,7 @@ export default function Materiais() {
           />
           <p className="muted" style={{ margin: 0 }}>Consultando webhook de materiais...</p>
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
-            Aguarde a resposta do webhook para listar os arquivos.
+            Aguarde a resposta do webhook. Nada será exibido até receber a resposta.
           </p>
         </div>
       </>

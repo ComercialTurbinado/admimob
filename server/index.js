@@ -318,6 +318,7 @@ function parseWebhookMateriaisResponse(arr) {
 }
 
 app.get('/api/listings/:id/materiais', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const r = await db.prepare(`
       SELECT id, client_id, raw_data FROM listings WHERE id = ?
@@ -332,14 +333,18 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
         ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/`
         : '';
     let files = { videos: [], narration: [], music: [] };
+    let webhook_consulted = false;
 
-    const webhookUrl = await getSetting('webhook_materiais', '');
-    if (webhookUrl && (imobname || advertiserCode)) {
+    const webhookUrl = (await getSetting('webhook_materiais', '')) || '';
+    const urlToCall = webhookUrl.trim();
+    if (urlToCall) {
+      webhook_consulted = true;
+      console.log('[Materiais] Chamando webhook:', urlToCall, 'listing_id:', req.params.id);
       try {
         const controller = new AbortController();
         const timeoutMs = 30000;
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(urlToCall, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imobname, advertiserCode, listing_id: Number(req.params.id) }),
@@ -372,7 +377,7 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
       } catch (_) {}
     }
 
-    res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw } });
+    res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw }, webhook_consulted });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
