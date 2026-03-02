@@ -98,20 +98,21 @@ export default function PosterVideo() {
           windowWidth: 1080,
           windowHeight: 1920,
         });
-        const imageBase64 = canvas.toDataURL('image/png').split(',')[1];
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
         const frameNumber = frameIndex + 1;
+        const frameName = `frame_${String(frameNumber).padStart(4, '0')}.jpg`;
         const res = await fetch(effectiveWebhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             frame_number: frameNumber,
             total_frames: TOTAL_FRAMES,
-            frame_name: `frame_${String(frameNumber).padStart(4, '0')}`,
+            frame_name: frameName,
             image_base64: imageBase64,
             listing_id: Number(id),
             imobname: listing?.imobname ?? '',
             advertiserCode: listing?.advertiserCode ?? '',
-            mime_type: 'image/png',
+            mime_type: 'image/jpeg',
             timestamp_ms: Math.round(frameIndex * INTERVAL_MS),
           }),
         });

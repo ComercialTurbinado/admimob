@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const path = require('path');\nconst fs = require('fs');\nconst body = $input.item.json.body || $input.item.json;\nconst baseDir = process.env.FRAMES_BASE_PATH || '/data/frames';\nconst dir = path.join(baseDir, String(body.listing_id));\nif (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\nconst fileName = (body.frame_name || `frame_${String(body.frame_number).padStart(4, '0')}`) + '.png';\nconst filePath = path.join(dir, fileName);\nfs.writeFileSync(filePath, Buffer.from(body.image_base64, 'base64'));\nreturn [{ json: { saved: filePath, frame_number: body.frame_number, total_frames: body.total_frames, listing_id: body.listing_id, frame_name: fileName } }];"
+        "jsCode": "const path = require('path');\nconst fs = require('fs');\nconst body = $input.item.json.body || $input.item.json;\nconst baseDir = process.env.FRAMES_BASE_PATH || '/data/frames';\nconst dir = path.join(baseDir, String(body.listing_id));\nif (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\nconst ext = (body.mime_type || '').includes('jpeg') ? '.jpg' : '.png';\nconst baseName = (body.frame_name || `frame_${String(body.frame_number).padStart(4, '0')}`).replace(/\\.(png|jpg|jpeg)$/i, '');\nconst fileName = baseName + ext;\nconst filePath = path.join(dir, fileName);\nfs.writeFileSync(filePath, Buffer.from(body.image_base64, 'base64'));\nreturn [{ json: { saved: filePath, frame_number: body.frame_number, total_frames: body.total_frames, listing_id: body.listing_id, frame_name: fileName } }];"
       },
       "id": "code-save-frame",
       "name": "Salvar frame em disco",

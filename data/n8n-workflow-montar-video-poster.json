@@ -27,7 +27,7 @@
     },
     {
       "parameters": {
-        "command": "=ffmpeg -y -framerate {{ $json.fps }} -i \"{{ $json.frames_path }}/frame_%04d.png\" -c:v libx264 -pix_fmt yuv420p \"{{ $json.out_path }}\""
+        "command": "=ffmpeg -y -framerate {{ $json.fps }} -i \"{{ $json.frames_path }}/frame_%04d.jpg\" -c:v libx264 -pix_fmt yuv420p \"{{ $json.out_path }}\""
       },
       "id": "exec-ffmpeg",
       "name": "Executar FFmpeg",

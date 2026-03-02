@@ -458,17 +458,17 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
     let sent = 0;
     for (let i = 0; i < totalFrames; i++) {
       const frameNumber = i + 1;
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const buffer = await page.screenshot({ type: 'jpeg', quality: 70, fullPage: false });
       const imageBase64 = buffer.toString('base64');
       const payload = {
         frame_number: frameNumber,
         total_frames: totalFrames,
-        frame_name: `frame_${String(frameNumber).padStart(4, '0')}`,
+        frame_name: `frame_${String(frameNumber).padStart(4, '0')}.jpg`,
         image_base64: imageBase64,
         listing_id: Number(listingId),
         imobname,
         advertiserCode,
-        mime_type: 'image/png',
+        mime_type: 'image/jpeg',
         timestamp_ms: Math.round(i * intervalMs),
       };
       const fr = await fetch(webhookUrl, {
