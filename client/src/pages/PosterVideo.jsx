@@ -87,8 +87,10 @@ export default function PosterVideo() {
       let frameIndex = 0;
       const startTime = Date.now();
 
-      const sendFrame = async () => {
+      const sendFrame = async (currentIndex) => {
         if (!posterRef.current) return;
+        await new Promise((r) => requestAnimationFrame(r));
+        await new Promise((r) => requestAnimationFrame(r));
         const html2canvas = (await import('html2canvas')).default;
         const canvas = await html2canvas(posterRef.current, {
           useCORS: true,
@@ -100,7 +102,7 @@ export default function PosterVideo() {
           windowHeight: 1920,
         });
         const imageBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
-        const frameNumber = frameIndex + 1;
+        const frameNumber = currentIndex + 1;
         const frameName = `frame_${String(frameNumber).padStart(4, '0')}.jpg`;
         const res = await fetch(effectiveWebhookUrl, {
           method: 'POST',
@@ -114,12 +116,11 @@ export default function PosterVideo() {
             imobname: listing?.imobname ?? '',
             advertiserCode: listing?.advertiserCode ?? '',
             mime_type: 'image/jpeg',
-            timestamp_ms: Math.round(frameIndex * INTERVAL_MS),
+            timestamp_ms: Math.round(currentIndex * INTERVAL_MS),
           }),
         });
         if (!res.ok) throw new Error(`Webhook ${res.status}`);
-        frameIndex++;
-        setCaptureStatus((s) => (s ? { ...s, current: frameIndex } : null));
+        setCaptureStatus((s) => (s ? { ...s, current: currentIndex + 1 } : null));
       };
 
       const next = () => {
@@ -127,13 +128,16 @@ export default function PosterVideo() {
           setCaptureStatus((s) => (s ? { ...s, sending: false, done: true } : null));
           return;
         }
-        const elapsed = Date.now() - startTime;
-        const target = frameIndex * INTERVAL_MS;
-        const wait = Math.max(0, target - elapsed);
+        const currentIndex = frameIndex;
+        frameIndex++;
+        const targetTime = startTime + currentIndex * INTERVAL_MS;
+        const now = Date.now();
+        const wait = Math.max(0, targetTime - now);
         setTimeout(() => {
-          sendFrame()
-            .then(() => next())
-            .catch((e) => setCaptureStatus((s) => (s ? { ...s, sending: false, error: e.message } : null)));
+          sendFrame(currentIndex).catch((e) =>
+            setCaptureStatus((s) => (s ? { ...s, sending: false, error: e.message } : null))
+          );
+          next();
         }, wait);
       };
       next();
