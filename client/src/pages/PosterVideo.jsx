@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { API } from '../api';
 import AnimacaoCaracteristicas, { DURATION_MS } from '../components/AnimacaoCaracteristicas';
@@ -21,6 +22,7 @@ export default function PosterVideo() {
   const [fitScale, setFitScale] = useState(1);
   const [captureStatus, setCaptureStatus] = useState(null);
   const [effectiveWebhookUrl, setEffectiveWebhookUrl] = useState(null);
+  const [captureStep, setCaptureStep] = useState(null);
   const containerRef = useRef(null);
   const posterRef = useRef(null);
 
@@ -80,18 +82,19 @@ export default function PosterVideo() {
 
   useEffect(() => {
     if (!shouldCapture || !listing || !id) return;
-    const start = () => {
+    const start = async () => {
       if (!posterRef.current || captureDoneRef.current) return;
       captureDoneRef.current = true;
       setCaptureStatus({ current: 0, total: TOTAL_FRAMES, sending: true });
-      let frameIndex = 0;
-      const startTime = Date.now();
 
-      const sendFrame = async (currentIndex) => {
-        if (!posterRef.current) return;
+      const html2canvas = (await import('html2canvas')).default;
+
+      for (let i = 0; i < TOTAL_FRAMES; i++) {
+        flushSync(() => setCaptureStep(i));
         await new Promise((r) => requestAnimationFrame(r));
         await new Promise((r) => requestAnimationFrame(r));
-        const html2canvas = (await import('html2canvas')).default;
+
+        if (!posterRef.current) break;
         const canvas = await html2canvas(posterRef.current, {
           useCORS: true,
           allowTaint: true,
@@ -102,7 +105,7 @@ export default function PosterVideo() {
           windowHeight: 1920,
         });
         const imageBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
-        const frameNumber = currentIndex + 1;
+        const frameNumber = i + 1;
         const frameName = `frame_${String(frameNumber).padStart(4, '0')}.jpg`;
         const res = await fetch(effectiveWebhookUrl, {
           method: 'POST',
@@ -116,33 +119,23 @@ export default function PosterVideo() {
             imobname: listing?.imobname ?? '',
             advertiserCode: listing?.advertiserCode ?? '',
             mime_type: 'image/jpeg',
-            timestamp_ms: Math.round(currentIndex * INTERVAL_MS),
+            timestamp_ms: Math.round(i * INTERVAL_MS),
           }),
         });
         if (!res.ok) throw new Error(`Webhook ${res.status}`);
-        setCaptureStatus((s) => (s ? { ...s, current: currentIndex + 1 } : null));
-      };
+        setCaptureStatus((s) => (s ? { ...s, current: i + 1 } : null));
+      }
 
-      const next = () => {
-        if (frameIndex >= TOTAL_FRAMES) {
-          setCaptureStatus((s) => (s ? { ...s, sending: false, done: true } : null));
-          return;
-        }
-        const currentIndex = frameIndex;
-        frameIndex++;
-        const targetTime = startTime + currentIndex * INTERVAL_MS;
-        const now = Date.now();
-        const wait = Math.max(0, targetTime - now);
-        setTimeout(() => {
-          sendFrame(currentIndex).catch((e) =>
-            setCaptureStatus((s) => (s ? { ...s, sending: false, error: e.message } : null))
-          );
-          next();
-        }, wait);
-      };
-      next();
+      setCaptureStep(null);
+      setCaptureStatus((s) => (s ? { ...s, sending: false, done: true } : null));
     };
-    const t = setTimeout(start, 400);
+
+    const run = () => {
+      start().catch((e) =>
+        setCaptureStatus((s) => (s ? { ...s, sending: false, error: e.message } : null))
+      );
+    };
+    const t = setTimeout(run, 400);
     return () => clearTimeout(t);
   }, [shouldCapture, listing, id, effectiveWebhookUrl]);
 
@@ -174,6 +167,7 @@ export default function PosterVideo() {
             itemsPerRow={3}
             iconSize={28}
             videoMode
+            captureStep={captureStep}
           />
         </div>
       </div>

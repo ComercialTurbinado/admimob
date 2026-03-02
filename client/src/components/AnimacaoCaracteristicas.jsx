@@ -9,6 +9,13 @@ const ART_WIDTH = 1080;
 const ART_HEIGHT = 1920;
 const DURATION_MS = 5000;
 export { DURATION_MS };
+
+/** Progress 0..1 no tempo t (ms), com delay e duration em segundos. */
+function progressAt(tMs, delayS, durationS) {
+  const t = tMs / 1000;
+  const p = (t - delayS) / durationS;
+  return Math.min(1, Math.max(0, p));
+}
 const CHAR_ORDER = ['numberOfRooms', 'numberOfSuites', 'numberOfBathroomsTotal', 'numberOfParkingSpaces', 'floorSize'];
 const HERO_PLACEHOLDER = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDDjW4HkXfRR2G54Zb24wBS9_NMPeZXQNtmjDaNwC_wCnTRA_3RopIOvyzjiCEmgWT6iq4bGqtLt_Oy6ndH8q2ajU3EN5jLhnvayXXfy9ha4FuFYxJCdh42kv7pWaSTMHbKYCS3RhttWmqkPBsn2rZkt7-rv9asad0tsixJDCTTAhJY9NbXv5AiYjQ9knr6XS-C0M4vqnGM90sTYxz9vxErTvuWCgBDmxT54voEaI_wPskr6HSv6qJzwYXipfe6ziFmIu_Q_guXZMk';
 
@@ -42,7 +49,7 @@ function getLocation(listing) {
   return parts.length ? parts.join(', ') : '—';
 }
 
-export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode }) {
+export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep }) {
   const [started, setStarted] = useState(false);
   const [scale, setScale] = useState(1);
   const wrapRef = useRef(null);
@@ -63,14 +70,18 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const site = listing?.website || 'www.exemplo.com';
   const copyright = `© ${new Date().getFullYear()} ${(imobname || 'IMOBILIÁRIA').toUpperCase()} - TODOS OS DIREITOS RESERVADOS`;
 
+  const stepMode = typeof captureStep === 'number' && captureStep >= 0;
+  const tMs = stepMode ? (captureStep / 125) * DURATION_MS : 0;
+
   useEffect(() => {
+    if (stepMode) return;
     const t = setTimeout(() => setStarted(true), 100);
     const tEnd = setTimeout(() => onEnd?.(), DURATION_MS + 200);
     return () => {
       clearTimeout(t);
       clearTimeout(tEnd);
     };
-  }, [onEnd]);
+  }, [onEnd, stepMode]);
 
   useEffect(() => {
     if (videoMode) {
@@ -105,8 +116,8 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         boxSizing: 'border-box',
         overflow: 'hidden',
         margin: '0 auto',
-        opacity: started ? 1 : 0,
-        transition: 'opacity 0.4s ease',
+        opacity: stepMode ? 1 : started ? 1 : 0,
+        transition: stepMode ? 'none' : 'opacity 0.4s ease',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'flex-start',
@@ -127,21 +138,35 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
           <img
             src={heroImg}
             alt=""
-            style={{
-              opacity: started ? 1 : 0,
-              transform: started ? 'scale(1)' : 'scale(1.08)',
-              transition: 'opacity 0.8s ease, transform 1.2s ease',
-              borderBottomLeftRadius: 50,
-              borderBottomRightRadius: 50,
-            }}
+            style={stepMode
+              ? {
+                  opacity: progressAt(tMs, 0, 0.8),
+                  transform: `scale(${0.08 + 0.92 * progressAt(tMs, 0, 1.2)})`,
+                  transition: 'none',
+                  borderBottomLeftRadius: 50,
+                  borderBottomRightRadius: 50,
+                }
+              : {
+                  opacity: started ? 1 : 0,
+                  transform: started ? 'scale(1)' : 'scale(1.08)',
+                  transition: 'opacity 0.8s ease, transform 1.2s ease',
+                  borderBottomLeftRadius: 50,
+                  borderBottomRightRadius: 50,
+                }}
           />
           <div
             className="brand-glass"
-            style={{
-              opacity: started ? 1 : 0,
-              transform: started ? 'scale(1)' : 'scale(0.9)',
-              transition: 'opacity 0.5s ease 0.5s, transform 0.6s ease 0.5s',
-            }}
+            style={stepMode
+              ? {
+                  opacity: progressAt(tMs, 0.5, 0.5),
+                  transform: `scale(${0.9 + 0.1 * progressAt(tMs, 0.5, 0.6)})`,
+                  transition: 'none',
+                }
+              : {
+                  opacity: started ? 1 : 0,
+                  transform: started ? 'scale(1)' : 'scale(0.9)',
+                  transition: 'opacity 0.5s ease 0.5s, transform 0.6s ease 0.5s',
+                }}
           >
             <div className="brand-card">
               <div className="brand-icon">
@@ -159,32 +184,50 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         <section className="info">
           <div
             className="meta"
-            style={{
-              opacity: started ? 1 : 0,
-              transform: started ? 'translateY(0)' : 'translateY(14px)',
-              transition: 'opacity 0.45s ease 1s, transform 0.45s ease 1s',
-            }}
+            style={stepMode
+              ? {
+                  opacity: progressAt(tMs, 1, 0.45),
+                  transform: `translateY(${14 - 14 * progressAt(tMs, 1, 0.45)}px)`,
+                  transition: 'none',
+                }
+              : {
+                  opacity: started ? 1 : 0,
+                  transform: started ? 'translateY(0)' : 'translateY(14px)',
+                  transition: 'opacity 0.45s ease 1s, transform 0.45s ease 1s',
+                }}
           >
             <span className="badge-poster">À VENDA</span>
             <span className="ref">{refText}</span>
           </div>
           <h1
             className="price"
-            style={{
-              opacity: started ? 1 : 0,
-              transform: started ? 'translateY(0)' : 'translateY(12px)',
-              transition: 'opacity 0.45s ease 1.5s, transform 0.45s ease 1.5s',
-            }}
+            style={stepMode
+              ? {
+                  opacity: progressAt(tMs, 1.5, 0.45),
+                  transform: `translateY(${12 - 12 * progressAt(tMs, 1.5, 0.45)}px)`,
+                  transition: 'none',
+                }
+              : {
+                  opacity: started ? 1 : 0,
+                  transform: started ? 'translateY(0)' : 'translateY(12px)',
+                  transition: 'opacity 0.45s ease 1.5s, transform 0.45s ease 1.5s',
+                }}
           >
             {price}
           </h1>
           <div
             className="location"
-            style={{
-              opacity: started ? 1 : 0,
-              transform: started ? 'translateY(0)' : 'translateY(10px)',
-              transition: 'opacity 0.45s ease 2s, transform 0.45s ease 2s',
-            }}
+            style={stepMode
+              ? {
+                  opacity: progressAt(tMs, 2, 0.45),
+                  transform: `translateY(${10 - 10 * progressAt(tMs, 2, 0.45)}px)`,
+                  transition: 'none',
+                }
+              : {
+                  opacity: started ? 1 : 0,
+                  transform: started ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'opacity 0.45s ease 2s, transform 0.45s ease 2s',
+                }}
           >
             <span className="material-symbols-outlined">location_on</span>
             <span>{location}</span>
@@ -197,11 +240,21 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             className="stats"
             style={{
               gridTemplateColumns: `repeat(${characteristics.length}, 1fr)`,
-              background: started ? '#fafafa' : '#fff',
-              borderTop: '1px solid',
-              borderBottom: '1px solid',
-              borderColor: started ? 'var(--line-poster)' : 'transparent',
-              transition: 'background 0.4s ease 2.5s, border-color 0.4s ease 2.5s',
+              ...(stepMode
+                ? {
+                    background: progressAt(tMs, 2.5, 0.4) >= 1 ? '#fafafa' : '#fff',
+                    borderTop: '1px solid',
+                    borderBottom: '1px solid',
+                    borderColor: progressAt(tMs, 2.5, 0.4) >= 1 ? 'var(--line-poster)' : 'transparent',
+                    transition: 'none',
+                  }
+                : {
+                    background: started ? '#fafafa' : '#fff',
+                    borderTop: '1px solid',
+                    borderBottom: '1px solid',
+                    borderColor: started ? 'var(--line-poster)' : 'transparent',
+                    transition: 'background 0.4s ease 2.5s, border-color 0.4s ease 2.5s',
+                  }),
             }}
           >
             {characteristics.map((item, i) => {
@@ -213,11 +266,17 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                 <div
                   key={i}
                   className="stat"
-                  style={{
-                    opacity: started ? 1 : 0,
-                    transform: started ? 'translateY(0)' : 'translateY(16px)',
-                    transition: `opacity 0.45s ease ${delay}s, transform 0.45s ease ${delay}s`,
-                  }}
+                  style={stepMode
+                    ? {
+                        opacity: progressAt(tMs, delay, 0.45),
+                        transform: `translateY(${16 - 16 * progressAt(tMs, delay, 0.45)}px)`,
+                        transition: 'none',
+                      }
+                    : {
+                        opacity: started ? 1 : 0,
+                        transform: started ? 'translateY(0)' : 'translateY(16px)',
+                        transition: `opacity 0.45s ease ${delay}s, transform 0.45s ease ${delay}s`,
+                      }}
                 >
                   <span className="material-symbols-outlined">{iconName}</span>
                   <div className="label">{text}</div>
@@ -231,11 +290,17 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         {leisure.length > 0 && (
           <section className="amenities">
             <h3
-              style={{
-                opacity: started ? 1 : 0,
-                transform: started ? 'translateY(0)' : 'translateY(12px)',
-                transition: 'opacity 0.45s ease 3.2s, transform 0.45s ease 3.2s',
-              }}
+              style={stepMode
+                ? {
+                    opacity: progressAt(tMs, 3.2, 0.45),
+                    transform: `translateY(${12 - 12 * progressAt(tMs, 3.2, 0.45)}px)`,
+                    transition: 'none',
+                  }
+                : {
+                    opacity: started ? 1 : 0,
+                    transform: started ? 'translateY(0)' : 'translateY(12px)',
+                    transition: 'opacity 0.45s ease 3.2s, transform 0.45s ease 3.2s',
+                  }}
             >
               Lazer e comodidades
             </h3>
@@ -250,11 +315,17 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                   <div
                     key={i}
                     className="amen"
-                    style={{
-                      opacity: started ? 1 : 0,
-                      transform: started ? 'translateY(0)' : 'translateY(14px)',
-                      transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
-                    }}
+                    style={stepMode
+                      ? {
+                          opacity: progressAt(tMs, delay, 0.4),
+                          transform: `translateY(${14 - 14 * progressAt(tMs, delay, 0.4)}px)`,
+                          transition: 'none',
+                        }
+                      : {
+                          opacity: started ? 1 : 0,
+                          transform: started ? 'translateY(0)' : 'translateY(14px)',
+                          transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
+                        }}
                   >
                     <span className="material-symbols-outlined">{iconName}</span>
                     <span className="text">{text}</span>
@@ -270,11 +341,17 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         {/* FOOTER */}
         <footer
           className="footer-poster"
-          style={{
-            opacity: started ? 1 : 0,
-            transform: started ? 'translateY(0)' : 'translateY(10px)',
-            transition: 'opacity 0.5s ease 4s, transform 0.5s ease 4s',
-          }}
+          style={stepMode
+            ? {
+                opacity: progressAt(tMs, 4, 0.5),
+                transform: `translateY(${10 - 10 * progressAt(tMs, 4, 0.5)}px)`,
+                transition: 'none',
+              }
+            : {
+                opacity: started ? 1 : 0,
+                transform: started ? 'translateY(0)' : 'translateY(10px)',
+                transition: 'opacity 0.5s ease 4s, transform 0.5s ease 4s',
+              }}
         >
           <div className="site">{site}</div>
           <div className="social">
