@@ -193,8 +193,10 @@ export default function Materiais() {
         {/* Coluna 2: Características do imóvel + animação + editor */}
         <div className="card materiais-col-phone">
           <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Características do imóvel</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-            Animação 5s — poster 1080×1920.{' '}
+          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+            Animação 5s — poster 1080×1920.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <Link
               to={clientId ? `/cliente/${clientId}/produto/${id}/poster-video` : `/poster-video/${id}`}
               target="_blank"
@@ -203,7 +205,21 @@ export default function Materiais() {
             >
               Abrir tela para gravar vídeo (MP4)
             </Link>
-          </p>
+            <span style={{ color: 'var(--muted)' }}>·</span>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
+              onClick={() => {
+                const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+                const path = `${base}/poster-video/${id}?capture=1`;
+                const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
+                window.open(url, 'poster-capture', 'width=420,height=720,scrollbars=no,resizable=yes');
+              }}
+            >
+              Enviar frames ao webhook
+            </button>
+          </div>
 
           {/* Editor: cor de fundo, itens por linha, tamanho do ícone */}
           <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: 8 }}>
