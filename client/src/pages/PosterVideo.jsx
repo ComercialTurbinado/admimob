@@ -26,6 +26,7 @@ export default function PosterVideo() {
 
   const captureParam = searchParams.get('capture') === '1';
   const webhookFromQuery = searchParams.get('webhook_url') || '';
+  const scale = captureParam ? 1 : fitScale;
 
   useEffect(() => {
     const update = () => {
@@ -41,7 +42,7 @@ export default function PosterVideo() {
       clearTimeout(t);
       window.removeEventListener('resize', update);
     };
-  }, [listing]);
+  }, [listing, captureParam]);
 
   useEffect(() => {
     if (!id) return;
@@ -160,7 +161,7 @@ export default function PosterVideo() {
 
   return (
     <div ref={containerRef} style={styles.fullscreen}>
-      <div style={{ ...styles.scaleWrapper, transform: `scale(${fitScale})` }}>
+      <div style={{ ...styles.scaleWrapper, transform: `scale(${scale})` }}>
         <div ref={posterRef} style={styles.posterWrap}>
           <AnimacaoCaracteristicas
             listing={listing}

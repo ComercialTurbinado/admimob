@@ -214,57 +214,11 @@ export default function Materiais() {
                 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 const path = `${base}/poster-video/${id}?capture=1`;
                 const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
-                window.open(url, 'poster-capture', 'width=420,height=720,scrollbars=no,resizable=yes');
+                window.open(url, 'poster-capture', 'width=1100,height=1940,scrollbars=yes,resizable=yes');
               }}
             >
               Enviar frames ao webhook
             </button>
-          </div>
-
-          {/* Editor: cor de fundo, itens por linha, tamanho do ícone */}
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: 8 }}>
-            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Ajustes</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
-                <span style={{ minWidth: 100 }}>Cor de fundo</span>
-                <input
-                  type="color"
-                  value={animBg}
-                  onChange={(e) => setAnimBg(e.target.value)}
-                  style={{ width: 36, height: 28, padding: 0, border: '1px solid var(--border)', borderRadius: 6 }}
-                />
-                <input
-                  type="text"
-                  value={animBg}
-                  onChange={(e) => setAnimBg(e.target.value)}
-                  style={{ width: 90, padding: '4px 8px', fontSize: '0.85rem' }}
-                />
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
-                <span style={{ minWidth: 100 }}>Itens por linha</span>
-                <select
-                  value={animItemsPerRow}
-                  onChange={(e) => setAnimItemsPerRow(Number(e.target.value))}
-                  style={{ padding: '4px 8px', fontSize: '0.85rem' }}
-                >
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                  <option value={4}>4</option>
-                </select>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
-                <span style={{ minWidth: 100 }}>Tamanho ícone (px)</span>
-                <input
-                  type="range"
-                  min={16}
-                  max={48}
-                  value={animIconSize}
-                  onChange={(e) => setAnimIconSize(Number(e.target.value))}
-                  style={{ flex: 1 }}
-                />
-                <span style={{ minWidth: 28 }}>{animIconSize}</span>
-              </label>
-            </div>
           </div>
 
           {/* Moldura celular 9:16 (1080×1920) — poster completo */}
