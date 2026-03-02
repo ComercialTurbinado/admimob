@@ -1,0 +1,74 @@
+{
+  "name": "Receber e salvar frames do poster (base64)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "salvar-frame-poster",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-receive-frame",
+      "name": "Webhook - Receber frame",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "salvar-frame-poster"
+    },
+    {
+      "parameters": {
+        "jsCode": "const path = require('path');\nconst fs = require('fs');\nconst body = $input.item.json.body || $input.item.json;\nconst baseDir = process.env.FRAMES_BASE_PATH || '/data/frames';\nconst dir = path.join(baseDir, String(body.listing_id));\nif (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\nconst fileName = (body.frame_name || `frame_${String(body.frame_number).padStart(4, '0')}`) + '.png';\nconst filePath = path.join(dir, fileName);\nfs.writeFileSync(filePath, Buffer.from(body.image_base64, 'base64'));\nreturn [{ json: { saved: filePath, frame_number: body.frame_number, total_frames: body.total_frames, listing_id: body.listing_id, frame_name: fileName } }];"
+      },
+      "id": "code-save-frame",
+      "name": "Salvar frame em disco",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "notesInFlow": true,
+      "notes": "Salva em FRAMES_BASE_PATH/listing_id/frame_0001.png. Configure FRAMES_BASE_PATH no n8n se quiser outro diretório."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, saved: $json.saved, frame_number: $json.frame_number, listing_id: $json.listing_id } }}",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Receber frame": {
+      "main": [
+        [
+          {
+            "node": "Salvar frame em disco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar frame em disco": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

@@ -17,15 +17,20 @@ export default function Materiais() {
   const [animBg, setAnimBg] = useState('#f5f5f5');
   const [animItemsPerRow, setAnimItemsPerRow] = useState(3);
   const [animIconSize, setAnimIconSize] = useState(28);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const loadMateriais = (refresh = false) => {
     if (!id) return;
-    setLoading(true);
-    setError(null);
-    setListing(null);
-    setBaseUrl('');
-    setFiles({ videos: [], narration: [], music: [] });
-    const url = API + '/listings/' + id + '/materiais?t=' + Date.now();
+    if (!refresh) {
+      setLoading(true);
+      setError(null);
+      setListing(null);
+      setBaseUrl('');
+      setFiles({ videos: [], narration: [], music: [] });
+    } else {
+      setRefreshing(true);
+    }
+    const url = API + '/listings/' + id + '/materiais?t=' + Date.now() + (refresh ? '&refresh=1' : '');
     fetch(url, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
@@ -35,7 +40,15 @@ export default function Materiais() {
         setFiles(data.files || { videos: [], narration: [], music: [] });
       })
       .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    loadMateriais(false);
   }, [id]);
 
   const advertiserCode = listing?.advertiserCode;
@@ -63,9 +76,9 @@ export default function Materiais() {
               margin: '0 auto 1rem',
             }}
           />
-          <p className="muted" style={{ margin: 0 }}>Consultando webhook de materiais...</p>
+          <p className="muted" style={{ margin: 0 }}>Carregando materiais…</p>
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
-            Aguarde a resposta do webhook. Nada será exibido até receber a resposta.
+            Na primeira vez o webhook pode ser consultado; depois os dados ficam em cache até você clicar em &quot;Atualizar listagem&quot;.
           </p>
         </div>
       </>
@@ -119,7 +132,18 @@ export default function Materiais() {
       >
         {/* Coluna 1: Materiais (vídeos, narração, música) - maior */}
         <div className="card">
-          <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Materiais (S3)</h3>
+          <h3 style={{ marginTop: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            Materiais (S3)
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: '0.85rem' }}
+              disabled={refreshing}
+              onClick={() => loadMateriais(true)}
+            >
+              {refreshing ? 'Atualizando…' : 'Atualizar listagem'}
+            </button>
+          </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <section>
               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Vídeos (sequência)</h4>
@@ -170,7 +194,15 @@ export default function Materiais() {
         <div className="card materiais-col-phone">
           <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Características do imóvel</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-            Animação 5s — tela 1080×1920, arte 1080×1450
+            Animação 5s — poster 1080×1920.{' '}
+            <Link
+              to={clientId ? `/cliente/${clientId}/produto/${id}/poster-video` : `/poster-video/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: '0.85rem' }}
+            >
+              Abrir tela para gravar vídeo (MP4)
+            </Link>
           </p>
 
           {/* Editor: cor de fundo, itens por linha, tamanho do ícone */}
@@ -219,7 +251,7 @@ export default function Materiais() {
             </div>
           </div>
 
-          {/* Moldura celular 9:16 (1080×1920) com arte 1080×1450 no topo */}
+          {/* Moldura celular 9:16 (1080×1920) — poster completo */}
           <div
             className="materiais-phone-frame"
             style={{
@@ -245,12 +277,11 @@ export default function Materiais() {
                 background: animBg,
               }}
             >
-              {/* Área da arte 1080×1450 = proporção 1080/1450 */}
+              {/* Área do poster: max 1080px, preenche a largura do visor */}
               <div
                 style={{
                   width: '100%',
-                  flex: '0 0 auto',
-                  aspectRatio: '1080 / 1450',
+                  height: '100%',
                   overflow: 'hidden',
                   display: 'flex',
                   justifyContent: 'center',
@@ -258,16 +289,14 @@ export default function Materiais() {
                   background: animBg,
                 }}
               >
-                <div style={{ transform: 'scale(0.333)', transformOrigin: 'top center' }}>
-                  <AnimacaoCaracteristicas
-                    key={animacaoKey}
-                    listing={listing}
-                    onEnd={() => {}}
-                    backgroundColor={animBg}
-                    itemsPerRow={animItemsPerRow}
-                    iconSize={animIconSize}
-                  />
-                </div>
+                <AnimacaoCaracteristicas
+                  key={animacaoKey}
+                  listing={listing}
+                  onEnd={() => {}}
+                  backgroundColor={animBg}
+                  itemsPerRow={animItemsPerRow}
+                  iconSize={animIconSize}
+                />
               </div>
             </div>
           </div>

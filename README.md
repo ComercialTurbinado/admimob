@@ -39,6 +39,33 @@ cd client && npm install && cd ..
    - **Novo cliente:** cadastro de imobiliária/corretor (nome, logo, status).
    - **Novo anúncio (JSON):** importação em lote colando JSON (objeto ou array de anúncios).
 
+## Exportar animação do poster para MP4
+
+A tela de **Características do imóvel** (poster 1080×1920) pode ser gravada em vídeo para inserir ao final do seu vídeo (ex.: reels, stories).
+
+1. **O que já existe**
+   - A animação já está pronta (entrada de elementos em ~5s). Na página **Materiais** do produto, use o link **"Abrir tela para gravar vídeo (MP4)"** para abrir uma página em fullscreen só com o poster (fundo preto, animação centralizada).
+
+2. **Como gravar**
+   - **Chrome:** abra a URL da tela (ex.: `http://localhost:5173/cliente/1/produto/SEU_ID/poster-video`), pressione **Ctrl+Shift+E** (ou menu ⋮ → “Gravar guia”), grave a guia e exporte em MP4.
+   - **OBS:** capture a janela do navegador ou a região da tela com a animação; configure a saída para 1080×1920 se quiser o vídeo nativo nessa resolução.
+   - **Loop (opcional):** removido; a animação roda uma vez por carga da página.
+
+3. **Automatizar com n8n + Browserless**
+   - **Browserless no EasyPanel** serve perfeitamente: é um Chrome headless acessível por URL/WebSocket para Playwright/Puppeteer.
+   - No serviço da API (EasyPanel, Railway, etc.) configure a variável de ambiente:
+     - **`BROWSERLESS_WS_URL`** = URL do Browserless (ex.: `wss://browserless.seudominio.easypanel.host` ou, na mesma rede interna, `ws://browserless:3000`).
+   - O endpoint **POST /api/render-poster-video** (quando implementado) usará essa URL para conectar o Playwright ao Browserless, abrir a página do poster, gravar o vídeo e devolver o MP4 (ou o link no S3).
+   - Workflow n8n para disparar a geração: importe o JSON em **data/n8n-workflow-gerar-poster-video.json** e configure **BASE_APP_URL** no n8n com a URL da sua API.
+
+4. **Gerador de frames + webhooks (screenshots por tempo da animação)**
+   - **Só quando você acessar a página poster-video:** abra a URL do poster com `?capture=1&webhook_url=https://seu-n8n/webhook/salvar-frame-poster` (encode o webhook_url se tiver query params). A página captura cada frame durante a animação (25 fps, ~5 s) e envia em base64 para o webhook. Não dispara ao abrir a página sem esses parâmetros.
+   - **Payload enviado a cada frame:** `frame_number`, `total_frames`, `frame_name` (ex.: `frame_0001`), `image_base64`, `listing_id`, `mime_type`, `timestamp_ms`.
+   - **Workflow 1 — Receber e salvar frames:** importe **data/n8n-workflow-receber-frames-poster.json**. O webhook recebe cada POST e salva em disco (ex.: `/data/frames/{listing_id}/frame_0001.png`). Configure `FRAMES_BASE_PATH` no n8n se quiser outro diretório.
+   - **Workflow 2 — Montar vídeo:** importe **data/n8n-workflow-montar-video-poster.json**. Quando consultado (POST com `listing_id`), lê os frames salvos, roda FFmpeg e gera o MP4. Requer FFmpeg no ambiente do n8n.
+   - **Ordem:** (1) Abra no navegador a URL do poster com `?capture=1&webhook_url=URL_DO_WEBHOOK_QUE_SALVA_FRAMES`. (2) Depois chame o webhook do Workflow 2 com `listing_id` para montar o vídeo.
+   - **Alternativa (automação):** a API **POST /api/poster-frames-to-webhook** (com Browserless) gera os frames no servidor e envia para o webhook; use se quiser disparar tudo por n8n sem abrir a página.
+
 ## API (resumo)
 
 - **Dashboard:** `GET /api/dashboard`, `PUT /api/dashboard` (kpis, payment_links, webhook_captacao, webhook_producao)
@@ -46,6 +73,7 @@ cd client && npm install && cd ..
 - **Listings:** `GET /api/listings?client_id=` (opcional), `GET/POST/PUT/DELETE /api/listings/:id`
 - **Captação:** `POST /api/listings/import-from-url` (body: `{ url, client_id }`) — chama webhook e, se a resposta trouxer dados do imóvel, cadastra.
 - **Produção:** `POST /api/listings/:id/firemode` — envia o payload (dados + fotos selecionadas) para o webhook de produção.
+- **Frames do poster:** `POST /api/poster-frames-to-webhook` — body: `{ listing_id, webhook_url?, fps? }`. Gera screenshots da animação e envia cada frame em base64 para o `webhook_url`. Requer `BROWSERLESS_WS_URL` e `PUBLIC_APP_URL`.
 
 Estrutura completa do JSON enviado e esperado por cada webhook: **[docs/webhooks-json.md](docs/webhooks-json.md)**.
 

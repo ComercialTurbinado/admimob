@@ -47,7 +47,7 @@ export const AMENITY_ICONS = {
   AIR_CONDITIONING: 'ac_unit',
   PETS_ALLOWED: 'pets',
   FURNISHED: 'chair',
-  custom: 'miscellaneous_services',
+  custom: 'check_circle',
 };
 
 export function getAmenityLabel(name) {
@@ -56,6 +56,6 @@ export function getAmenityLabel(name) {
 }
 
 export function getAmenityIcon(name) {
-  if (!name || typeof name !== 'string') return 'miscellaneous_services';
-  return AMENITY_ICONS[name] || 'miscellaneous_services';
+  if (!name || typeof name !== 'string') return 'check_circle';
+  return AMENITY_ICONS[name] || 'check_circle';
 }

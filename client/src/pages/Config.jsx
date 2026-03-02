@@ -7,6 +7,7 @@ const DEFAULT_DATA = {
   webhook_captacao: '',
   webhook_producao: '',
   webhook_materiais: '',
+  webhook_frames_save: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -30,6 +31,7 @@ export default function Config() {
           webhook_captacao: d.webhook_captacao ?? '',
           webhook_producao: d.webhook_producao ?? '',
           webhook_materiais: d.webhook_materiais ?? '',
+          webhook_frames_save: d.webhook_frames_save ?? '',
           plans,
         });
       })
@@ -75,6 +77,7 @@ export default function Config() {
           webhook_captacao: data.webhook_captacao,
           webhook_producao: data.webhook_producao,
           webhook_materiais: data.webhook_materiais,
+          webhook_frames_save: data.webhook_frames_save,
           plans: data.plans,
         }),
       });
@@ -231,6 +234,18 @@ export default function Config() {
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
             Ao abrir a página <strong>Materiais</strong> de um produto, o sistema envia <code>imobname</code> e <code>advertiserCode</code> para essa URL. O webhook deve responder com um <strong>array de objetos</strong> no formato S3 (cada item com <code>Key</code>, <code>LastModified</code>, etc.). Exemplo: <code>[{`{"Key": "firemode/imob/Nome Imob/CA1541/arquivo.mp4", ...}`}]</code>
+          </p>
+        </div>
+        <div className="form-group">
+          <label>URL do webhook para salvar frames do poster (captura)</label>
+          <input
+            type="url"
+            value={data.webhook_frames_save ?? ''}
+            onChange={(e) => update('webhook_frames_save', null, e.target.value)}
+            placeholder="https://n8n.../webhook/salvar-frame-poster"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Usado quando você abre a página do poster com <strong>captura de frames</strong> (<code>?capture=1</code>). Cada frame é enviado em base64 para essa URL, junto com <code>imobname</code>, <code>advertiserCode</code>, <code>listing_id</code> e número do frame. Se não informar <code>webhook_url</code> na URL, será usada esta configuração.
           </p>
         </div>
       </section>

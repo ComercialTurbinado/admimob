@@ -43,13 +43,14 @@ app.get('/api/dashboard', async (req, res) => {
     const webhook_captacao = (await getSetting('webhook_captacao', '')) || '';
     const webhook_producao = (await getSetting('webhook_producao', '')) || '';
     const webhook_materiais = (await getSetting('webhook_materiais', '')) || '';
+    const webhook_frames_save = (await getSetting('webhook_frames_save', '')) || '';
     let plans = await getSetting('plans', [
       { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
       { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -57,11 +58,12 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
     if (webhook_materiais !== undefined) await setSetting('webhook_materiais', webhook_materiais);
+    if (webhook_frames_save !== undefined) await setSetting('webhook_frames_save', webhook_frames_save);
     if (plans !== undefined) await setSetting('plans', plans);
     res.json({ ok: true });
   } catch (e) {
@@ -287,6 +289,9 @@ app.get('/api/listings/:id', async (req, res) => {
 });
 
 // Materiais: webhook retorna lista no formato S3 (Key, LastModified, etc.) ou fallback manifest.json
+// Cache em memória: só chama o webhook de novo se ?refresh=1
+const materiaisCache = new Map();
+
 const MATERIAIS_S3_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/';
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
 
@@ -320,9 +325,12 @@ function parseWebhookMateriaisResponse(arr) {
 app.get('/api/listings/:id/materiais', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
+    const listingId = Number(req.params.id);
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+
     const r = await db.prepare(`
       SELECT id, client_id, raw_data FROM listings WHERE id = ?
-    `).get(Number(req.params.id));
+    `).get(listingId);
     if (!r) return res.status(404).json({ error: 'Não encontrado' });
     const raw = JSON.parse(r.raw_data);
     const advertiserCode = raw.advertiserCode || '';
@@ -332,6 +340,20 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
       : advertiserCode
         ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/`
         : '';
+
+    // Retornar cache se existir e não foi solicitada atualização
+    if (!refresh && materiaisCache.has(listingId)) {
+      const cached = materiaisCache.get(listingId);
+      return res.json({
+        baseUrl: cached.baseUrl,
+        files: cached.files,
+        listing: { id: r.id, client_id: r.client_id, ...raw },
+        webhook_consulted: cached.webhook_consulted,
+        webhook_raw_response: cached.webhook_raw_response,
+        webhook_status: cached.webhook_status,
+      });
+    }
+
     let files = { videos: [], narration: [], music: [] };
     let webhook_consulted = false;
     let webhook_raw_response = null;
@@ -349,7 +371,7 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
         const response = await fetch(urlToCall, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imobname, advertiserCode, listing_id: Number(req.params.id) }),
+          body: JSON.stringify({ imobname, advertiserCode, listing_id: listingId }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -382,8 +404,88 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
       } catch (_) {}
     }
 
+    materiaisCache.set(listingId, { baseUrl, files, webhook_consulted, webhook_raw_response, webhook_status });
+
     res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw }, webhook_consulted, webhook_raw_response: webhook_raw_response, webhook_status: webhook_status });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Duração da animação do poster (ms) — deve bater com AnimacaoCaracteristicas.jsx
+const POSTER_DURATION_MS = 5000;
+
+/**
+ * Gera screenshots dos frames da animação do poster e envia cada um para um webhook em base64.
+ * Requer BROWSERLESS_WS_URL e PUBLIC_APP_URL. O webhook recebe: frame_number, total_frames, image_base64, listing_id, mime_type.
+ */
+app.post('/api/poster-frames-to-webhook', async (req, res) => {
+  const browserlessUrl = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
+  const publicAppUrl = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
+  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam } = req.body || {};
+  const fps = Math.min(30, Math.max(10, Number(fpsParam) || 25));
+  const intervalMs = 1000 / fps;
+  const totalFrames = Math.ceil((POSTER_DURATION_MS / 1000) * fps);
+
+  if (!listingId) return res.status(400).json({ error: 'listing_id é obrigatório' });
+  const webhookUrl = bodyWebhookUrl?.trim() || (await getSetting('webhook_frames_save', '')).trim();
+  if (!webhookUrl) return res.status(400).json({ error: 'webhook_url é obrigatório no body ou configure webhook_frames_save nas configurações' });
+  if (!browserlessUrl) return res.status(503).json({ error: 'Configure BROWSERLESS_WS_URL para gerar frames' });
+  if (!publicAppUrl) return res.status(503).json({ error: 'Configure PUBLIC_APP_URL com a URL base do frontend (ex.: https://seu-app.com)' });
+
+  let imobname = '';
+  let advertiserCode = '';
+  try {
+    const row = await db.prepare('SELECT raw_data FROM listings WHERE id = ?').get(Number(listingId));
+    if (row && row.raw_data) {
+      const raw = JSON.parse(row.raw_data);
+      imobname = raw.imobname || '';
+      advertiserCode = raw.advertiserCode || '';
+    }
+  } catch (_) {}
+
+  const posterUrl = `${publicAppUrl}/poster-video/${listingId}`;
+
+  try {
+    const { chromium } = await import('playwright-core');
+    const browser = await chromium.connectOverCDP(browserlessUrl, { timeout: 15000 });
+    const context = await browser.newContext({ viewport: { width: 1080, height: 1920 } });
+    const page = await context.newPage();
+    await page.goto(posterUrl, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.waitForSelector('.poster-preview', { timeout: 10000 });
+    await new Promise((r) => setTimeout(r, 300));
+
+    let sent = 0;
+    for (let i = 0; i < totalFrames; i++) {
+      const frameNumber = i + 1;
+      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const imageBase64 = buffer.toString('base64');
+      const payload = {
+        frame_number: frameNumber,
+        total_frames: totalFrames,
+        frame_name: `frame_${String(frameNumber).padStart(4, '0')}`,
+        image_base64: imageBase64,
+        listing_id: Number(listingId),
+        imobname,
+        advertiserCode,
+        mime_type: 'image/png',
+        timestamp_ms: Math.round(i * intervalMs),
+      };
+      const fr = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!fr.ok) throw new Error(`Webhook retornou ${fr.status} no frame ${frameNumber}`);
+      sent++;
+      if (i < totalFrames - 1) await new Promise((r) => setTimeout(r, Math.max(0, intervalMs - 50)));
+    }
+
+    await context.close();
+    await browser.close();
+    res.json({ ok: true, frames_sent: sent, total_frames: totalFrames, fps, listing_id: Number(listingId) });
+  } catch (e) {
+    console.error('[poster-frames-to-webhook]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

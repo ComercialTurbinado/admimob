@@ -1,0 +1,95 @@
+{
+  "name": "Montar vídeo a partir dos frames salvos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "montar-video-poster",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-montar",
+      "name": "Webhook - Montar vídeo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "montar-video-poster"
+    },
+    {
+      "parameters": {
+        "jsCode": "const path = require('path');\nconst body = $input.item.json.body || $input.item.json;\nconst listingId = body.listing_id;\nconst baseDir = process.env.FRAMES_BASE_PATH || '/data/frames';\nconst outDir = process.env.VIDEOS_BASE_PATH || '/data/videos';\nconst framesPath = path.join(baseDir, String(listingId));\nconst outPath = path.join(outDir, listingId + '.mp4');\nconst fps = body.fps || 25;\nreturn [{ json: { listing_id: listingId, frames_path: framesPath, out_path: outPath, fps } }];"
+      },
+      "id": "code-paths",
+      "name": "Preparar caminhos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y -framerate {{ $json.fps }} -i \"{{ $json.frames_path }}/frame_%04d.png\" -c:v libx264 -pix_fmt yuv420p \"{{ $json.out_path }}\""
+      },
+      "id": "exec-ffmpeg",
+      "name": "Executar FFmpeg",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "notesInFlow": true,
+      "notes": "Requer FFmpeg instalado no sistema onde o n8n roda. Frames devem estar em frame_0001.png, frame_0002.png, etc."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, video_path: $('Preparar caminhos').item.json.out_path, listing_id: $('Preparar caminhos').item.json.listing_id } }}",
+        "options": {}
+      },
+      "id": "respond-video",
+      "name": "Responder com path do vídeo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Montar vídeo": {
+      "main": [
+        [
+          {
+            "node": "Preparar caminhos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar caminhos": {
+      "main": [
+        [
+          {
+            "node": "Executar FFmpeg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar FFmpeg": {
+      "main": [
+        [
+          {
+            "node": "Responder com path do vídeo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

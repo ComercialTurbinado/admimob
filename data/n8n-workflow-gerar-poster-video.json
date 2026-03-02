@@ -1,0 +1,81 @@
+{
+  "name": "Gerar poster em vídeo (MP4)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gerar-poster-video",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-poster-trigger",
+      "name": "Webhook - Gerar poster",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "gerar-poster-video"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_APP_URL || 'https://seu-app.com' }}/api/render-poster-video",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"listing_id\": {{ $json.body.listing_id ?? $json.query.listing_id ?? $json.listing_id }}\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "http-render-poster",
+      "name": "Chamar API - Renderizar poster",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "notesInFlow": true,
+      "notes": "POST para sua API. Configure BASE_APP_URL no n8n (ex.: https://seu-dominio.com). O endpoint /api/render-poster-video deve existir no backend (Playwright + FFmpeg)."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Responder ao Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Gerar poster": {
+      "main": [
+        [
+          {
+            "node": "Chamar API - Renderizar poster",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chamar API - Renderizar poster": {
+      "main": [
+        [
+          {
+            "node": "Responder ao Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}
