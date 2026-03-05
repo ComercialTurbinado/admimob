@@ -5,11 +5,94 @@ import AnimacaoCaracteristicas from '../components/AnimacaoCaracteristicas';
 
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
 
+function formatSize(bytes) {
+  if (bytes == null || bytes === 0) return '—';
+  const n = Number(bytes);
+  if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+  return n + ' B';
+}
+
+function formatMtime(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
+/** Agrupa items por pasta: "frames" | "videos" | "" (raiz). */
+function groupItemsByFolder(items) {
+  const groups = { frames: [], videos: [], _root: [] };
+  (items || []).forEach((item) => {
+    const path = (item.path || item.name || '').trim();
+    const parts = path.split('/').filter(Boolean);
+    const name = parts[parts.length - 1] || item.name || '';
+    const parent = parts.length >= 2 ? parts[parts.length - 2] : '';
+    const key = parent === 'frames' ? 'frames' : parent === 'videos' ? 'videos' : '_root';
+    groups[key].push({ ...item, _displayName: name });
+  });
+  return groups;
+}
+
+function ElementosList({ folderListing, folderBaseUrl, baseUrl }) {
+  const fileBase = folderBaseUrl || baseUrl || '';
+  const allItems = (folderListing || []).flatMap((entry) => entry.items || []);
+  const { frames, videos, _root } = groupItemsByFolder(allItems);
+
+  const renderSection = (title, items) => {
+    const fileItems = items.filter((i) => i.type === 'file');
+    const dirItems = items.filter((i) => i.type === 'dir');
+    if (fileItems.length === 0 && dirItems.length === 0) return null;
+    return (
+      <section key={title} style={{ marginBottom: '1.25rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>{title}</h4>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {dirItems.map((item) => (
+            <li key={item.path || item.name} style={{ padding: '0.25rem 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
+              <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', marginRight: 4, fontSize: 18 }}>folder</span>
+              {item.name}
+            </li>
+          ))}
+          {fileItems.map((item) => {
+            const displayName = item._displayName || item.name;
+            const path = (item.path || item.name || '').trim();
+            const href = fileBase && path ? (fileBase.replace(/\/?$/, '/') + path.replace(/^\//, '')) : null;
+            return (
+              <li key={item.path || item.name} style={{ padding: '0.35rem 0', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span className="material-symbols-outlined" style={{ flexShrink: 0, fontSize: 18, color: 'var(--muted)' }}>description</span>
+                <span style={{ minWidth: 0 }} title={path}>{displayName}</span>
+                <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{formatSize(item.size)}</span>
+                <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{formatMtime(item.mtime)}</span>
+                {href && (
+                  <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>Abrir</a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {renderSection('Frames', frames)}
+      {renderSection('Vídeos', videos)}
+      {renderSection('Arquivos', _root)}
+    </div>
+  );
+}
+
 export default function Materiais() {
   const { id, clientId } = useParams();
   const [listing, setListing] = useState(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [files, setFiles] = useState({ videos: [], narration: [], music: [] });
+  const [folderListing, setFolderListing] = useState(null);
+  const [folderBaseUrl, setFolderBaseUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -27,6 +110,8 @@ export default function Materiais() {
       setListing(null);
       setBaseUrl('');
       setFiles({ videos: [], narration: [], music: [] });
+      setFolderListing(null);
+      setFolderBaseUrl('');
     } else {
       setRefreshing(true);
     }
@@ -38,6 +123,8 @@ export default function Materiais() {
         setListing(data.listing);
         setBaseUrl(data.baseUrl || '');
         setFiles(data.files || { videos: [], narration: [], music: [] });
+        setFolderListing(data.folderListing ?? null);
+        setFolderBaseUrl(data.folderBaseUrl || '');
       })
       .catch((e) => setError(e.message))
       .finally(() => {
@@ -130,10 +217,10 @@ export default function Materiais() {
         }}
         className="materiais-layout"
       >
-        {/* Coluna 1: Materiais (vídeos, narração, música) - maior */}
+        {/* Coluna 1: Materiais (lista de pastas/arquivos ou S3) */}
         <div className="card">
           <h3 style={{ marginTop: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-            Materiais (S3)
+            Elementos disponíveis
             <button
               type="button"
               className="btn"
@@ -144,50 +231,54 @@ export default function Materiais() {
               {refreshing ? 'Atualizando…' : 'Atualizar listagem'}
             </button>
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <section>
-              <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Vídeos (sequência)</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {videoUrls.length === 0 ? (
-                  <li className="muted" style={{ fontSize: '0.9rem' }}>Nenhum vídeo listado. Adicione manifest.json na pasta do S3.</li>
-                ) : (
-                  videoUrls.map((url, i) => (
-                    <li key={i} style={{ marginBottom: '0.5rem' }}>
-                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Vídeo {i + 1}</a>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </section>
-            <section>
-              <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Narração (MP3)</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {narrationUrls.length === 0 ? (
-                  <li className="muted" style={{ fontSize: '0.9rem' }}>Nenhum arquivo de narração.</li>
-                ) : (
-                  narrationUrls.map((url, i) => (
-                    <li key={i}>
-                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Narração {i + 1}</a>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </section>
-            <section>
-              <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Música de fundo (MP3)</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {musicUrls.length === 0 ? (
-                  <li className="muted" style={{ fontSize: '0.9rem' }}>Nenhum arquivo de música.</li>
-                ) : (
-                  musicUrls.map((url, i) => (
-                    <li key={i}>
-                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Música {i + 1}</a>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </section>
-          </div>
+          {folderListing && folderListing.length > 0 ? (
+            <ElementosList folderListing={folderListing} folderBaseUrl={folderBaseUrl} baseUrl={urlBase} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <section>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Vídeos (sequência)</h4>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {videoUrls.length === 0 ? (
+                    <li className="muted" style={{ fontSize: '0.9rem' }}>Nenhum vídeo listado. Adicione manifest.json na pasta do S3.</li>
+                  ) : (
+                    videoUrls.map((url, i) => (
+                      <li key={i} style={{ marginBottom: '0.5rem' }}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Vídeo {i + 1}</a>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </section>
+              <section>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Narração (MP3)</h4>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {narrationUrls.length === 0 ? (
+                    <li className="muted" style={{ fontSize: '0.9rem' }}>Nenhum arquivo de narração.</li>
+                  ) : (
+                    narrationUrls.map((url, i) => (
+                      <li key={i}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Narração {i + 1}</a>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </section>
+              <section>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Música de fundo (MP3)</h4>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {musicUrls.length === 0 ? (
+                    <li className="muted" style={{ fontSize: '0.9rem' }}>Nenhum arquivo de música.</li>
+                  ) : (
+                    musicUrls.map((url, i) => (
+                      <li key={i}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem' }}>Música {i + 1}</a>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </section>
+            </div>
+          )}
         </div>
 
         {/* Coluna 2: Características do imóvel + animação + editor */}

@@ -322,6 +322,30 @@ function parseWebhookMateriaisResponse(arr) {
   return files;
 }
 
+/** Detecta formato novo: array de { path, pathAbsolute?, recursive?, items: [{ name, path, type, size, mtime }] } */
+function isFolderListingFormat(data) {
+  return (
+    Array.isArray(data) &&
+    data.length > 0 &&
+    data.every((entry) => entry && Array.isArray(entry.items))
+  );
+}
+
+/** Extrai URLs de vídeos a partir de folderListing para compatibilidade com o visor. */
+function videosFromFolderListing(folderListing, baseUrl) {
+  if (!Array.isArray(folderListing) || !baseUrl) return [];
+  const urls = [];
+  folderListing.forEach((entry) => {
+    (entry.items || []).forEach((item) => {
+      if (item.type === 'file' && item.name && item.name.toLowerCase().endsWith('.mp4')) {
+        const path = (item.path || item.name || '').trim();
+        urls.push(path.startsWith('http') ? path : baseUrl.replace(/\/?$/, '/') + path.replace(/^\//, ''));
+      }
+    });
+  });
+  return urls;
+}
+
 app.get('/api/listings/:id/materiais', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
@@ -347,6 +371,8 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
       return res.json({
         baseUrl: cached.baseUrl,
         files: cached.files,
+        folderListing: cached.folderListing ?? null,
+        folderBaseUrl: cached.folderBaseUrl ?? undefined,
         listing: { id: r.id, client_id: r.client_id, ...raw },
         webhook_consulted: cached.webhook_consulted,
         webhook_raw_response: cached.webhook_raw_response,
@@ -355,6 +381,8 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
     }
 
     let files = { videos: [], narration: [], music: [] };
+    let folderListing = null;
+    let folderBaseUrl = '';
     let webhook_consulted = false;
     let webhook_raw_response = null;
     let webhook_status = null;
@@ -381,8 +409,16 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
         webhook_raw_response = text;
         if (ct.includes('application/json')) {
           const data = JSON.parse(text);
-          const arr = Array.isArray(data) ? data : (data.Contents || data.files || data.items || []);
-          files = parseWebhookMateriaisResponse(arr);
+          if (isFolderListingFormat(Array.isArray(data) ? data : data.folderListing)) {
+            folderListing = Array.isArray(data) ? data : data.folderListing;
+            folderBaseUrl = Array.isArray(data) ? '' : (data.folderBaseUrl || '');
+            const fileBase = folderBaseUrl || baseUrl;
+            const urls = videosFromFolderListing(folderListing, fileBase);
+            if (urls.length) files.videos = urls;
+          } else {
+            const arr = Array.isArray(data) ? data : (data.Contents || data.files || data.items || []);
+            files = parseWebhookMateriaisResponse(arr);
+          }
         }
       } catch (err) {
         console.error('Webhook materiais:', err.message);
@@ -404,9 +440,18 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
       } catch (_) {}
     }
 
-    materiaisCache.set(listingId, { baseUrl, files, webhook_consulted, webhook_raw_response, webhook_status });
+    materiaisCache.set(listingId, { baseUrl, files, folderListing, folderBaseUrl, webhook_consulted, webhook_raw_response, webhook_status });
 
-    res.json({ baseUrl, files, listing: { id: r.id, client_id: r.client_id, ...raw }, webhook_consulted, webhook_raw_response: webhook_raw_response, webhook_status: webhook_status });
+    res.json({
+      baseUrl,
+      files,
+      folderListing,
+      folderBaseUrl: folderBaseUrl || undefined,
+      listing: { id: r.id, client_id: r.client_id, ...raw },
+      webhook_consulted,
+      webhook_raw_response: webhook_raw_response,
+      webhook_status: webhook_status,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
