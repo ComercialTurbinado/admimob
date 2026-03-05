@@ -294,7 +294,7 @@ const materiaisCache = new Map();
 
 const MATERIAIS_S3_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/';
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
-const MATERIAIS_FILES_BASE_DEFAULT = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
+const MATERIAIS_FILES_BASE_DEFAULT = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host/data/render';
 
 function classifyKey(key) {
   const k = (key || '').replace(/\/$/, '').toLowerCase();

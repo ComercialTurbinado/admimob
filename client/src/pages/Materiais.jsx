@@ -42,46 +42,80 @@ function ElementosList({ folderListing, folderBaseUrl, baseUrl }) {
   const allItems = (folderListing || []).flatMap((entry) => entry.items || []);
   const { frames, videos, _root } = groupItemsByFolder(allItems);
 
-  const renderSection = (title, items) => {
+  const [open, setOpen] = useState({ frames: false, videos: false, arquivos: false });
+  const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const renderSection = (sectionKey, title, items) => {
     const fileItems = items.filter((i) => i.type === 'file');
     const dirItems = items.filter((i) => i.type === 'dir');
     if (fileItems.length === 0 && dirItems.length === 0) return null;
+    const isOpen = open[sectionKey];
+    const count = fileItems.length + dirItems.length;
     return (
-      <section key={title} style={{ marginBottom: '1.25rem' }}>
-        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>{title}</h4>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {dirItems.map((item) => (
-            <li key={item.path || item.name} style={{ padding: '0.25rem 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
-              <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', marginRight: 4, fontSize: 18 }}>folder</span>
-              {item.name}
-            </li>
-          ))}
-          {fileItems.map((item) => {
-            const displayName = item._displayName || item.name;
-            const path = (item.path || item.name || '').trim();
-            const href = fileBase && path ? (fileBase.replace(/\/?$/, '/') + path.replace(/^\//, '')) : null;
-            return (
-              <li key={item.path || item.name} style={{ padding: '0.35rem 0', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span className="material-symbols-outlined" style={{ flexShrink: 0, fontSize: 18, color: 'var(--muted)' }}>description</span>
-                <span style={{ minWidth: 0 }} title={path}>{displayName}</span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{formatSize(item.size)}</span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{formatMtime(item.mtime)}</span>
-                {href && (
-                  <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>Abrir</a>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      <section key={sectionKey} style={{ marginBottom: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+        <button
+          type="button"
+          onClick={() => toggle(sectionKey)}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+            padding: '0.5rem 0.75rem',
+            border: 'none',
+            background: 'var(--bg)',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            textAlign: 'left',
+          }}
+        >
+          <span>{title}</span>
+          <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>({count})</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: 20, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}
+          >
+            expand_more
+          </span>
+        </button>
+        {isOpen && (
+          <div style={{ padding: '0 0.75rem 0.75rem', borderTop: '1px solid var(--border)' }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0' }}>
+              {dirItems.map((item) => (
+                <li key={item.path || item.name} style={{ padding: '0.25rem 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
+                  <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', marginRight: 4, fontSize: 18 }}>folder</span>
+                  {item.name}
+                </li>
+              ))}
+              {fileItems.map((item) => {
+                const displayName = item._displayName || item.name;
+                const path = (item.path || item.name || '').trim();
+                const href = fileBase && path ? (fileBase.replace(/\/?$/, '/') + path.replace(/^\//, '')) : null;
+                return (
+                  <li key={item.path || item.name} style={{ padding: '0.35rem 0', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className="material-symbols-outlined" style={{ flexShrink: 0, fontSize: 18, color: 'var(--muted)' }}>description</span>
+                    <span style={{ minWidth: 0 }} title={path}>{displayName}</span>
+                    <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{formatSize(item.size)}</span>
+                    <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{formatMtime(item.mtime)}</span>
+                    {href && (
+                      <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>Abrir</a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </section>
     );
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {renderSection('Frames', frames)}
-      {renderSection('Vídeos', videos)}
-      {renderSection('Arquivos', _root)}
+      {renderSection('frames', 'Frames', frames)}
+      {renderSection('videos', 'Vídeos', videos)}
+      {renderSection('arquivos', 'Arquivos', _root)}
     </div>
   );
 }
