@@ -294,6 +294,7 @@ const materiaisCache = new Map();
 
 const MATERIAIS_S3_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/';
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
+const MATERIAIS_FILES_BASE_DEFAULT = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
 
 function classifyKey(key) {
   const k = (key || '').replace(/\/$/, '').toLowerCase();
@@ -412,6 +413,7 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
           if (isFolderListingFormat(Array.isArray(data) ? data : data.folderListing)) {
             folderListing = Array.isArray(data) ? data : data.folderListing;
             folderBaseUrl = Array.isArray(data) ? '' : (data.folderBaseUrl || '');
+            if (!folderBaseUrl) folderBaseUrl = (process.env.MATERIAIS_FILES_BASE_URL || MATERIAIS_FILES_BASE_DEFAULT).replace(/\/$/, '') || MATERIAIS_FILES_BASE_DEFAULT;
             const fileBase = folderBaseUrl || baseUrl;
             const urls = videosFromFolderListing(folderListing, fileBase);
             if (urls.length) files.videos = urls;
