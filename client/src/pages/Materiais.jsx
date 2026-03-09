@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API } from '../api';
 import AnimacaoCaracteristicas from '../components/AnimacaoCaracteristicas';
@@ -116,6 +116,199 @@ function ElementosList({ folderListing, folderBaseUrl, baseUrl }) {
       {renderSection('frames', 'Frames', frames)}
       {renderSection('videos', 'Vídeos', videos)}
       {renderSection('arquivos', 'Arquivos', _root)}
+    </div>
+  );
+}
+
+function getAvailableMedia(folderListing) {
+  const allItems = (folderListing || []).flatMap((entry) => entry.items || []).filter((i) => i.type === 'file');
+  const videos = allItems.filter((i) => (i.name || '').toLowerCase().endsWith('.mp4')).map((i) => (i.path || i.name || '').trim()).filter(Boolean);
+  const audios = allItems.filter((i) => (i.name || '').toLowerCase().endsWith('.mp3')).map((i) => (i.path || i.name || '').trim()).filter(Boolean);
+  return { videos, audios };
+}
+
+function TimelineEditor({ listingId, listing, folderListing, folderBaseUrl }) {
+  const { videos: availableVideos, audios: availableAudios } = getAvailableMedia(folderListing);
+  const defaultOutputPath = listing
+    ? `imob/${(listing.imobname || '').replace(/\//g, '-')}/${listing.advertiserCode || 'out'}/videos/merged.mp4`
+    : 'imob/out/videos/merged.mp4';
+
+  const [videoTrack, setVideoTrack] = useState([]);
+  const [audioTrack, setAudioTrack] = useState([]);
+  const [outputPath, setOutputPath] = useState(defaultOutputPath);
+  const [renderStatus, setRenderStatus] = useState(null);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const base = (folderBaseUrl || '').replace(/\/?$/, '/');
+  const videoUrls = videoTrack.map((p) => base + p.replace(/^\//, ''));
+  const audioUrls = audioTrack.map((p) => base + p.replace(/^\//, ''));
+  const hasPreview = videoUrls.length > 0;
+
+  useEffect(() => {
+    if (hasPreview && videoRef.current) {
+      videoRef.current.play().catch(function () {});
+    }
+  }, [currentVideoIndex, hasPreview]);
+
+  const addToTrack = (track, path) => {
+    if (track === 'video') setVideoTrack((prev) => [...prev, path]);
+    else setAudioTrack((prev) => [...prev, path]);
+  };
+  const removeFromTrack = (track, index) => {
+    if (track === 'video') setVideoTrack((prev) => prev.filter((_, i) => i !== index));
+    else setAudioTrack((prev) => prev.filter((_, i) => i !== index));
+  };
+  const moveTrackItem = (track, index, dir) => {
+    const setter = track === 'video' ? setVideoTrack : setAudioTrack;
+    setter((prev) => {
+      const next = [...prev];
+      const j = index + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  };
+
+  const handleRender = async () => {
+    if (videoTrack.length === 0) {
+      setRenderStatus({ error: 'Adicione pelo menos um vídeo na timeline.' });
+      return;
+    }
+    setRenderStatus({ loading: true });
+    try {
+      const res = await fetch(`${API}/listings/${listingId}/render-merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: videoTrack, outputPath }),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        setRenderStatus({ error: text || `Erro ${res.status}` });
+        return;
+      }
+      setRenderStatus({ success: true, message: text || 'Enviado para renderizar.' });
+    } catch (e) {
+      setRenderStatus({ error: e.message });
+    }
+  };
+
+  const renderTrack = (title, track, trackKey, available, icon) => (
+    <div style={{ marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <strong style={{ fontSize: '0.9rem' }}>{title}</strong>
+        {available.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => {
+              const path = e.target.value;
+              if (path) addToTrack(trackKey, path), (e.target.value = '');
+            }}
+            style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}
+          >
+            <option value="">+ Adicionar</option>
+            {available.map((path) => (
+              <option key={path} value={path}>{path.split('/').pop()}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', minHeight: 36, padding: '0.5rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
+        {track.length === 0 ? (
+          <span className="muted" style={{ fontSize: '0.85rem' }}>Nenhum item. Adicione acima.</span>
+        ) : (
+          track.map((path, i) => (
+            <span
+              key={`${path}-${i}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '0.25rem 0.5rem',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                fontSize: '0.85rem',
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--muted)' }}>{icon}</span>
+              <span title={path} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path.split('/').pop()}</span>
+              <button type="button" onClick={() => moveTrackItem(trackKey, i, -1)} disabled={i === 0} style={{ padding: 2, border: 'none', background: 'none', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.4 : 1 }} aria-label="Subir">↑</button>
+              <button type="button" onClick={() => moveTrackItem(trackKey, i, 1)} disabled={i === track.length - 1} style={{ padding: 2, border: 'none', background: 'none', cursor: i === track.length - 1 ? 'default' : 'pointer', opacity: i === track.length - 1 ? 0.4 : 1 }} aria-label="Descer">↓</button>
+              <button type="button" onClick={() => removeFromTrack(trackKey, i)} style={{ padding: 2, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger)' }} aria-label="Remover">×</button>
+            </span>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="card" style={{ marginTop: '1.5rem' }}>
+      <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Timeline / Editor</h3>
+      <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+        Ordene vídeos e áudios e envie para renderizar (FFmpeg).
+      </p>
+      {renderTrack('Vídeos (ordem de concatenação)', videoTrack, 'video', availableVideos, 'movie')}
+      {renderTrack('Áudios', audioTrack, 'audio', availableAudios, 'graphic_eq')}
+      {hasPreview && (
+        <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <strong style={{ fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>Preview</strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-start' }}>
+            <div style={{ flex: '1 1 280px', maxWidth: 360 }}>
+              <video
+                ref={videoRef}
+                key={currentVideoIndex}
+                src={videoUrls[currentVideoIndex]}
+                controls
+                style={{ width: '100%', borderRadius: 8, background: '#000' }}
+                onEnded={() => {
+                  if (currentVideoIndex + 1 < videoUrls.length) setCurrentVideoIndex((i) => i + 1);
+                }}
+              />
+              <p className="muted" style={{ marginTop: '0.35rem', fontSize: '0.8rem' }}>
+                Vídeo {currentVideoIndex + 1} de {videoUrls.length}
+              </p>
+            </div>
+            {audioUrls.length > 0 && (
+              <div style={{ flex: '0 1 200px' }}>
+                <label style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.25rem' }}>Narração / áudio</label>
+                <audio ref={audioRef} controls src={audioUrls[0]} style={{ width: '100%', maxWidth: 280 }} />
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn"
+            style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}
+            onClick={() => {
+              setCurrentVideoIndex(0);
+              setTimeout(() => {
+                videoRef.current?.play();
+                if (audioUrls.length > 0) audioRef.current?.play();
+              }, 100);
+            }}
+          >
+            Reproduzir do início
+          </button>
+        </div>
+      )}
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Caminho de saída (outputPath)</label>
+        <input
+          type="text"
+          value={outputPath}
+          onChange={(e) => setOutputPath(e.target.value)}
+          placeholder="imob/Imob/REF/videos/merged.mp4"
+          style={{ width: '100%', maxWidth: 480, padding: '0.5rem', fontSize: '0.9rem' }}
+        />
+      </div>
+      <button type="button" className="btn" onClick={handleRender} disabled={renderStatus?.loading}>
+        {renderStatus?.loading ? 'Enviando…' : 'Renderizar no FFmpeg'}
+      </button>
+      {renderStatus?.error && <p style={{ color: 'var(--danger)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{renderStatus.error}</p>}
+      {renderStatus?.success && <p style={{ color: 'var(--success)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{renderStatus.message}</p>}
     </div>
   );
 }
@@ -456,6 +649,10 @@ export default function Materiais() {
           )}
         </div>
       </div>
+
+      {folderListing && folderListing.length > 0 && (
+        <TimelineEditor listingId={id} listing={listing} folderListing={folderListing} folderBaseUrl={folderBaseUrl} />
+      )}
 
       <p style={{ marginTop: '1rem', color: 'var(--muted)', fontSize: '0.85rem' }}>
         Para listar arquivos automaticamente, coloque um <code>manifest.json</code> na pasta do S3 com a estrutura:{' '}

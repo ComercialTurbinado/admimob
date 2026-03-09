@@ -459,7 +459,31 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
   }
 });
 
-// Duração da animação do poster (ms) — deve bater com AnimacaoCaracteristicas.jsx
+/** Envia merge/render para a API FFmpeg. Body: { files: string[], outputPath: string } */
+const RENDER_MERGE_URL = process.env.RENDER_MERGE_URL || (MATERIAIS_FILES_BASE_DEFAULT + '/merge');
+app.post('/api/listings/:id/render-merge', async (req, res) => {
+  try {
+    const listingId = Number(req.params.id);
+    const { files, outputPath } = req.body || {};
+    if (!Array.isArray(files) || files.length === 0) return res.status(400).json({ error: 'files (array) é obrigatório e não pode ser vazio' });
+    if (!outputPath || typeof outputPath !== 'string') return res.status(400).json({ error: 'outputPath é obrigatório' });
+    const response = await fetch(RENDER_MERGE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, outputPath }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: text || 'Erro ao chamar API de render' });
+    }
+    res.set('Content-Type', response.headers.get('content-type') || 'application/json');
+    res.status(response.status).send(text);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Duração da animação do poster (ms)
 const POSTER_DURATION_MS = 5000;
 
 /**
