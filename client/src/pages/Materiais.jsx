@@ -518,11 +518,8 @@ export default function Materiais() {
           <p style={{ fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>Disposição das informações</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
             {[
-              { id: 'classic', label: 'Clássico' },
-              { id: 'compact', label: 'Compacto' },
-              { id: 'destaque', label: 'Destaque preço' },
-              { id: 'minimal', label: 'Minimal' },
-              { id: 'cards', label: 'Cards (ícones em destaque)' },
+              { id: 'classic', label: 'Opção 1' },
+              { id: 'cards', label: 'Opção 2' },
             ].map((opt) => (
               <button
                 key={opt.id}
