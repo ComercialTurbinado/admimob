@@ -522,6 +522,7 @@ export default function Materiais() {
               { id: 'compact', label: 'Compacto' },
               { id: 'destaque', label: 'Destaque preço' },
               { id: 'minimal', label: 'Minimal' },
+              { id: 'cards', label: 'Cards (ícones em destaque)' },
             ].map((opt) => (
               <button
                 key={opt.id}

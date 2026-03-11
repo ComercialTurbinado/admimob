@@ -265,6 +265,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
               const iconName = CHARACTERISTIC_ICONS[item.name];
               const value = item?.value ?? (typeof item === 'string' ? item : '');
               const text = value && typeof value === 'string' ? value : getAmenityLabel(item.name);
+              const statLabel = getAmenityLabel(item.name);
               const delay = 2.5 + i * 0.15;
               return (
                 <div
@@ -283,7 +284,10 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                       }}
                 >
                   <span className="material-symbols-outlined">{iconName}</span>
-                  <div className="label">{text}</div>
+                  <div className="stat-content">
+                    <span className="stat-name">{statLabel}</span>
+                    <div className="label">{text}</div>
+                  </div>
                 </div>
               );
             })}
