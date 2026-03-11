@@ -49,7 +49,7 @@ function getLocation(listing) {
   return parts.length ? parts.join(', ') : '—';
 }
 
-export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep }) {
+export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep, layout = 'classic' }) {
   const [started, setStarted] = useState(false);
   const [scale, setScale] = useState(1);
   const wrapRef = useRef(null);
@@ -66,6 +66,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
     HERO_PLACEHOLDER;
   const price = getPrice(listing);
   const location = getLocation(listing);
+  const hasLocation = location && location !== '—';
   const refText = propertyCodes ? `REF: ${propertyCodes}` : 'REF: —';
   const site = listing?.website || 'www.exemplo.com';
   const copyright = `© ${new Date().getFullYear()} ${(imobname || 'IMOBILIÁRIA').toUpperCase()} - TODOS OS DIREITOS RESERVADOS`;
@@ -125,6 +126,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
     >
       <main
         className="poster"
+        data-layout={layout}
         style={{
           width: ART_WIDTH,
           height: ART_HEIGHT,
@@ -215,6 +217,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
           >
             {price}
           </h1>
+          {hasLocation && (
           <div
             className="location"
             style={stepMode
@@ -232,6 +235,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             <span className="material-symbols-outlined">location_on</span>
             <span>{location}</span>
           </div>
+          )}
         </section>
 
         {/* STATS */}

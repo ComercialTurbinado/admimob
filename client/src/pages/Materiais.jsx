@@ -324,6 +324,7 @@ export default function Materiais() {
   const [error, setError] = useState(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [animacaoKey, setAnimacaoKey] = useState(0);
+  const [posterLayout, setPosterLayout] = useState('classic');
   const [animBg, setAnimBg] = useState('#f5f5f5');
   const [animItemsPerRow, setAnimItemsPerRow] = useState(3);
   const [animIconSize, setAnimIconSize] = useState(28);
@@ -514,6 +515,31 @@ export default function Materiais() {
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
             Animação 5s — poster 1080×1920.
           </p>
+          <p style={{ fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>Disposição das informações</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            {[
+              { id: 'classic', label: 'Clássico' },
+              { id: 'compact', label: 'Compacto' },
+              { id: 'destaque', label: 'Destaque preço' },
+              { id: 'minimal', label: 'Minimal' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className="btn"
+                style={{
+                  fontSize: '0.8rem',
+                  padding: '0.4rem 0.75rem',
+                  background: posterLayout === opt.id ? 'var(--primary)' : 'var(--bg)',
+                  color: posterLayout === opt.id ? '#fff' : 'var(--text)',
+                  border: '1px solid var(--border)',
+                }}
+                onClick={() => setPosterLayout(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <Link
               to={clientId ? `/cliente/${clientId}/produto/${id}/poster-video` : `/poster-video/${id}`}
@@ -584,6 +610,7 @@ export default function Materiais() {
                   backgroundColor={animBg}
                   itemsPerRow={animItemsPerRow}
                   iconSize={animIconSize}
+                  layout={posterLayout}
                 />
               </div>
             </div>
