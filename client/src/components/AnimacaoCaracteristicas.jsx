@@ -181,7 +181,11 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             </div>
           </div>
         </section>
-
+        {layout === 'cards' && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 600, pointerEvents: 'none', display: 'flex', alignItems: 'flex-end', padding: '0 0 32px 32px' }}>
+            <span style={{ background: 'var(--primary)', color: '#fff', padding: '8px 24px', borderRadius: 8, fontWeight: 700, fontSize: 20, letterSpacing: '0.08em', opacity: stepMode ? 1 : started ? 1 : 0, transition: stepMode ? 'none' : 'opacity 0.5s ease 1s' }}>{refText}</span>
+          </div>
+        )}
         {/* INFO */}
         <section className="info">
           <div
