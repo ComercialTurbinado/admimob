@@ -266,19 +266,19 @@ export default function Config() {
             placeholder="https://n8n.../webhook/frames-done"
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Após enviar todos os frames ao webhook de captura, o sistema dispara um POST para esta URL com <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>status: &quot;done&quot;</code> e <code>layout</code>. Opcional.
+            Chamado (1) pelo <strong>servidor</strong> após enviar os frames (captura Playwright ou /open) com <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>status</code>, <code>layout</code>; (2) pela <strong>página do poster</strong> quando termina a captura no navegador, com <code>imobname</code>, <code>advertiserCode</code>, <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>layout</code>, <code>status: &quot;done&quot;</code>. Opcional.
           </p>
         </div>
         <div className="form-group">
-          <label>Browserless — URL WebSocket (captura de frames no servidor)</label>
+          <label>URL do serviço de captura (abrir página e aguardar) ou Browserless WebSocket</label>
           <input
             type="text"
             value={data.browserless_ws_url ?? ''}
             onChange={(e) => update('browserless_ws_url', null, e.target.value)}
-            placeholder="wss://chrome.browserless.io?token=..."
+            placeholder="https://.../open ou wss://chrome.browserless.io?token=..."
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Se preenchido, ao clicar em <strong>Enviar frames ao webhook</strong> os prints rodam no servidor (sem abrir popup). Os frames são enviados para o webhook &quot;salvar frames&quot; acima. Deixe vazio para usar o popup no navegador.
+            <strong>URL HTTP(S) (ex.: …/open):</strong> ao clicar em Enviar frames, o sistema envia POST com a URL do poster (<code>?capture=1&amp;layout=...</code>) e <code>waitMs: 30000</code>; o serviço abre a página, ela envia os frames ao webhook e não abre popup. <strong>WebSocket (wss://):</strong> captura direta no servidor com Playwright. Vazio = abre popup no navegador.
           </p>
         </div>
         <div className="form-group">

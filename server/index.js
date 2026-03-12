@@ -508,9 +508,48 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
 
   if (!listingId) return res.status(400).json({ error: 'listing_id é obrigatório' });
   const webhookUrl = bodyWebhookUrl?.trim() || (await getSetting('webhook_frames_save', '')).trim();
-  if (!webhookUrl) return res.status(400).json({ error: 'webhook_url é obrigatório no body ou configure webhook_frames_save nas configurações' });
-  if (!browserlessUrl) return res.status(503).json({ error: 'Configure o Browserless em Configurações ou a variável BROWSERLESS_WS_URL para gerar frames no servidor' });
   if (!publicAppUrl) return res.status(503).json({ error: 'Configure PUBLIC_APP_URL com a URL base do frontend (ex.: https://seu-app.com)' });
+
+  const captureServiceUrl = browserlessUrl.trim();
+  const isHttpOpenEndpoint = /^https?:\/\//i.test(captureServiceUrl);
+
+  if (isHttpOpenEndpoint) {
+    const fullPosterUrl = `${publicAppUrl}/poster-video/${listingId}?capture=1&layout=${encodeURIComponent(layout)}`;
+    const waitMs = 30000;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 65000);
+      const openRes = await fetch(captureServiceUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: fullPosterUrl, waitMs }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!openRes.ok) {
+        const errText = await openRes.text();
+        throw new Error(`Serviço de captura retornou ${openRes.status}: ${errText || openRes.statusText}`);
+      }
+      const result = { ok: true, listing_id: Number(listingId), layout, via: 'capture_service' };
+      res.json(result);
+      const payload = { listing_id: Number(listingId), status: 'done', layout, via: 'capture_service' };
+      const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
+      if (webhookDoneUrl) {
+        fetch(webhookDoneUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch((err) => console.error('[webhook_frames_done]', err.message));
+      }
+      const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
+      if (webhookMontarUrl) {
+        fetch(webhookMontarUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, action: 'montar_mp4' }) }).catch((err) => console.error('[webhook_montar_mp4]', err.message));
+      }
+    } catch (e) {
+      console.error('[poster-frames-to-webhook] capture_service', e.message);
+      res.status(500).json({ error: e.message });
+    }
+    return;
+  }
+
+  if (!webhookUrl) return res.status(400).json({ error: 'webhook_url é obrigatório no body ou configure webhook_frames_save nas configurações' });
+  if (!browserlessUrl) return res.status(503).json({ error: 'Configure o Browserless ou a URL do serviço de captura (/open) em Configurações' });
 
   let imobname = '';
   let advertiserCode = '';

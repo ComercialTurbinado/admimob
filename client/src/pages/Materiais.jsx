@@ -579,7 +579,10 @@ export default function Materiais() {
                   });
                   const data = await res.json().catch(() => ({}));
                   if (res.ok) {
-                    setFramesMessage(`Pronto. ${data.frames_sent ?? 0} frames enviados no servidor (layout: ${posterLayout}). Solicitação de montar MP4 disparada se configurada.`);
+                    const viaService = data.via === 'capture_service';
+                    setFramesMessage(viaService
+                      ? `Pronto. Página enviada ao serviço de captura (layout: ${posterLayout}). Solicitação de montar MP4 disparada se configurada.`
+                      : `Pronto. ${data.frames_sent ?? 0} frames enviados no servidor (layout: ${posterLayout}). Solicitação de montar MP4 disparada se configurada.`);
                     setSendingFrames(false);
                     return;
                   }

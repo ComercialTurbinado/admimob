@@ -22,9 +22,15 @@ export default function PosterVideo() {
   const [fitScale, setFitScale] = useState(1);
   const [captureStatus, setCaptureStatus] = useState(null);
   const [effectiveWebhookUrl, setEffectiveWebhookUrl] = useState(null);
+  const [webhookPosterDoneUrl, setWebhookPosterDoneUrl] = useState(null);
+  const [webhookMontarMp4Url, setWebhookMontarMp4Url] = useState(null);
   const [captureStep, setCaptureStep] = useState(null);
   const containerRef = useRef(null);
   const posterRef = useRef(null);
+  const webhookFramesDoneUrlRef = useRef(null);
+  const webhookMontarMp4UrlRef = useRef(null);
+  webhookFramesDoneUrlRef.current = webhookPosterDoneUrl;
+  webhookMontarMp4UrlRef.current = webhookMontarMp4Url;
 
   const captureParam = searchParams.get('capture') === '1';
   const webhookFromQuery = searchParams.get('webhook_url') || '';
@@ -66,15 +72,28 @@ export default function PosterVideo() {
   useEffect(() => {
     if (!captureParam) {
       setEffectiveWebhookUrl(null);
+      setWebhookPosterDoneUrl(null);
+      setWebhookMontarMp4Url(null);
       return;
     }
     if (webhookFromQuery) {
       setEffectiveWebhookUrl(webhookFromQuery);
+      fetch(API + '/dashboard', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          setWebhookPosterDoneUrl(d.webhook_frames_done || '');
+          setWebhookMontarMp4Url(d.webhook_montar_mp4 || '');
+        })
+        .catch(() => { setWebhookPosterDoneUrl(''); setWebhookMontarMp4Url(''); });
       return;
     }
     fetch(API + '/dashboard', { cache: 'no-store' })
       .then((r) => r.json())
-      .then((d) => setEffectiveWebhookUrl(d.webhook_frames_save || ''))
+      .then((d) => {
+        setEffectiveWebhookUrl(d.webhook_frames_save || '');
+        setWebhookPosterDoneUrl(d.webhook_frames_done || '');
+        setWebhookMontarMp4Url(d.webhook_montar_mp4 || '');
+      })
       .catch(() => setEffectiveWebhookUrl(''));
   }, [captureParam, webhookFromQuery]);
 
@@ -129,6 +148,31 @@ export default function PosterVideo() {
 
       setCaptureStep(null);
       setCaptureStatus((s) => (s ? { ...s, sending: false, done: true } : null));
+      const payload = {
+        imobname: listing?.imobname ?? '',
+        advertiserCode: listing?.advertiserCode ?? '',
+        listing_id: Number(id),
+        frames_sent: TOTAL_FRAMES,
+        total_frames: TOTAL_FRAMES,
+        layout,
+        status: 'done',
+      };
+      const doneUrl = webhookFramesDoneUrlRef.current && String(webhookFramesDoneUrlRef.current).trim();
+      if (doneUrl) {
+        fetch(doneUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch((err) => console.warn('[webhook_frames_done]', err.message));
+      }
+      const montarUrl = webhookMontarMp4UrlRef.current && String(webhookMontarMp4UrlRef.current).trim();
+      if (montarUrl) {
+        fetch(montarUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, action: 'montar_mp4' }),
+        }).catch((err) => console.warn('[webhook_montar_mp4]', err.message));
+      }
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage(
           { type: 'poster-frames-done', frames_sent: TOTAL_FRAMES, total_frames: TOTAL_FRAMES, layout },
