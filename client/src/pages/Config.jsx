@@ -9,6 +9,7 @@ const DEFAULT_DATA = {
   webhook_materiais: '',
   webhook_frames_save: '',
   webhook_frames_done: '',
+  public_app_url: '',
   browserless_ws_url: '',
   webhook_montar_mp4: '',
   plans: [
@@ -36,6 +37,7 @@ export default function Config() {
           webhook_materiais: d.webhook_materiais ?? '',
           webhook_frames_save: d.webhook_frames_save ?? '',
           webhook_frames_done: d.webhook_frames_done ?? '',
+          public_app_url: d.public_app_url ?? '',
           browserless_ws_url: d.browserless_ws_url ?? '',
           webhook_montar_mp4: d.webhook_montar_mp4 ?? '',
           plans,
@@ -85,6 +87,7 @@ export default function Config() {
           webhook_materiais: data.webhook_materiais,
           webhook_frames_save: data.webhook_frames_save,
           webhook_frames_done: data.webhook_frames_done,
+          public_app_url: data.public_app_url,
           browserless_ws_url: data.browserless_ws_url,
           webhook_montar_mp4: data.webhook_montar_mp4,
           plans: data.plans,
@@ -267,6 +270,18 @@ export default function Config() {
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
             Chamado (1) pelo <strong>servidor</strong> após enviar os frames (captura Playwright ou /open) com <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>status</code>, <code>layout</code>; (2) pela <strong>página do poster</strong> quando termina a captura no navegador, com <code>imobname</code>, <code>advertiserCode</code>, <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>layout</code>, <code>status: &quot;done&quot;</code>. Opcional.
+          </p>
+        </div>
+        <div className="form-group">
+          <label>URL base do frontend (app) — para captura de frames</label>
+          <input
+            type="url"
+            value={data.public_app_url ?? ''}
+            onChange={(e) => update('public_app_url', null, e.target.value)}
+            placeholder="https://main.d6pnc8y0749b1.amplifyapp.com"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            URL onde o app está publicado (ex.: Amplify). Usada para montar o link do poster ao enviar para o serviço de captura (<code>/poster-video/:id?capture=1&amp;layout=...</code>). Se não preencher, o servidor usa a variável de ambiente <code>PUBLIC_APP_URL</code>.
           </p>
         </div>
         <div className="form-group">

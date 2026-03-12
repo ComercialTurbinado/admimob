@@ -45,6 +45,7 @@ app.get('/api/dashboard', async (req, res) => {
     const webhook_materiais = (await getSetting('webhook_materiais', '')) || '';
     const webhook_frames_save = (await getSetting('webhook_frames_save', '')) || '';
     const webhook_frames_done = (await getSetting('webhook_frames_done', '')) || '';
+    const public_app_url = (await getSetting('public_app_url', '')) || '';
     const browserless_ws_url = (await getSetting('browserless_ws_url', '')) || '';
     const webhook_montar_mp4 = (await getSetting('webhook_montar_mp4', '')) || '';
     let plans = await getSetting('plans', [
@@ -53,7 +54,7 @@ app.get('/api/dashboard', async (req, res) => {
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, public_app_url, browserless_ws_url, webhook_montar_mp4, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -61,13 +62,14 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, public_app_url, browserless_ws_url, webhook_montar_mp4, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
     if (webhook_materiais !== undefined) await setSetting('webhook_materiais', webhook_materiais);
     if (webhook_frames_save !== undefined) await setSetting('webhook_frames_save', webhook_frames_save);
     if (webhook_frames_done !== undefined) await setSetting('webhook_frames_done', webhook_frames_done);
+    if (public_app_url !== undefined) await setSetting('public_app_url', public_app_url);
     if (browserless_ws_url !== undefined) await setSetting('browserless_ws_url', browserless_ws_url);
     if (webhook_montar_mp4 !== undefined) await setSetting('webhook_montar_mp4', webhook_montar_mp4);
     if (plans !== undefined) await setSetting('plans', plans);
@@ -499,7 +501,8 @@ const POSTER_DURATION_MS = 5000;
 app.post('/api/poster-frames-to-webhook', async (req, res) => {
   const browserlessUrlFromEnv = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
   const browserlessUrl = (await getSetting('browserless_ws_url', '')).trim() || browserlessUrlFromEnv;
-  const publicAppUrl = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
+  const publicAppUrlFromEnv = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
+  const publicAppUrl = ((await getSetting('public_app_url', '')).trim() || publicAppUrlFromEnv).replace(/\/$/, '');
   const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam } = req.body || {};
   const fps = Math.min(30, Math.max(10, Number(fpsParam) || 25));
   const layout = (layoutParam && String(layoutParam).trim()) || 'classic';
@@ -508,7 +511,7 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
 
   if (!listingId) return res.status(400).json({ error: 'listing_id é obrigatório' });
   const webhookUrl = bodyWebhookUrl?.trim() || (await getSetting('webhook_frames_save', '')).trim();
-  if (!publicAppUrl) return res.status(503).json({ error: 'Configure PUBLIC_APP_URL com a URL base do frontend (ex.: https://seu-app.com)' });
+  if (!publicAppUrl) return res.status(503).json({ error: 'Configure a URL base do frontend em Configurações (URL do app) ou a variável PUBLIC_APP_URL' });
 
   const captureServiceUrl = browserlessUrl.trim();
   const isHttpOpenEndpoint = /^https?:\/\//i.test(captureServiceUrl);
