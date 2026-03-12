@@ -8,6 +8,7 @@ const DEFAULT_DATA = {
   webhook_producao: '',
   webhook_materiais: '',
   webhook_frames_save: '',
+  webhook_frames_done: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -32,6 +33,7 @@ export default function Config() {
           webhook_producao: d.webhook_producao ?? '',
           webhook_materiais: d.webhook_materiais ?? '',
           webhook_frames_save: d.webhook_frames_save ?? '',
+          webhook_frames_done: d.webhook_frames_done ?? '',
           plans,
         });
       })
@@ -78,6 +80,7 @@ export default function Config() {
           webhook_producao: data.webhook_producao,
           webhook_materiais: data.webhook_materiais,
           webhook_frames_save: data.webhook_frames_save,
+          webhook_frames_done: data.webhook_frames_done,
           plans: data.plans,
         }),
       });
@@ -246,6 +249,18 @@ export default function Config() {
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
             Usado quando você abre a página do poster com <strong>captura de frames</strong> (<code>?capture=1</code>). Cada frame é enviado em base64 para essa URL, junto com <code>imobname</code>, <code>advertiserCode</code>, <code>listing_id</code> e número do frame. Se não informar <code>webhook_url</code> na URL, será usada esta configuração.
+          </p>
+        </div>
+        <div className="form-group">
+          <label>URL do webhook quando terminar envio dos frames</label>
+          <input
+            type="url"
+            value={data.webhook_frames_done ?? ''}
+            onChange={(e) => update('webhook_frames_done', null, e.target.value)}
+            placeholder="https://n8n.../webhook/frames-done"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Após enviar todos os frames ao webhook de captura, o sistema dispara um POST para esta URL com <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>status: &quot;done&quot;</code> e <code>layout</code>. Opcional.
           </p>
         </div>
       </section>

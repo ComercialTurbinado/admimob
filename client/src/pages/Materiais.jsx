@@ -329,6 +329,8 @@ export default function Materiais() {
   const [animItemsPerRow, setAnimItemsPerRow] = useState(3);
   const [animIconSize, setAnimIconSize] = useState(28);
   const [refreshing, setRefreshing] = useState(false);
+  const [sendingFrames, setSendingFrames] = useState(false);
+  const [framesMessage, setFramesMessage] = useState(null);
 
   const loadMateriais = (refresh = false) => {
     if (!id) return;
@@ -365,6 +367,19 @@ export default function Materiais() {
     if (!id) return;
     loadMateriais(false);
   }, [id]);
+
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+      const d = event.data;
+      if (d?.type !== 'poster-frames-done') return;
+      setSendingFrames(false);
+      if (d.error) setFramesMessage('Erro: ' + d.error);
+      else setFramesMessage(`Pronto. ${d.frames_sent ?? 0} frames enviados (layout: ${d.layout ?? posterLayout}).`);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [posterLayout]);
 
   const advertiserCode = listing?.advertiserCode;
   const fallbackBaseUrl = advertiserCode ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/` : '';
@@ -551,16 +566,38 @@ export default function Materiais() {
             <button
               type="button"
               className="btn"
-              style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              disabled={sendingFrames}
               onClick={() => {
+                setFramesMessage(null);
+                setSendingFrames(true);
                 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-                const path = `${base}/poster-video/${id}?capture=1`;
+                const path = `${base}/poster-video/${id}?capture=1&layout=${encodeURIComponent(posterLayout)}`;
                 const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
-                window.open(url, 'poster-capture', 'width=1100,height=1940,scrollbars=yes,resizable=yes');
+                window.open(url, 'poster-frames-capture', 'width=2,height=2,left=-9999,top=-9999,scrollbars=no,resizable=no');
               }}
             >
-              Enviar frames ao webhook
+              {sendingFrames && (
+                <span
+                  className="loading-spinner"
+                  style={{
+                    width: 14,
+                    height: 14,
+                    border: '2px solid transparent',
+                    borderTopColor: 'currentColor',
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    animation: 'spin 0.8s linear infinite',
+                  }}
+                />
+              )}
+              {sendingFrames ? 'Enviando frames…' : 'Enviar frames ao webhook'}
             </button>
+            {framesMessage && (
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: framesMessage.startsWith('Erro') ? 'var(--danger)' : 'var(--success)', width: '100%' }}>
+                {framesMessage}
+              </p>
+            )}
           </div>
 
           {/* Moldura celular 9:16 (1080×1920) — poster completo */}

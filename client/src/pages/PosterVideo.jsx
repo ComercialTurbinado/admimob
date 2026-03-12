@@ -28,6 +28,7 @@ export default function PosterVideo() {
 
   const captureParam = searchParams.get('capture') === '1';
   const webhookFromQuery = searchParams.get('webhook_url') || '';
+  const layout = searchParams.get('layout') || 'classic';
   const scale = captureParam ? 1 : fitScale;
 
   useEffect(() => {
@@ -128,12 +129,26 @@ export default function PosterVideo() {
 
       setCaptureStep(null);
       setCaptureStatus((s) => (s ? { ...s, sending: false, done: true } : null));
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(
+          { type: 'poster-frames-done', frames_sent: TOTAL_FRAMES, total_frames: TOTAL_FRAMES, layout },
+          window.location.origin
+        );
+        setTimeout(() => window.close(), 800);
+      }
     };
 
     const run = () => {
-      start().catch((e) =>
-        setCaptureStatus((s) => (s ? { ...s, sending: false, error: e.message } : null))
-      );
+      start().catch((e) => {
+        setCaptureStatus((s) => (s ? { ...s, sending: false, error: e.message } : null));
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(
+            { type: 'poster-frames-done', error: e.message, layout },
+            window.location.origin
+          );
+          setTimeout(() => window.close(), 1500);
+        }
+      });
     };
     const t = setTimeout(run, 400);
     return () => clearTimeout(t);
@@ -168,6 +183,7 @@ export default function PosterVideo() {
             iconSize={28}
             videoMode
             captureStep={captureStep}
+            layout={layout}
           />
         </div>
       </div>

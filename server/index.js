@@ -44,13 +44,14 @@ app.get('/api/dashboard', async (req, res) => {
     const webhook_producao = (await getSetting('webhook_producao', '')) || '';
     const webhook_materiais = (await getSetting('webhook_materiais', '')) || '';
     const webhook_frames_save = (await getSetting('webhook_frames_save', '')) || '';
+    const webhook_frames_done = (await getSetting('webhook_frames_done', '')) || '';
     let plans = await getSetting('plans', [
       { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
       { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -58,12 +59,13 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
     if (webhook_materiais !== undefined) await setSetting('webhook_materiais', webhook_materiais);
     if (webhook_frames_save !== undefined) await setSetting('webhook_frames_save', webhook_frames_save);
+    if (webhook_frames_done !== undefined) await setSetting('webhook_frames_done', webhook_frames_done);
     if (plans !== undefined) await setSetting('plans', plans);
     res.json({ ok: true });
   } catch (e) {
@@ -493,8 +495,9 @@ const POSTER_DURATION_MS = 5000;
 app.post('/api/poster-frames-to-webhook', async (req, res) => {
   const browserlessUrl = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
   const publicAppUrl = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
-  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam } = req.body || {};
+  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam } = req.body || {};
   const fps = Math.min(30, Math.max(10, Number(fpsParam) || 25));
+  const layout = (layoutParam && String(layoutParam).trim()) || 'classic';
   const intervalMs = 1000 / fps;
   const totalFrames = Math.ceil((POSTER_DURATION_MS / 1000) * fps);
 
@@ -515,7 +518,7 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
     }
   } catch (_) {}
 
-  const posterUrl = `${publicAppUrl}/poster-video/${listingId}`;
+  const posterUrl = `${publicAppUrl}/poster-video/${listingId}?layout=${encodeURIComponent(layout)}`;
 
   try {
     const { chromium } = await import('playwright-core');
@@ -554,7 +557,16 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
 
     await context.close();
     await browser.close();
-    res.json({ ok: true, frames_sent: sent, total_frames: totalFrames, fps, listing_id: Number(listingId) });
+    const result = { ok: true, frames_sent: sent, total_frames: totalFrames, fps, listing_id: Number(listingId), layout };
+    res.json(result);
+    const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
+    if (webhookDoneUrl) {
+      fetch(webhookDoneUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listing_id: Number(listingId), frames_sent: sent, total_frames: totalFrames, status: 'done', layout }),
+      }).catch((err) => console.error('[webhook_frames_done]', err.message));
+    }
   } catch (e) {
     console.error('[poster-frames-to-webhook]', e.message);
     res.status(500).json({ error: e.message });
