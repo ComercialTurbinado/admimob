@@ -572,6 +572,11 @@ export default function Materiais() {
                 setFramesMessage(null);
                 setSendingFrames(true);
                 try {
+                  const dashRes = await fetch(API + '/dashboard', { cache: 'no-store' });
+                  const dash = await dashRes.json().catch(() => ({}));
+                  const captureServiceUrl = (dash.browserless_ws_url || '').trim();
+                  const hasCaptureService = captureServiceUrl.length > 0;
+
                   const res = await fetch(API + '/poster-frames-to-webhook', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -586,20 +591,26 @@ export default function Materiais() {
                     setSendingFrames(false);
                     return;
                   }
-                  if (res.status === 503) {
+                  setFramesMessage('Erro: ' + (data.error || res.status));
+                  setSendingFrames(false);
+                  if (!hasCaptureService && res.status === 503) {
                     const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                     const path = `${base}/poster-video/${id}?capture=1&layout=${encodeURIComponent(posterLayout)}`;
                     const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
                     window.open(url, 'poster-frames-capture', 'width=2,height=2,left=-9999,top=-9999,scrollbars=no,resizable=no');
-                    return;
                   }
-                  setFramesMessage('Erro: ' + (data.error || res.status));
-                  setSendingFrames(false);
                 } catch (e) {
-                  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-                  const path = `${base}/poster-video/${id}?capture=1&layout=${encodeURIComponent(posterLayout)}`;
-                  const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
-                  window.open(url, 'poster-frames-capture', 'width=2,height=2,left=-9999,top=-9999,scrollbars=no,resizable=no');
+                  setFramesMessage('Erro: ' + (e.message || 'Falha ao enviar'));
+                  setSendingFrames(false);
+                  const dashRes = await fetch(API + '/dashboard', { cache: 'no-store' }).catch(() => null);
+                  const dash = dashRes ? await dashRes.json().catch(() => ({})) : {};
+                  const hasCaptureService = ((dash.browserless_ws_url || '').trim()).length > 0;
+                  if (!hasCaptureService) {
+                    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+                    const path = `${base}/poster-video/${id}?capture=1&layout=${encodeURIComponent(posterLayout)}`;
+                    const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
+                    window.open(url, 'poster-frames-capture', 'width=2,height=2,left=-9999,top=-9999,scrollbars=no,resizable=no');
+                  }
                 }
               }}
             >
