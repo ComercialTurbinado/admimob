@@ -9,6 +9,8 @@ const DEFAULT_DATA = {
   webhook_materiais: '',
   webhook_frames_save: '',
   webhook_frames_done: '',
+  browserless_ws_url: '',
+  webhook_montar_mp4: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -34,6 +36,8 @@ export default function Config() {
           webhook_materiais: d.webhook_materiais ?? '',
           webhook_frames_save: d.webhook_frames_save ?? '',
           webhook_frames_done: d.webhook_frames_done ?? '',
+          browserless_ws_url: d.browserless_ws_url ?? '',
+          webhook_montar_mp4: d.webhook_montar_mp4 ?? '',
           plans,
         });
       })
@@ -81,6 +85,8 @@ export default function Config() {
           webhook_materiais: data.webhook_materiais,
           webhook_frames_save: data.webhook_frames_save,
           webhook_frames_done: data.webhook_frames_done,
+          browserless_ws_url: data.browserless_ws_url,
+          webhook_montar_mp4: data.webhook_montar_mp4,
           plans: data.plans,
         }),
       });
@@ -261,6 +267,30 @@ export default function Config() {
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
             Após enviar todos os frames ao webhook de captura, o sistema dispara um POST para esta URL com <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>status: &quot;done&quot;</code> e <code>layout</code>. Opcional.
+          </p>
+        </div>
+        <div className="form-group">
+          <label>Browserless — URL WebSocket (captura de frames no servidor)</label>
+          <input
+            type="text"
+            value={data.browserless_ws_url ?? ''}
+            onChange={(e) => update('browserless_ws_url', null, e.target.value)}
+            placeholder="wss://chrome.browserless.io?token=..."
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Se preenchido, ao clicar em <strong>Enviar frames ao webhook</strong> os prints rodam no servidor (sem abrir popup). Os frames são enviados para o webhook &quot;salvar frames&quot; acima. Deixe vazio para usar o popup no navegador.
+          </p>
+        </div>
+        <div className="form-group">
+          <label>URL para solicitar montagem do vídeo (MP4) após envio dos frames</label>
+          <input
+            type="url"
+            value={data.webhook_montar_mp4 ?? ''}
+            onChange={(e) => update('webhook_montar_mp4', null, e.target.value)}
+            placeholder="https://n8n.../webhook/montar-video-poster"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Quando a captura for feita no servidor (Browserless), após enviar todos os frames o sistema dispara um POST para esta URL com <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>status: &quot;done&quot;</code>, <code>layout</code> e <code>action: &quot;montar_mp4&quot;</code>, para o n8n montar o vídeo em MP4. Opcional.
           </p>
         </div>
       </section>

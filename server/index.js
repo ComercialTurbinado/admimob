@@ -45,13 +45,15 @@ app.get('/api/dashboard', async (req, res) => {
     const webhook_materiais = (await getSetting('webhook_materiais', '')) || '';
     const webhook_frames_save = (await getSetting('webhook_frames_save', '')) || '';
     const webhook_frames_done = (await getSetting('webhook_frames_done', '')) || '';
+    const browserless_ws_url = (await getSetting('browserless_ws_url', '')) || '';
+    const webhook_montar_mp4 = (await getSetting('webhook_montar_mp4', '')) || '';
     let plans = await getSetting('plans', [
       { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
       { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -59,13 +61,15 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
     if (webhook_materiais !== undefined) await setSetting('webhook_materiais', webhook_materiais);
     if (webhook_frames_save !== undefined) await setSetting('webhook_frames_save', webhook_frames_save);
     if (webhook_frames_done !== undefined) await setSetting('webhook_frames_done', webhook_frames_done);
+    if (browserless_ws_url !== undefined) await setSetting('browserless_ws_url', browserless_ws_url);
+    if (webhook_montar_mp4 !== undefined) await setSetting('webhook_montar_mp4', webhook_montar_mp4);
     if (plans !== undefined) await setSetting('plans', plans);
     res.json({ ok: true });
   } catch (e) {
@@ -493,7 +497,8 @@ const POSTER_DURATION_MS = 5000;
  * Requer BROWSERLESS_WS_URL e PUBLIC_APP_URL. O webhook recebe: frame_number, total_frames, image_base64, listing_id, mime_type.
  */
 app.post('/api/poster-frames-to-webhook', async (req, res) => {
-  const browserlessUrl = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
+  const browserlessUrlFromEnv = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
+  const browserlessUrl = (await getSetting('browserless_ws_url', '')).trim() || browserlessUrlFromEnv;
   const publicAppUrl = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
   const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam } = req.body || {};
   const fps = Math.min(30, Math.max(10, Number(fpsParam) || 25));
@@ -504,7 +509,7 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
   if (!listingId) return res.status(400).json({ error: 'listing_id é obrigatório' });
   const webhookUrl = bodyWebhookUrl?.trim() || (await getSetting('webhook_frames_save', '')).trim();
   if (!webhookUrl) return res.status(400).json({ error: 'webhook_url é obrigatório no body ou configure webhook_frames_save nas configurações' });
-  if (!browserlessUrl) return res.status(503).json({ error: 'Configure BROWSERLESS_WS_URL para gerar frames' });
+  if (!browserlessUrl) return res.status(503).json({ error: 'Configure o Browserless em Configurações ou a variável BROWSERLESS_WS_URL para gerar frames no servidor' });
   if (!publicAppUrl) return res.status(503).json({ error: 'Configure PUBLIC_APP_URL com a URL base do frontend (ex.: https://seu-app.com)' });
 
   let imobname = '';
@@ -559,13 +564,22 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
     await browser.close();
     const result = { ok: true, frames_sent: sent, total_frames: totalFrames, fps, listing_id: Number(listingId), layout };
     res.json(result);
+    const payload = { listing_id: Number(listingId), frames_sent: sent, total_frames: totalFrames, status: 'done', layout };
     const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
     if (webhookDoneUrl) {
       fetch(webhookDoneUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listing_id: Number(listingId), frames_sent: sent, total_frames: totalFrames, status: 'done', layout }),
+        body: JSON.stringify(payload),
       }).catch((err) => console.error('[webhook_frames_done]', err.message));
+    }
+    const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
+    if (webhookMontarUrl) {
+      fetch(webhookMontarUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, action: 'montar_mp4' }),
+      }).catch((err) => console.error('[webhook_montar_mp4]', err.message));
     }
   } catch (e) {
     console.error('[poster-frames-to-webhook]', e.message);
