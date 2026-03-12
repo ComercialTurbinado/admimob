@@ -577,10 +577,12 @@ export default function Materiais() {
                   const captureServiceUrl = (dash.browserless_ws_url || '').trim();
                   const hasCaptureService = captureServiceUrl.length > 0;
 
+                  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+                  const publicAppUrl = typeof window !== 'undefined' ? (window.location.origin + (base || '')).replace(/\/$/, '') : '';
                   const res = await fetch(API + '/poster-frames-to-webhook', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ listing_id: id, layout: posterLayout }),
+                    body: JSON.stringify({ listing_id: id, layout: posterLayout, public_app_url: publicAppUrl }),
                   });
                   const data = await res.json().catch(() => ({}));
                   if (res.ok) {

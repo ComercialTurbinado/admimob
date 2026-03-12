@@ -9,7 +9,6 @@ const DEFAULT_DATA = {
   webhook_materiais: '',
   webhook_frames_save: '',
   webhook_frames_done: '',
-  public_app_url: '',
   browserless_ws_url: '',
   webhook_montar_mp4: '',
   plans: [
@@ -37,7 +36,6 @@ export default function Config() {
           webhook_materiais: d.webhook_materiais ?? '',
           webhook_frames_save: d.webhook_frames_save ?? '',
           webhook_frames_done: d.webhook_frames_done ?? '',
-          public_app_url: d.public_app_url ?? '',
           browserless_ws_url: d.browserless_ws_url ?? '',
           webhook_montar_mp4: d.webhook_montar_mp4 ?? '',
           plans,
@@ -87,7 +85,6 @@ export default function Config() {
           webhook_materiais: data.webhook_materiais,
           webhook_frames_save: data.webhook_frames_save,
           webhook_frames_done: data.webhook_frames_done,
-          public_app_url: data.public_app_url,
           browserless_ws_url: data.browserless_ws_url,
           webhook_montar_mp4: data.webhook_montar_mp4,
           plans: data.plans,
@@ -280,19 +277,6 @@ export default function Config() {
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
             <strong>HTTP(S):</strong> servidor faz POST com a URL do poster e <code>waitMs: 30000</code>; o serviço abre a página (sem popup). <strong>wss://:</strong> captura no servidor com Playwright. <strong>Vazio:</strong> abre popup no navegador.
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[URL do app]</span> Base do frontend (para montar o link do poster)</label>
-          <input
-            name="public_app_url"
-            type="url"
-            value={data.public_app_url ?? ''}
-            onChange={(e) => update('public_app_url', null, e.target.value)}
-            placeholder="https://main.d6pnc8y0749b1.amplifyapp.com"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Onde o app está publicado. Usada para gerar <code>/poster-video/:id?capture=1&amp;layout=...</code> enviado ao serviço de captura.
           </p>
         </div>
         <div className="form-group">
