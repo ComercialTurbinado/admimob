@@ -284,6 +284,14 @@ input, textarea {
   line-height: 1.45;
 }
 
+.config-field-name {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-right: 0.35rem;
+}
+
 .config-hint {
   display: block;
   font-size: 0.8rem;
