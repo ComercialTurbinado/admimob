@@ -77,6 +77,48 @@ app.put('/api/dashboard', async (req, res) => {
   }
 });
 
+/** Proxy de imagem: evita CORS/taint no canvas ao capturar o poster (Browserless). */
+const PROXY_IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const PROXY_IMAGE_TIMEOUT_MS = 15000;
+app.get('/api/proxy-image', async (req, res) => {
+  const rawUrl = req.query.url;
+  if (!rawUrl || typeof rawUrl !== 'string') return res.status(400).send('Missing url');
+  let targetUrl;
+  try {
+    targetUrl = new URL(rawUrl.trim());
+  } catch {
+    return res.status(400).send('Invalid url');
+  }
+  if (targetUrl.protocol !== 'http:' && targetUrl.protocol !== 'https:') return res.status(400).send('Only http(s) allowed');
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROXY_IMAGE_TIMEOUT_MS);
+    const origin = `${targetUrl.protocol}//${targetUrl.host}`;
+    const resp = await fetch(targetUrl.toString(), {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'image/webp,image/apng,image/*,*/*;q=0.8',
+        Referer: origin + '/',
+      },
+    });
+    clearTimeout(timeoutId);
+    const cl = parseInt(resp.headers.get('content-length') || '0', 10);
+    if (cl > PROXY_IMAGE_MAX_SIZE) return res.status(413).send('Image too large');
+    const contentType = resp.headers.get('content-type') || 'image/jpeg';
+    if (!resp.ok) return res.status(resp.status).send(await resp.text());
+    const buf = await resp.arrayBuffer();
+    if (buf.byteLength > PROXY_IMAGE_MAX_SIZE) return res.status(413).send('Image too large');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.type(contentType.split(';')[0].trim());
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    if (e.name === 'AbortError') return res.status(504).send('Timeout');
+    res.status(502).send(e.message || 'Proxy error');
+  }
+});
+
 // Registrar venda (alimenta o KPI "vendas_mes" do dashboard)
 app.post('/api/vendas', async (req, res) => {
   try {

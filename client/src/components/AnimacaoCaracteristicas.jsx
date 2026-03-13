@@ -1,5 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
+import { API } from '../api';
 import { getAmenityLabel, getAmenityIcon, CHARACTERISTIC_ICONS } from '../lib/amenitiesLabels';
+
+/** Em modo captura (videoMode), usa proxy para imagens externas e evitar CORS/taint no Browserless. */
+function proxyIfNeeded(url, useProxy) {
+  if (!useProxy || !url || typeof url !== 'string') return url;
+  const u = url.trim();
+  if (u.startsWith('http://') || u.startsWith('https://')) return `${API}/proxy-image?url=${encodeURIComponent(u)}`;
+  return url;
+}
 
 /**
  * Poster 1080×1920: hero (foto + brand glass), info (badge, ref, preço, localização),
@@ -52,6 +61,8 @@ function getLocation(listing) {
 export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep, layout = 'classic' }) {
   const [started, setStarted] = useState(false);
   const [scale, setScale] = useState(1);
+  const [heroProxyFailed, setHeroProxyFailed] = useState(false);
+  const [logoProxyFailed, setLogoProxyFailed] = useState(false);
   const wrapRef = useRef(null);
   const amenities = listing?.amenitiesList || listing?.['amenities-list'] || [];
   const logoimob = listing?.logoimob;
@@ -59,11 +70,13 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const propertyCodes = listing?.propertyCodes;
   const characteristics = getCharacteristics(amenities);
   const leisure = getLeisureAmenities(amenities);
-  const heroImg =
+  const heroImgRaw =
     (listing?.carousel_images && listing.carousel_images[0]) ||
     (listing?.selected_images && listing.selected_images[0]) ||
     listing?.images?.[0] ||
     HERO_PLACEHOLDER;
+  const heroImg = heroProxyFailed ? heroImgRaw : proxyIfNeeded(heroImgRaw, videoMode);
+  const logoImg = logoProxyFailed ? (logoimob || '') : proxyIfNeeded(logoimob, videoMode);
   const price = getPrice(listing);
   const location = getLocation(listing);
   const hasLocation = location && location !== '—';
@@ -141,6 +154,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             src={heroImg}
             alt=""
             crossOrigin="anonymous"
+            onError={() => videoMode && setHeroProxyFailed(true)}
             style={stepMode
               ? {
                   opacity: progressAt(tMs, 0, 0.8),
@@ -174,7 +188,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             <div className="brand-card">
               <div className="brand-icon">
                 {logoimob ? (
-                  <img src={logoimob} alt="" crossOrigin="anonymous" />
+                  <img src={logoImg} alt="" crossOrigin="anonymous" onError={() => videoMode && setLogoProxyFailed(true)} />
                 ) : (
                   <span className="material-symbols-outlined">apartment</span>
                 )}
