@@ -100,12 +100,42 @@ export default function PosterVideo() {
   const shouldCapture = captureParam && effectiveWebhookUrl && listing && id;
   const captureDoneRef = useRef(false);
 
+  /** Aguarda as imagens do poster carregarem (útil em Browserless/headless onde a rede pode ser mais lenta). */
+  async function waitForImages(container, maxMs = 10000) {
+    const imgs = container?.querySelectorAll?.('img');
+    if (!imgs?.length) return;
+    const start = Date.now();
+    await Promise.all(
+      Array.from(imgs).map(
+        (img) =>
+          new Promise((resolve) => {
+            if (img.complete && img.naturalWidth > 0) {
+              resolve();
+              return;
+            }
+            const done = () => resolve();
+            img.onload = done;
+            img.onerror = done;
+            const check = setInterval(() => {
+              if (img.complete || Date.now() - start > maxMs) {
+                clearInterval(check);
+                resolve();
+              }
+            }, 150);
+          })
+      )
+    );
+  }
+
   useEffect(() => {
     if (!shouldCapture || !listing || !id) return;
     const start = async () => {
       if (!posterRef.current || captureDoneRef.current) return;
       captureDoneRef.current = true;
       setCaptureStatus({ current: 0, total: TOTAL_FRAMES, sending: true });
+
+      await waitForImages(posterRef.current);
+      await new Promise((r) => setTimeout(r, 300));
 
       const html2canvas = (await import('html2canvas')).default;
 

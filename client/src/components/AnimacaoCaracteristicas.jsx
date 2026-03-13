@@ -140,6 +140,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
           <img
             src={heroImg}
             alt=""
+            crossOrigin="anonymous"
             style={stepMode
               ? {
                   opacity: progressAt(tMs, 0, 0.8),
@@ -173,7 +174,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             <div className="brand-card">
               <div className="brand-icon">
                 {logoimob ? (
-                  <img src={logoimob} alt="" />
+                  <img src={logoimob} alt="" crossOrigin="anonymous" />
                 ) : (
                   <span className="material-symbols-outlined">apartment</span>
                 )}
