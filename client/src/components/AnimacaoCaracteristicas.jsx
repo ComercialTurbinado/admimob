@@ -16,7 +16,9 @@ function proxyIfNeeded(url, useProxy) {
  */
 const ART_WIDTH = 1080;
 const ART_HEIGHT = 1920;
-const DURATION_MS = 5000;
+/** 156 frames a 29 fps ≈ 5,38 s de animação para captura. */
+const CAPTURE_FRAMES = 156;
+const DURATION_MS = Math.round((CAPTURE_FRAMES / 29) * 1000);
 export { DURATION_MS };
 
 /** Progress 0..1 no tempo t (ms), com delay e duration em segundos. */
@@ -85,7 +87,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const copyright = `© ${new Date().getFullYear()} ${(imobname || 'IMOBILIÁRIA').toUpperCase()} - TODOS OS DIREITOS RESERVADOS`;
 
   const stepMode = typeof captureStep === 'number' && captureStep >= 0;
-  const tMs = stepMode ? (captureStep / 125) * DURATION_MS : 0;
+  const tMs = stepMode ? (captureStep / (CAPTURE_FRAMES - 1)) * DURATION_MS : 0;
 
   useEffect(() => {
     if (stepMode) return;
