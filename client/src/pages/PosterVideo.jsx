@@ -135,7 +135,6 @@ export default function PosterVideo() {
       setCaptureStatus({ current: 0, total: TOTAL_FRAMES, sending: true });
 
       await waitForImages(posterRef.current);
-      await new Promise((r) => setTimeout(r, 300));
 
       const html2canvas = (await import('html2canvas')).default;
 
@@ -189,7 +188,7 @@ export default function PosterVideo() {
       };
       const doneUrl = webhookFramesDoneUrlRef.current && String(webhookFramesDoneUrlRef.current).trim();
       if (doneUrl) {
-        fetch(doneUrl, {
+        await fetch(doneUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -197,18 +196,19 @@ export default function PosterVideo() {
       }
       const montarUrl = webhookMontarMp4UrlRef.current && String(webhookMontarMp4UrlRef.current).trim();
       if (montarUrl) {
-        fetch(montarUrl, {
+        await fetch(montarUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, action: 'montar_mp4' }),
         }).catch((err) => console.warn('[webhook_montar_mp4]', err.message));
       }
+      window.__captureDone = true;
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage(
           { type: 'poster-frames-done', frames_sent: TOTAL_FRAMES, total_frames: TOTAL_FRAMES, layout },
           window.location.origin
         );
-        setTimeout(() => window.close(), 800);
+        window.close();
       }
     };
 
