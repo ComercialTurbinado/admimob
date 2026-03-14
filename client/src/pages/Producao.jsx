@@ -264,6 +264,20 @@ export default function Producao() {
     }
   }
 
+  async function removeListing() {
+    if (isDemo) return;
+    if (!confirm('Excluir este imóvel? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await fetch(API + '/listings/' + id, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const backTo = (clientIdParam || listing?.client_id) ? '/cliente/' + (clientIdParam || listing.client_id) + '/area' : '/';
+      navigate(backTo);
+    } catch (e) {
+      setError(e.message || 'Falha ao excluir');
+    }
+  }
+
   if (!listing) return <p className="muted">Carregando...</p>;
 
   const images = listing.carousel_images || [];
@@ -311,7 +325,14 @@ export default function Producao() {
           <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Dados fictícios</strong> — layout de exemplo. Salvar e enviar webhook estão desativados.</p>
         </div>
       )}
-      <h1>Central de Produção</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+        <h1 style={{ margin: 0 }}>Central de Produção</h1>
+        {!isDemo && (
+          <button type="button" className="btn btn-danger" onClick={removeListing} title="Excluir imóvel">
+            Excluir imóvel
+          </button>
+        )}
+      </div>
 
       {/* Campos do anúncio: cada um com checkbox "Incluir no webhook" e valor editável */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>

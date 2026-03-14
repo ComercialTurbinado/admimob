@@ -55,7 +55,20 @@ export default function ClienteArea() {
 
   async function refetchListings() {
     const list = await fetch(API + '/listings?client_id=' + id).then((r) => r.json());
-    setListings(list);
+    setListings(Array.isArray(list) ? list : []);
+  }
+
+  async function removeListing(listingId) {
+    if (isDemo) return;
+    if (!confirm('Excluir este imóvel? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await fetch(API + '/listings/' + listingId, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      await refetchListings();
+    } catch (e) {
+      setMsg('Erro: ' + (e.message || 'Falha ao excluir'));
+    }
   }
 
   async function handleImportLink() {
@@ -213,6 +226,11 @@ export default function ClienteArea() {
                   <Link to={'/cliente/' + id + '/produto/' + l.id + '/materiais'} className="btn">
                     Ver materiais
                   </Link>
+                  {!isDemo && l.id !== 'demo' && (
+                    <button type="button" className="btn btn-danger" onClick={() => removeListing(l.id)} title="Excluir imóvel">
+                      Excluir
+                    </button>
+                  )}
                   {isDemo && l.id === 'demo' && <span className="badge" style={{ marginLeft: '0.5rem' }}>exemplo</span>}
                 </div>
               </li>
