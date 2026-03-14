@@ -5,3 +5,7 @@ data/*.db
 dist/
 .env
 .DS_Store
+
+# Repos separados (cada um tem seu .git e sobe no GitHub próprio)
+ffmpeg/
+browseless/

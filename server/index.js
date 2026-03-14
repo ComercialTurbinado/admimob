@@ -560,14 +560,16 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
 
   if (isHttpOpenEndpoint) {
     const fullPosterUrl = `${publicAppUrl}/poster-video/${listingId}?capture=1&layout=${encodeURIComponent(layout)}`;
-    const waitMs = 30000;
+    // 156 frames a ~3s/frame ≈ 8 min; timeout da página no serviço de captura (timeoutMs)
+    const captureTimeoutMs = 10 * 60 * 1000; // 10 min
+    const requestTimeoutMs = captureTimeoutMs + 60000; // 11 min para o fetch não abortar antes
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 65000);
+      const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
       const openRes = await fetch(captureServiceUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: fullPosterUrl, waitMs }),
+        body: JSON.stringify({ url: fullPosterUrl, timeoutMs: captureTimeoutMs }),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
