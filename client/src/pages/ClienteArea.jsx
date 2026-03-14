@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
-import { API } from '../api';
+import { API, proxyImageUrl } from '../api';
 
 // Dados fictícios para exibir o layout quando não houver banco
 const MOCK_CLIENT = {
@@ -200,7 +200,7 @@ export default function ClienteArea() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 0 }}>
                     {img && (
-                      <img src={img} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                      <img src={proxyImageUrl(img)} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                     )}
                     <div style={{ minWidth: 0 }}>
                       <strong>{listingDisplayTitle(l)}</strong>

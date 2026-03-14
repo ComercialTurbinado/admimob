@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-import { API } from '../api';
+import { API, proxyImageUrl } from '../api';
 
 const OMIT_KEYS = ['id', 'client_id', 'source_url', 'selected_images', 'webhook_payload', 'created_at', 'updated_at'];
 
@@ -433,7 +433,7 @@ export default function Producao() {
           {images.map((url) => (
             <div key={url} className="img-thumb" style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ flex: 1, position: 'relative' }} onClick={() => toggleImage(url)}>
-                <img src={url} alt="" />
+                <img src={proxyImageUrl(url)} alt="" />
                 <input
                   type="checkbox"
                   checked={selectedImages.includes(url)}

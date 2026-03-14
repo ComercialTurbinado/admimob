@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-import { API } from '../api';
+import { API, proxyImageUrl } from '../api';
 
 // Título para exibição: usa title, ou descrição completa, ou preço, quando title vem null do n8n
 function listingDisplayTitle(l) {
@@ -50,7 +50,7 @@ export default function Listings() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
                   {img && (
-                    <img src={img} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                    <img src={proxyImageUrl(img)} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                   )}
                   <div style={{ minWidth: 0 }}>
                     <strong>{listingDisplayTitle(l)}</strong>

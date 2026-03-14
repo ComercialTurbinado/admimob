@@ -26,4 +26,12 @@ export function apiFriendlyMessage(e) {
   return msg;
 }
 
+/** URL para exibir imagem externa via proxy (evita 403 hotlink do Viva Real, ZAP, etc.). */
+export function proxyImageUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  const u = url.trim();
+  if (u.startsWith('http://') || u.startsWith('https://')) return `${API}/proxy-image?url=${encodeURIComponent(u)}`;
+  return u;
+}
+
 export { API };

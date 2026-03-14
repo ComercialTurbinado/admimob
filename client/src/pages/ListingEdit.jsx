@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
-import { API } from '../api';
+import { API, proxyImageUrl } from '../api';
 
 function omitKeys(obj, keys) {
   const o = { ...obj };
@@ -105,7 +105,7 @@ export default function ListingEdit() {
                 style={{ flex: 1, position: 'relative' }}
                 onClick={() => toggleImage(url)}
               >
-                <img src={url} alt="" />
+                <img src={proxyImageUrl(url)} alt="" />
                 <input
                   type="checkbox"
                   checked={selectedImages.includes(url)}

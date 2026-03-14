@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { API } from '../api';
 import { getAmenityLabel, getAmenityIcon, CHARACTERISTIC_ICONS } from '../lib/amenitiesLabels';
 
-/** Em modo captura (videoMode), usa proxy para imagens externas e evitar CORS/taint no Browserless. */
+/** Usa proxy para imagens externas: evita 403 (hotlink do Viva Real/etc.) e CORS/taint no Browserless. */
 function proxyIfNeeded(url, useProxy) {
   if (!useProxy || !url || typeof url !== 'string') return url;
   const u = url.trim();
@@ -77,8 +77,8 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
     (listing?.selected_images && listing.selected_images[0]) ||
     listing?.images?.[0] ||
     HERO_PLACEHOLDER;
-  const heroImg = heroProxyFailed ? heroImgRaw : proxyIfNeeded(heroImgRaw, videoMode);
-  const logoImg = logoProxyFailed ? (logoimob || '') : proxyIfNeeded(logoimob, videoMode);
+  const heroImg = heroProxyFailed ? heroImgRaw : proxyIfNeeded(heroImgRaw, true);
+  const logoImg = logoProxyFailed ? (logoimob || '') : proxyIfNeeded(logoimob, true);
   const price = getPrice(listing);
   const location = getLocation(listing);
   const hasLocation = location && location !== '—';
