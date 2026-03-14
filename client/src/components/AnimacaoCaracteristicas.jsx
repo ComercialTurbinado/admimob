@@ -263,7 +263,11 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
           <section
             className="stats"
             style={{
-              gridTemplateColumns: `repeat(${characteristics.length}, 1fr)`,
+              gridTemplateColumns: (() => {
+                const n = characteristics.length;
+                const cols = n <= 5 ? n : n === 6 ? 3 : n <= 8 ? 4 : 5;
+                return `repeat(${cols}, 1fr)`;
+              })(),
               ...(stepMode
                 ? {
                     background: progressAt(tMs, HERO_ANIM_END_S + 1.7, 0.4) >= 1 ? '#fafafa' : '#fff',

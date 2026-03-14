@@ -560,11 +560,6 @@ input, textarea {
   color: var(--muted-poster);
 }
 
-/* Último .stat ocupa a linha inteira quando o total é ímpar (ex.: 5 itens em grid 2 colunas = 3ª linha só o último) */
-.poster-preview .stats .stat:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
 .poster-preview .amenities {
   padding: 32px 58px 0;
   flex-shrink: 0;
@@ -600,8 +595,9 @@ input, textarea {
 }
 
 .poster-preview .amen .text {
-  font-size: 30px;
+  font-size: 25px;
   font-weight: 800;
+  line-height: 1.1;
   color: var(--text-poster);
 }
 
@@ -683,7 +679,7 @@ input, textarea {
 .poster-preview .poster[data-layout="cards"] .price { font-size: 96px; line-height: 1; color: var(--primary); font-weight: 900; margin-bottom: 16px; }
 .poster-preview .poster[data-layout="cards"] .location { font-size: 36px; font-weight: 600; justify-content: center; gap: 12px; }
 .poster-preview .poster[data-layout="cards"] .location .material-symbols-outlined { font-size: 36px; }
-.poster-preview .poster[data-layout="cards"] .stats { grid-template-columns: repeat(2, 1fr) !important; gap: 32px; padding: 0 48px 56px; padding-top: 0; background: transparent !important; border: none !important; }
+.poster-preview .poster[data-layout="cards"] .stats { gap: 32px; padding: 0 48px 56px; padding-top: 0; background: transparent !important; border: none !important; }
 .poster-preview .poster[data-layout="cards"] .stat { flex-direction: row; align-items: center; text-align: left; gap: 24px; padding: 20px; background: rgba(17,82,212,0.05); border-radius: 16px; border: 1px solid rgba(17,82,212,0.12); }
 .poster-preview .poster[data-layout="cards"] .stat .material-symbols-outlined { width: 80px; min-width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #fff; background: var(--primary); border-radius: 12px; flex-shrink: 0; }
 .poster-preview .poster[data-layout="cards"] .stat .stat-content { flex: 1; padding: 0; align-items: flex-start; justify-content: center; gap: 4px; }
@@ -695,7 +691,7 @@ input, textarea {
 .poster-preview .poster[data-layout="cards"] .amen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
 .poster-preview .poster[data-layout="cards"] .amen { flex-direction: column; min-width: 0; padding: 24px 16px; text-align: center; }
 .poster-preview .poster[data-layout="cards"] .amen .material-symbols-outlined { font-size: 48px; margin-bottom: 12px; }
-.poster-preview .poster[data-layout="cards"] .amen .text { font-size: 20px; font-weight: 600; line-height: 1; }
+.poster-preview .poster[data-layout="cards"] .amen .text { font-size: 26px; font-weight: 600; line-height: 1.1; }
 .poster-preview .poster[data-layout="cards"] .footer-poster { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; text-align: left; }
 .poster-preview .poster[data-layout="cards"] .footer-poster .site { font-size: 30px; margin-bottom: 4px; }
 .poster-preview .poster[data-layout="cards"] .footer-poster .copyright { width: 100%; order: 1; margin-top: 8px; text-align: center; }
