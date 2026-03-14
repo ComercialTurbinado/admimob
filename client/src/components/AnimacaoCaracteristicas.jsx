@@ -160,15 +160,13 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             style={stepMode
               ? {
                   opacity: progressAt(tMs, 0, 0.8),
-                  transform: `scale(${0.08 + 0.92 * progressAt(tMs, 0, 1.2)})`,
                   transition: 'none',
                   borderBottomLeftRadius: 50,
                   borderBottomRightRadius: 50,
                 }
               : {
                   opacity: started ? 1 : 0,
-                  transform: started ? 'scale(1)' : 'scale(1.08)',
-                  transition: 'opacity 0.8s ease, transform 1.2s ease',
+                  transition: 'opacity 0.8s ease',
                   borderBottomLeftRadius: 50,
                   borderBottomRightRadius: 50,
                 }}
@@ -178,13 +176,11 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             style={stepMode
               ? {
                   opacity: progressAt(tMs, 0.5, 0.5),
-                  transform: `scale(${0.9 + 0.1 * progressAt(tMs, 0.5, 0.6)})`,
                   transition: 'none',
                 }
               : {
                   opacity: started ? 1 : 0,
-                  transform: started ? 'scale(1)' : 'scale(0.9)',
-                  transition: 'opacity 0.5s ease 0.5s, transform 0.6s ease 0.5s',
+                  transition: 'opacity 0.5s ease 0.5s',
                 }}
           >
             <div className="brand-card">
