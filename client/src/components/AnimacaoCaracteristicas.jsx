@@ -21,6 +21,9 @@ const CAPTURE_FRAMES = 120;
 const DURATION_MS = Math.round((CAPTURE_FRAMES / 24) * 1000);
 export { DURATION_MS };
 
+/** Tempo (em segundos) em que a animação da imagem de capa termina; os demais elementos só entram depois. */
+const HERO_ANIM_END_S = 0.8;
+
 /** Progress 0..1 no tempo t (ms), com delay e duration em segundos. */
 function progressAt(tMs, delayS, durationS) {
   const t = tMs / 1000;
@@ -175,12 +178,12 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             className="brand-glass"
             style={stepMode
               ? {
-                  opacity: progressAt(tMs, 0.5, 0.5),
+                  opacity: progressAt(tMs, HERO_ANIM_END_S, 0.5),
                   transition: 'none',
                 }
               : {
                   opacity: started ? 1 : 0,
-                  transition: 'opacity 0.5s ease 0.5s',
+                  transition: `opacity 0.5s ease ${HERO_ANIM_END_S}s`,
                 }}
           >
             <div className="brand-card">
@@ -196,7 +199,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         </section>
         {layout === 'cards' && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 600, pointerEvents: 'none', display: 'flex', alignItems: 'flex-end', padding: '0 0 32px 32px' }}>
-            <span style={{ background: 'var(--primary)', color: '#fff', padding: '8px 24px', borderRadius: 8, fontWeight: 700, fontSize: 20, letterSpacing: '0.08em', opacity: stepMode ? 1 : started ? 1 : 0, transition: stepMode ? 'none' : 'opacity 0.5s ease 1s' }}>{refText}</span>
+            <span style={{ background: 'var(--primary)', color: '#fff', padding: '8px 24px', borderRadius: 8, fontWeight: 700, fontSize: 20, letterSpacing: '0.08em', opacity: stepMode ? progressAt(tMs, HERO_ANIM_END_S, 0.2) : started ? 1 : 0, transition: stepMode ? 'none' : `opacity 0.5s ease ${HERO_ANIM_END_S + 0.2}s` }}>{refText}</span>
           </div>
         )}
         {/* INFO */}
@@ -205,14 +208,14 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             className="meta"
             style={stepMode
               ? {
-                  opacity: progressAt(tMs, 1, 0.45),
-                  transform: `translateY(${14 - 14 * progressAt(tMs, 1, 0.45)}px)`,
+                  opacity: progressAt(tMs, HERO_ANIM_END_S + 0.2, 0.45),
+                  transform: `translateY(${14 - 14 * progressAt(tMs, HERO_ANIM_END_S + 0.2, 0.45)}px)`,
                   transition: 'none',
                 }
               : {
                   opacity: started ? 1 : 0,
                   transform: started ? 'translateY(0)' : 'translateY(14px)',
-                  transition: 'opacity 0.45s ease 1s, transform 0.45s ease 1s',
+                  transition: `opacity 0.45s ease ${HERO_ANIM_END_S + 0.2}s, transform 0.45s ease ${HERO_ANIM_END_S + 0.2}s`,
                 }}
           >
             <span className="badge-poster">À VENDA</span>
@@ -222,14 +225,14 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             className="price"
             style={stepMode
               ? {
-                  opacity: progressAt(tMs, 1.5, 0.45),
-                  transform: `translateY(${12 - 12 * progressAt(tMs, 1.5, 0.45)}px)`,
+                  opacity: progressAt(tMs, HERO_ANIM_END_S + 0.7, 0.45),
+                  transform: `translateY(${12 - 12 * progressAt(tMs, HERO_ANIM_END_S + 0.7, 0.45)}px)`,
                   transition: 'none',
                 }
               : {
                   opacity: started ? 1 : 0,
                   transform: started ? 'translateY(0)' : 'translateY(12px)',
-                  transition: 'opacity 0.45s ease 1.5s, transform 0.45s ease 1.5s',
+                  transition: `opacity 0.45s ease ${HERO_ANIM_END_S + 0.7}s, transform 0.45s ease ${HERO_ANIM_END_S + 0.7}s`,
                 }}
           >
             {price}
@@ -239,14 +242,14 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             className="location"
             style={stepMode
               ? {
-                  opacity: progressAt(tMs, 2, 0.45),
-                  transform: `translateY(${10 - 10 * progressAt(tMs, 2, 0.45)}px)`,
+                  opacity: progressAt(tMs, HERO_ANIM_END_S + 1.2, 0.45),
+                  transform: `translateY(${10 - 10 * progressAt(tMs, HERO_ANIM_END_S + 1.2, 0.45)}px)`,
                   transition: 'none',
                 }
               : {
                   opacity: started ? 1 : 0,
                   transform: started ? 'translateY(0)' : 'translateY(10px)',
-                  transition: 'opacity 0.45s ease 2s, transform 0.45s ease 2s',
+                  transition: `opacity 0.45s ease ${HERO_ANIM_END_S + 1.2}s, transform 0.45s ease ${HERO_ANIM_END_S + 1.2}s`,
                 }}
           >
             <span className="material-symbols-outlined">location_on</span>
@@ -263,10 +266,10 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
               gridTemplateColumns: `repeat(${characteristics.length}, 1fr)`,
               ...(stepMode
                 ? {
-                    background: progressAt(tMs, 2.5, 0.4) >= 1 ? '#fafafa' : '#fff',
+                    background: progressAt(tMs, HERO_ANIM_END_S + 1.7, 0.4) >= 1 ? '#fafafa' : '#fff',
                     borderTop: '1px solid',
                     borderBottom: '1px solid',
-                    borderColor: progressAt(tMs, 2.5, 0.4) >= 1 ? 'var(--line-poster)' : 'transparent',
+                    borderColor: progressAt(tMs, HERO_ANIM_END_S + 1.7, 0.4) >= 1 ? 'var(--line-poster)' : 'transparent',
                     transition: 'none',
                   }
                 : {
@@ -274,7 +277,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                     borderTop: '1px solid',
                     borderBottom: '1px solid',
                     borderColor: started ? 'var(--line-poster)' : 'transparent',
-                    transition: 'background 0.4s ease 2.5s, border-color 0.4s ease 2.5s',
+                    transition: `background 0.4s ease ${HERO_ANIM_END_S + 1.7}s, border-color 0.4s ease ${HERO_ANIM_END_S + 1.7}s`,
                   }),
             }}
           >
@@ -283,7 +286,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
               const value = item?.value ?? (typeof item === 'string' ? item : '');
               const text = value && typeof value === 'string' ? value : getAmenityLabel(item.name);
               const statLabel = getAmenityLabel(item.name);
-              const delay = 2.5 + i * 0.15;
+              const delay = HERO_ANIM_END_S + 1.7 + i * 0.15;
               return (
                 <div
                   key={i}
@@ -317,14 +320,14 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             <h3
               style={stepMode
                 ? {
-                    opacity: progressAt(tMs, 3.2, 0.45),
-                    transform: `translateY(${12 - 12 * progressAt(tMs, 3.2, 0.45)}px)`,
+                    opacity: progressAt(tMs, HERO_ANIM_END_S + 2.4, 0.45),
+                    transform: `translateY(${12 - 12 * progressAt(tMs, HERO_ANIM_END_S + 2.4, 0.45)}px)`,
                     transition: 'none',
                   }
                 : {
                     opacity: started ? 1 : 0,
                     transform: started ? 'translateY(0)' : 'translateY(12px)',
-                    transition: 'opacity 0.45s ease 3.2s, transform 0.45s ease 3.2s',
+                    transition: `opacity 0.45s ease ${HERO_ANIM_END_S + 2.4}s, transform 0.45s ease ${HERO_ANIM_END_S + 2.4}s`,
                   }}
             >
               Lazer e comodidades
@@ -335,7 +338,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                 const value = item?.value ?? item;
                 const text = value && typeof value === 'string' && label !== value ? value : label;
                 const iconName = getAmenityIcon(item?.name);
-                const delay = 3.5 + i * 0.12;
+                const delay = HERO_ANIM_END_S + 2.7 + i * 0.12;
                 return (
                   <div
                     key={i}
@@ -368,14 +371,14 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
           className="footer-poster"
           style={stepMode
             ? {
-                opacity: progressAt(tMs, 4, 0.5),
-                transform: `translateY(${10 - 10 * progressAt(tMs, 4, 0.5)}px)`,
+                opacity: progressAt(tMs, HERO_ANIM_END_S + 3.2, 0.5),
+                transform: `translateY(${10 - 10 * progressAt(tMs, HERO_ANIM_END_S + 3.2, 0.5)}px)`,
                 transition: 'none',
               }
             : {
                 opacity: started ? 1 : 0,
                 transform: started ? 'translateY(0)' : 'translateY(10px)',
-                transition: 'opacity 0.5s ease 4s, transform 0.5s ease 4s',
+                transition: `opacity 0.5s ease ${HERO_ANIM_END_S + 3.2}s, transform 0.5s ease ${HERO_ANIM_END_S + 3.2}s`,
               }}
         >
           <div className="site">{site}</div>
