@@ -9,8 +9,8 @@ import AnimacaoCaracteristicas, { DURATION_MS } from '../components/AnimacaoCara
  * Gravar: abra a URL e use Chrome "Gravar guia" ou OBS.
  * Capturar frames: ?capture=1 (usa webhook das Configurações) ou ?capture=1&webhook_url=...
  */
-const FPS = 29;
-const TOTAL_FRAMES = 156;
+const FPS = 24;
+const TOTAL_FRAMES = 120;
 const INTERVAL_MS = 1000 / FPS;
 
 export default function PosterVideo() {
@@ -153,7 +153,7 @@ export default function PosterVideo() {
           windowWidth: 1080,
           windowHeight: 1920,
         });
-        const imageBase64 = canvas.toDataURL('image/jpeg', 1).split(',')[1];
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
         canvas.width = 0;
         canvas.height = 0;
         const frameNumber = i + 1;

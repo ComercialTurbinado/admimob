@@ -16,9 +16,9 @@ function proxyIfNeeded(url, useProxy) {
  */
 const ART_WIDTH = 1080;
 const ART_HEIGHT = 1920;
-/** 156 frames a 29 fps ≈ 5,38 s de animação para captura. */
-const CAPTURE_FRAMES = 156;
-const DURATION_MS = Math.round((CAPTURE_FRAMES / 29) * 1000);
+/** 120 frames a 24 fps = 5 s; mais leve para n8n/FFmpeg (menos memória). */
+const CAPTURE_FRAMES = 120;
+const DURATION_MS = Math.round((CAPTURE_FRAMES / 24) * 1000);
 export { DURATION_MS };
 
 /** Progress 0..1 no tempo t (ms), com delay e duration em segundos. */
