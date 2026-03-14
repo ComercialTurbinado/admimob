@@ -153,7 +153,9 @@ export default function PosterVideo() {
           windowWidth: 1080,
           windowHeight: 1920,
         });
-        const imageBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+        const imageBase64 = canvas.toDataURL('image/jpeg', 1).split(',')[1];
+        canvas.width = 0;
+        canvas.height = 0;
         const frameNumber = i + 1;
         const frameName = `frame_${String(frameNumber).padStart(4, '0')}.jpg`;
         const payload = {
@@ -182,6 +184,14 @@ export default function PosterVideo() {
         }
         if (!res?.ok) throw new Error(`Webhook frame ${frameNumber}: ${res?.status ?? 'network error'}`);
         setCaptureStatus((s) => (s ? { ...s, current: i + 1 } : null));
+        // Pequena pausa entre cada frame para não sobrecarregar o webhook (n8n/servidor)
+        if (i < TOTAL_FRAMES - 1) {
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        // Pausa maior a cada 40 frames para aliviar memória no browser
+        if ((i + 1) % 40 === 0 && i < TOTAL_FRAMES - 1) {
+          await new Promise((r) => setTimeout(r, 2200));
+        }
       }
 
       setCaptureStep(null);
