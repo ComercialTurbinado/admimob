@@ -153,25 +153,34 @@ export default function PosterVideo() {
           windowWidth: 1080,
           windowHeight: 1920,
         });
-        const imageBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
         const frameNumber = i + 1;
         const frameName = `frame_${String(frameNumber).padStart(4, '0')}.jpg`;
-        const res = await fetch(effectiveWebhookUrl, {
+        const payload = {
+          frame_number: frameNumber,
+          total_frames: TOTAL_FRAMES,
+          frame_name: frameName,
+          image_base64: imageBase64,
+          listing_id: Number(id),
+          imobname: listing?.imobname ?? '',
+          advertiserCode: listing?.advertiserCode ?? '',
+          mime_type: 'image/jpeg',
+          timestamp_ms: Math.round(i * INTERVAL_MS),
+        };
+        let res = await fetch(effectiveWebhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            frame_number: frameNumber,
-            total_frames: TOTAL_FRAMES,
-            frame_name: frameName,
-            image_base64: imageBase64,
-            listing_id: Number(id),
-            imobname: listing?.imobname ?? '',
-            advertiserCode: listing?.advertiserCode ?? '',
-            mime_type: 'image/jpeg',
-            timestamp_ms: Math.round(i * INTERVAL_MS),
-          }),
-        });
-        if (!res.ok) throw new Error(`Webhook ${res.status}`);
+          body: JSON.stringify(payload),
+        }).catch((e) => null);
+        if (!res?.ok) {
+          await new Promise((r) => setTimeout(r, 2000));
+          res = await fetch(effectiveWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }).catch((e) => null);
+        }
+        if (!res?.ok) throw new Error(`Webhook frame ${frameNumber}: ${res?.status ?? 'network error'}`);
         setCaptureStatus((s) => (s ? { ...s, current: i + 1 } : null));
       }
 
