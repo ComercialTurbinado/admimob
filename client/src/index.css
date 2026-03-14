@@ -560,6 +560,11 @@ input, textarea {
   color: var(--muted-poster);
 }
 
+/* Último .stat ocupa a linha inteira quando o total é ímpar (ex.: 5 itens em grid 2 colunas = 3ª linha só o último) */
+.poster-preview .stats .stat:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .poster-preview .amenities {
   padding: 32px 58px 0;
   flex-shrink: 0;

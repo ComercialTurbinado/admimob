@@ -332,7 +332,16 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             >
               Lazer e comodidades
             </h3>
-            <div className="amen-grid">
+            <div
+              className="amen-grid"
+              style={{
+                gridTemplateColumns: (() => {
+                  const n = leisure.length;
+                  const cols = n <= 4 ? n : n <= 6 ? 3 : 4;
+                  return `repeat(${cols}, 1fr)`;
+                })(),
+              }}
+            >
               {leisure.map((item, i) => {
                 const label = getAmenityLabel(item?.name);
                 const value = item?.value ?? item;
