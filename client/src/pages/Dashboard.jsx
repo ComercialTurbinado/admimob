@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [loadingSeed, setLoadingSeed] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importingUrl, setImportingUrl] = useState(false);
+  const [importMsg, setImportMsg] = useState(null);
+  const [lastImportedClientId, setLastImportedClientId] = useState(null);
 
   const searchLower = (search || '').trim().toLowerCase();
   const filtered = searchLower
@@ -82,6 +86,33 @@ export default function Dashboard() {
       setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? API_NOT_RESPONDING_MSG : msg);
     } finally {
       setLoadingSeed(false);
+    }
+  }
+
+  async function handleImportByLink() {
+    if (!importUrl.trim()) return;
+    setImportingUrl(true);
+    setImportMsg(null);
+    try {
+      const res = await fetch(API + '/listings/import-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setImportMsg(data.message || 'Imóvel importado.');
+      setImportUrl('');
+      if (data.client_id) {
+        setLastImportedClientId(data.client_id);
+        await loadData();
+      } else {
+        setLastImportedClientId(null);
+      }
+    } catch (e) {
+      setImportMsg('Erro: ' + (e.message || 'Falha na importação'));
+    } finally {
+      setImportingUrl(false);
     }
   }
 
@@ -144,6 +175,40 @@ export default function Dashboard() {
         <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
           Configure os links em <Link to="/config">Configurações</Link> (planos com URL).
         </p>
+      </section>
+
+      <section className="card" style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Importar imóvel por link</h2>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          Cole o link do anúncio (ZAP, Viva Real, etc.). O sistema puxa as informações pelo webhook de captação. Se o cliente (imobiliária) não existir, um novo será criado e o imóvel cadastrado nele.
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="url"
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            placeholder="https://..."
+            style={{ flex: 1, minWidth: 220, padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
+            onKeyDown={(e) => e.key === 'Enter' && handleImportByLink()}
+            aria-label="Link do imóvel"
+          />
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleImportByLink}
+            disabled={importingUrl || !importUrl.trim() || !!apiError}
+          >
+            {importingUrl ? 'Importando...' : 'Importar'}
+          </button>
+        </div>
+        {importMsg && (
+          <p style={{ marginTop: '0.75rem', marginBottom: 0, color: importMsg.startsWith('Erro') ? 'var(--danger)' : 'var(--success)' }}>
+            {importMsg}
+            {lastImportedClientId && (
+              <> <Link to={'/cliente/' + lastImportedClientId + '/area'}>Ver área do cliente →</Link></>
+            )}
+          </p>
+        )}
       </section>
 
       <section>

@@ -739,12 +739,33 @@ app.post('/api/listings/import-from-url', async (req, res) => {
     }
     const listing = Array.isArray(data) ? data[0] : data;
     if (listing && (listing.carousel_images || listing.title)) {
+      let effectiveClientId = client_id ?? null;
+      if (effectiveClientId == null) {
+        const imobname = (listing.imobname || listing.advertiserName || listing.title || 'Cliente').trim() || 'Cliente';
+        const existing = await db.prepare('SELECT id FROM clients WHERE TRIM(LOWER(name)) = TRIM(LOWER(?))').get(imobname);
+        if (existing) {
+          effectiveClientId = existing.id;
+        } else {
+          const pragmaRows = await db.prepare('PRAGMA table_info(clients)').all();
+          const existingCols = (pragmaRows || []).map((c) => c.name);
+          const insertCols = CLIENT_COLUMNS.filter((c) => !['id', 'created_at', 'updated_at'].includes(c) && existingCols.includes(c));
+          const placeholders = insertCols.map(() => '?').join(', ');
+          const values = insertCols.map((col) => {
+            if (col === 'name') return imobname;
+            if (col === 'logo_url') return listing.logoimob || null;
+            if (col === 'status') return 'lead';
+            return null;
+          });
+          const clientResult = await db.prepare(`INSERT INTO clients (${insertCols.join(', ')}) VALUES (${placeholders})`).run(...values);
+          effectiveClientId = clientResult.lastInsertRowid;
+        }
+      }
       const raw = JSON.stringify(listing);
       const result = await db.prepare(`
         INSERT INTO listings (client_id, source_url, raw_data, selected_images, webhook_payload)
         VALUES (?, ?, ?, ?, ?)
-      `).run(client_id ?? null, url, raw, null, null);
-      return res.status(201).json({ ok: true, id: result.lastInsertRowid, message: 'Imóvel cadastrado.' });
+      `).run(effectiveClientId, url, raw, null, null);
+      return res.status(201).json({ ok: true, id: result.lastInsertRowid, client_id: effectiveClientId, message: 'Imóvel cadastrado.' });
     }
     res.json({ ok: true, message: 'Webhook disparado.', raw: text });
   } catch (e) {
