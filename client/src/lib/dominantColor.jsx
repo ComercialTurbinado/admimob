@@ -74,14 +74,14 @@ function quantize(v, levels = 16) {
 }
 
 /**
- * Extrai a cor predominante da imagem em url (evita branco/preto puro).
- * Usa canvas; requer CORS ou mesma origem (ex.: proxy).
- * @param {string} url - URL da imagem (logo)
- * @returns {Promise<string|null>} - Cor em hex #rrggbb ou null se falhar
+ * Extrai a cor predominante: agrupa pixels por cor similar,
+ * usa a média real dos pixels do grupo (cor exata da imagem) e
+ * prioriza a mais saturada entre as top (cor de marca).
+ * skipLight/skipDark: exclui pixels muito claros ou escuros (0-1).
  */
-function extractDominant(data, skipLight, skipDark) {
-  const count = {};
-  const levels = 8;
+function extractDominant(data, skipLight = 0.95, skipDark = 0.08) {
+  const levels = 12;
+  const buckets = {};
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
     if (a < 128) continue;
@@ -91,16 +91,31 @@ function extractDominant(data, skipLight, skipDark) {
     const qg = quantize(g, levels);
     const qb = quantize(b, levels);
     const key = `${qr},${qg},${qb}`;
-    count[key] = (count[key] || 0) + 1;
+    if (!buckets[key]) buckets[key] = { count: 0, sumR: 0, sumG: 0, sumB: 0 };
+    const bkt = buckets[key];
+    bkt.count += 1;
+    bkt.sumR += r;
+    bkt.sumG += g;
+    bkt.sumB += b;
   }
-  let max = 0;
-  let bestKey = null;
-  for (const k of Object.keys(count)) {
-    if (count[k] > max) { max = count[k]; bestKey = k; }
+  const entries = Object.entries(buckets)
+    .map(([key, b]) => ({
+      key,
+      count: b.count,
+      r: Math.round(b.sumR / b.count),
+      g: Math.round(b.sumG / b.count),
+      b: Math.round(b.sumB / b.count),
+    }))
+    .sort((a, b) => b.count - a.count);
+  if (entries.length === 0) return null;
+  const top = entries.slice(0, 8);
+  let best = top[0];
+  let bestSat = 0;
+  for (const e of top) {
+    const { s } = rgbToHsl(e.r, e.g, e.b);
+    if (s > bestSat) { bestSat = s; best = e; }
   }
-  if (!bestKey) return null;
-  const [r, g, b] = bestKey.split(',').map(Number);
-  return rgbToHex(r, g, b);
+  return rgbToHex(best.r, best.g, best.b);
 }
 
 export function getDominantColorFromImageUrl(url) {

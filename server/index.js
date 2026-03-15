@@ -395,6 +395,17 @@ function videosFromFolderListing(folderListing, baseUrl) {
   return urls;
 }
 
+async function listingWithClient(r, raw) {
+  const listing = { id: r.id, client_id: r.client_id, ...raw };
+  if (r.client_id) {
+    try {
+      const c = await db.prepare('SELECT email, phone, phone_secondary, website, instagram FROM clients WHERE id = ?').get(r.client_id);
+      if (c) listing.client = { email: c.email, phone: c.phone, phone_secondary: c.phone_secondary, website: c.website, instagram: c.instagram };
+    } catch (_) {}
+  }
+  return listing;
+}
+
 app.get('/api/listings/:id/materiais', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
@@ -417,12 +428,13 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
     // Retornar cache se existir e não foi solicitada atualização
     if (!refresh && materiaisCache.has(listingId)) {
       const cached = materiaisCache.get(listingId);
+      const listing = await listingWithClient(r, raw);
       return res.json({
         baseUrl: cached.baseUrl,
         files: cached.files,
         folderListing: cached.folderListing ?? null,
         folderBaseUrl: cached.folderBaseUrl ?? undefined,
-        listing: { id: r.id, client_id: r.client_id, ...raw },
+        listing,
         webhook_consulted: cached.webhook_consulted,
         webhook_raw_response: cached.webhook_raw_response,
         webhook_status: cached.webhook_status,
@@ -492,12 +504,13 @@ app.get('/api/listings/:id/materiais', async (req, res) => {
 
     materiaisCache.set(listingId, { baseUrl, files, folderListing, folderBaseUrl, webhook_consulted, webhook_raw_response, webhook_status });
 
+    const listing = await listingWithClient(r, raw);
     res.json({
       baseUrl,
       files,
       folderListing,
       folderBaseUrl: folderBaseUrl || undefined,
-      listing: { id: r.id, client_id: r.client_id, ...raw },
+      listing,
       webhook_consulted,
       webhook_raw_response: webhook_raw_response,
       webhook_status: webhook_status,
