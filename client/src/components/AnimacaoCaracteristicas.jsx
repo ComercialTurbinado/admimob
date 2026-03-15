@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { API } from '../api';
 import { getAmenityLabel, getAmenityIcon, CHARACTERISTIC_ICONS } from '../lib/amenitiesLabels';
+import { getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
 
 /** Usa proxy para imagens externas: evita 403 (hotlink do Viva Real/etc.) e CORS/taint no Browserless. */
 function proxyIfNeeded(url, useProxy) {
@@ -68,6 +69,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const [scale, setScale] = useState(1);
   const [heroProxyFailed, setHeroProxyFailed] = useState(false);
   const [logoProxyFailed, setLogoProxyFailed] = useState(false);
+  const [posterPalette, setPosterPalette] = useState(null);
   const wrapRef = useRef(null);
   const amenities = listing?.amenitiesList || listing?.['amenities-list'] || [];
   const logoimob = listing?.logoimob;
@@ -103,6 +105,25 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   }, [onEnd, stepMode]);
 
   useEffect(() => {
+    const raw = listing?.logoimob;
+    if (!raw || typeof raw !== 'string') {
+      setPosterPalette(null);
+      return;
+    }
+    const logoUrl = proxyIfNeeded(raw, true);
+    if (!logoUrl.startsWith('http') && !logoUrl.startsWith('/')) {
+      setPosterPalette(null);
+      return;
+    }
+    let cancelled = false;
+    getDominantColorFromImageUrl(logoUrl).then((hex) => {
+      if (cancelled || !hex) return;
+      setPosterPalette(getPaletteFromPrimary(hex));
+    });
+    return () => { cancelled = true; };
+  }, [listing?.logoimob]);
+
+  useEffect(() => {
     if (videoMode) {
       setScale(1);
       return;
@@ -127,6 +148,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
       ref={wrapRef}
       className="poster-preview"
       style={{
+        ...(posterPalette || {}),
         position: 'relative',
         width: '100%',
         height: '100%',
@@ -259,15 +281,16 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         </section>
 
         {/* STATS */}
-        {characteristics.length > 0 && (
+        {characteristics.length > 0 && (() => {
+          const n = characteristics.length;
+          const cols = n <= 5 ? n : n === 6 ? 3 : n <= 8 ? 4 : 5;
+          const lastFullWidth = n > cols && n % cols === 1;
+          return (
           <section
             className="stats"
+            data-last-full-width={lastFullWidth ? 'true' : undefined}
             style={{
-              gridTemplateColumns: (() => {
-                const n = characteristics.length;
-                const cols = n <= 5 ? n : n === 6 ? 3 : n <= 8 ? 4 : 5;
-                return `repeat(${cols}, 1fr)`;
-              })(),
+              gridTemplateColumns: `repeat(${cols}, 1fr)`,
               ...(stepMode
                 ? {
                     background: progressAt(tMs, HERO_ANIM_END_S + 1.7, 0.4) >= 1 ? '#fafafa' : '#fff',
@@ -316,10 +339,46 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
               );
             })}
           </section>
-        )}
+          );
+        })()}
 
         {/* AMENITIES */}
-        {leisure.length > 0 && (
+        {leisure.length > 0 && (() => {
+          const n = leisure.length;
+          const cols = n <= 6 ? 3 : 4;
+          const rem = n % cols;
+          const hasLastFull = rem === 1 && n > cols;
+          const hasLastTwo = rem === 2 && n > cols;
+
+          const renderAmen = (item, i, delayOffset = 0) => {
+            const label = getAmenityLabel(item?.name);
+            const value = item?.value ?? item;
+            const text = value && typeof value === 'string' && label !== value ? value : label;
+            const iconName = getAmenityIcon(item?.name);
+            const delay = HERO_ANIM_END_S + 2.7 + (i + delayOffset) * 0.12;
+            return (
+              <div
+                key={i}
+                className="amen"
+                style={stepMode
+                  ? {
+                      opacity: progressAt(tMs, delay, 0.4),
+                      transform: `translateY(${14 - 14 * progressAt(tMs, delay, 0.4)}px)`,
+                      transition: 'none',
+                    }
+                  : {
+                      opacity: started ? 1 : 0,
+                      transform: started ? 'translateY(0)' : 'translateY(14px)',
+                      transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
+                    }}
+              >
+                <span className="material-symbols-outlined">{iconName}</span>
+                <span className="text">{text}</span>
+              </div>
+            );
+          };
+
+          return (
           <section className="amenities">
             <h3
               style={stepMode
@@ -336,46 +395,36 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             >
               Lazer e comodidades
             </h3>
-            <div
-              className="amen-grid"
-              style={{
-                gridTemplateColumns: (() => {
-                  const n = leisure.length;
-                  const cols = n <= 4 ? n : n <= 6 ? 3 : 4;
-                  return `repeat(${cols}, 1fr)`;
-                })(),
-              }}
-            >
-              {leisure.map((item, i) => {
-                const label = getAmenityLabel(item?.name);
-                const value = item?.value ?? item;
-                const text = value && typeof value === 'string' && label !== value ? value : label;
-                const iconName = getAmenityIcon(item?.name);
-                const delay = HERO_ANIM_END_S + 2.7 + i * 0.12;
-                return (
-                  <div
-                    key={i}
-                    className="amen"
-                    style={stepMode
-                      ? {
-                          opacity: progressAt(tMs, delay, 0.4),
-                          transform: `translateY(${14 - 14 * progressAt(tMs, delay, 0.4)}px)`,
-                          transition: 'none',
-                        }
-                      : {
-                          opacity: started ? 1 : 0,
-                          transform: started ? 'translateY(0)' : 'translateY(14px)',
-                          transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
-                        }}
-                  >
-                    <span className="material-symbols-outlined">{iconName}</span>
-                    <span className="text">{text}</span>
-                  </div>
-                );
-              })}
-            </div>
+            {hasLastFull ? (
+              <div className="amen-grid amen-grid--split">
+                <div className="amen-grid__main" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '20px 24px' }}>
+                  {leisure.slice(0, n - 1).map((item, i) => renderAmen(item, i))}
+                </div>
+                <div className="amen-grid__last-full">
+                  {renderAmen(leisure[n - 1], n - 1, n - 1)}
+                </div>
+              </div>
+            ) : hasLastTwo ? (
+              <div className="amen-grid amen-grid--split">
+                <div className="amen-grid__main" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '20px 24px' }}>
+                  {leisure.slice(0, n - 2).map((item, i) => renderAmen(item, i))}
+                </div>
+                <div className="amen-grid__last-row">
+                  {renderAmen(leisure[n - 2], n - 2, n - 2)}
+                  {renderAmen(leisure[n - 1], n - 1, n - 1)}
+                </div>
+              </div>
+            ) : (
+              <div
+                className="amen-grid"
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '20px 24px' }}
+              >
+                {leisure.map((item, i) => renderAmen(item, i))}
+              </div>
+            )}
           </section>
-        )}
+          );
+        })()}
 
         <div className="spacer" />
 

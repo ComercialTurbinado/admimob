@@ -6,6 +6,7 @@ import ClienteArea from './pages/ClienteArea';
 import Producao from './pages/Producao';
 import Materiais from './pages/Materiais';
 import PosterVideo from './pages/PosterVideo';
+import SimulacaoLayouts from './pages/SimulacaoLayouts';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/cliente/:clientId/produto/:id/materiais" element={<Materiais />} />
           <Route path="/cliente/:clientId/produto/:id/poster-video" element={<PosterVideo />} />
           <Route path="/poster-video/:id" element={<PosterVideo />} />
+          <Route path="/simulacao-layouts" element={<SimulacaoLayouts />} />
           <Route path="/producao/:id" element={<Producao />} />
         </Routes>
       </div>

@@ -481,7 +481,7 @@ input, textarea {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--primary);
-  background: rgba(17, 82, 212, 0.1);
+  background: var(--primary-tint, rgba(17, 82, 212, 0.1));
   padding: 12px 20px;
   border-radius: 12px;
 }
@@ -560,6 +560,11 @@ input, textarea {
   color: var(--muted-poster);
 }
 
+/* Opção 1: quando a quantidade é ímpar e maior que o mínimo, último .stat ocupa a linha inteira */
+.poster-preview .stats[data-last-full-width="true"] .stat:last-child {
+  grid-column: 1 / -1;
+}
+
 .poster-preview .amenities {
   padding: 32px 58px 0;
   flex-shrink: 0;
@@ -576,6 +581,25 @@ input, textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px 24px;
+}
+
+/* Layout em HTML: quando a última linha tem 1 ou 2 itens, usamos blocos separados para harmonia */
+.poster-preview .amen-grid--split {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.poster-preview .amen-grid__last-full {
+  width: 100%;
+}
+
+/* Última linha com 2 itens: grid 1fr 1fr para os dois ficarem exatamente do mesmo tamanho */
+.poster-preview .amen-grid__last-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+  width: 100%;
 }
 
 .poster-preview .amen {
@@ -679,7 +703,9 @@ input, textarea {
 .poster-preview .poster[data-layout="cards"] .price { font-size: 96px; line-height: 1; color: var(--primary); font-weight: 900; margin-bottom: 16px; }
 .poster-preview .poster[data-layout="cards"] .location { font-size: 36px; font-weight: 600; justify-content: center; gap: 12px; }
 .poster-preview .poster[data-layout="cards"] .location .material-symbols-outlined { font-size: 36px; }
-.poster-preview .poster[data-layout="cards"] .stats { gap: 32px; padding: 0 48px 56px; padding-top: 0; background: transparent !important; border: none !important; }
+.poster-preview .poster[data-layout="cards"] .stats { grid-template-columns: repeat(2, 1fr) !important; gap: 32px; padding: 0 48px 56px; padding-top: 0; background: transparent !important; border: none !important; }
+/* Opção 2: max 2 por linha; quando ímpar, último .stat ocupa a linha inteira */
+.poster-preview .poster[data-layout="cards"] .stats .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .poster-preview .poster[data-layout="cards"] .stat { flex-direction: row; align-items: center; text-align: left; gap: 24px; padding: 20px; background: rgba(17,82,212,0.05); border-radius: 16px; border: 1px solid rgba(17,82,212,0.12); }
 .poster-preview .poster[data-layout="cards"] .stat .material-symbols-outlined { width: 80px; min-width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #fff; background: var(--primary); border-radius: 12px; flex-shrink: 0; }
 .poster-preview .poster[data-layout="cards"] .stat .stat-content { flex: 1; padding: 0; align-items: flex-start; justify-content: center; gap: 4px; }
@@ -689,6 +715,8 @@ input, textarea {
 .poster-preview .poster[data-layout="cards"] .amenities h3 { font-size: 40px; font-weight: 700; margin-bottom: 32px; padding-left: 24px; border-left: 8px solid var(--primary); text-align: left; }
 .poster-preview .poster[data-layout="cards"] .amenities h3::before { display: none; }
 .poster-preview .poster[data-layout="cards"] .amen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.poster-preview .poster[data-layout="cards"] .amen-grid.amen-grid--split { display: flex; flex-direction: column; gap: 24px; }
+.poster-preview .poster[data-layout="cards"] .amen-grid__last-row { gap: 24px; }
 .poster-preview .poster[data-layout="cards"] .amen { flex-direction: column; min-width: 0; padding: 24px 16px; text-align: center; }
 .poster-preview .poster[data-layout="cards"] .amen .material-symbols-outlined { font-size: 48px; margin-bottom: 12px; }
 .poster-preview .poster[data-layout="cards"] .amen .text { font-size: 26px; font-weight: 600; line-height: 1.1; }
