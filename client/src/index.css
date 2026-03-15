@@ -376,7 +376,9 @@ input, textarea {
 .poster-preview {
   --primary: #1152d4;
   --text-poster: #0b1220;
+  --bg-poster: #0b1220;
   --muted-poster: #64748b;
+  --detail-poster: #64748b;
   --line-poster: #e6e8ee;
   --amen-bg: #f1f5fb;
   --amen-bd: #e7edf8;
@@ -421,7 +423,6 @@ input, textarea {
 }
 
 .poster-preview .brand-card {
-  width: 250px;
   padding: 44px 40px 34px;
   border-radius: 22px;
   background: #ffffff;
@@ -430,6 +431,7 @@ input, textarea {
   flex-direction: column;
   align-items: center;
   gap: 18px;
+  width: fit-content;
 }
 
 .poster-preview .brand-icon {
@@ -449,8 +451,6 @@ input, textarea {
 }
 
 .poster-preview .brand-icon img {
-  max-width: 152px;
-  max-height: 152px;
   object-fit: contain;
 }
 
@@ -480,8 +480,8 @@ input, textarea {
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--primary);
-  background: var(--primary-tint, rgba(17, 82, 212, 0.1));
+  color: #fff;
+  background: var(--bg-poster);
   padding: 12px 20px;
   border-radius: 12px;
 }
@@ -489,7 +489,7 @@ input, textarea {
 .poster-preview .ref {
   font-size: 16px;
   font-weight: 700;
-  color: var(--muted-poster);
+  color: var(--detail-poster);
 }
 
 .poster-preview .price {
@@ -534,7 +534,7 @@ input, textarea {
 
 .poster-preview .stat .material-symbols-outlined {
   font-size: 66px;
-  color: var(--primary);
+  color: var(--detail-poster);
   font-variation-settings: 'FILL' 0, 'wght' 420, 'GRAD' 0, 'opsz' 48;
 }
 
@@ -557,7 +557,7 @@ input, textarea {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted-poster);
+  color: var(--detail-poster);
 }
 
 /* Opção 1: quando a quantidade é ímpar e maior que o mínimo, último .stat ocupa a linha inteira */
@@ -614,7 +614,7 @@ input, textarea {
 
 .poster-preview .amen .material-symbols-outlined {
   font-size: 44px;
-  color: var(--primary);
+  color: var(--detail-poster);
   font-variation-settings: 'FILL' 0, 'wght' 520, 'GRAD' 0, 'opsz' 48;
 }
 
@@ -637,7 +637,7 @@ input, textarea {
 }
 
 .poster-preview .site {
-  color: var(--primary);
+  color: var(--text-poster);
   font-weight: 900;
   font-size: 22px;
   margin-bottom: 16px;
@@ -691,7 +691,7 @@ input, textarea {
 .poster-preview .poster[data-layout="destaque"] .location { order: 3; }
 
 .poster-preview .poster[data-layout="minimal"] .info { padding: 36px 56px 28px; }
-.poster-preview .poster[data-layout="minimal"] .badge-poster { background: transparent; border: 2px solid var(--primary); }
+.poster-preview .poster[data-layout="minimal"] .badge-poster { background: transparent; border: 2px solid var(--bg-poster); color: var(--bg-poster); }
 .poster-preview .poster[data-layout="minimal"] .stats { background: #fff !important; border: none !important; border-top: 1px solid var(--line-poster) !important; border-bottom: 1px solid var(--line-poster) !important; }
 .poster-preview .poster[data-layout="minimal"] .amen { background: transparent; border: 1px solid var(--amen-bd); }
 .poster-preview .poster[data-layout="minimal"] .footer-poster { padding-top: 24px; }
@@ -707,7 +707,7 @@ input, textarea {
 /* Opção 2: max 2 por linha; quando ímpar, último .stat ocupa a linha inteira */
 .poster-preview .poster[data-layout="cards"] .stats .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .poster-preview .poster[data-layout="cards"] .stat { flex-direction: row; align-items: center; text-align: left; gap: 24px; padding: 20px; background: rgba(17,82,212,0.05); border-radius: 16px; border: 1px solid rgba(17,82,212,0.12); }
-.poster-preview .poster[data-layout="cards"] .stat .material-symbols-outlined { width: 80px; min-width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #fff; background: var(--primary); border-radius: 12px; flex-shrink: 0; }
+.poster-preview .poster[data-layout="cards"] .stat .material-symbols-outlined { width: 80px; min-width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #fff; background: var(--bg-poster); border-radius: 12px; flex-shrink: 0; }
 .poster-preview .poster[data-layout="cards"] .stat .stat-content { flex: 1; padding: 0; align-items: flex-start; justify-content: center; gap: 4px; }
 .poster-preview .poster[data-layout="cards"] .stat .stat-name { display: block; font-size: 20px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; }
 .poster-preview .poster[data-layout="cards"] .stat .label { font-size: 48px; font-weight: 700; }

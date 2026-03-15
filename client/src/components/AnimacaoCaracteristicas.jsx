@@ -1,7 +1,29 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { API } from '../api';
 import { getAmenityLabel, getAmenityIcon, CHARACTERISTIC_ICONS } from '../lib/amenitiesLabels';
 import { getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
+
+/**
+ * Tamanho do box do logo a partir do intrinsic size (aspect ratio preservado).
+ * Quadrado ou próximo: altura 20vh, largura proporcional.
+ * Outros (retangular vertical/horizontal): altura mínima 25vh, largura proporcional.
+ * No hero o box do logo é fixo 300×300px; imagem em object-fit: contain.
+ */
+function getLogoBoxSize(naturalW, naturalH, artHeight = ART_HEIGHT, artWidth = ART_WIDTH) {
+  if (!naturalW || !naturalH || naturalW <= 0 || naturalH <= 0) return { width: 186, height: 186 };
+  const ratio = naturalW / naturalH;
+  const vh20 = 0.2 * artHeight;
+  const vh25 = 0.25 * artHeight;
+  const isSquare = ratio >= 0.85 && ratio <= 1.15;
+  let height = isSquare ? vh20 : vh25;
+  let width = height * ratio;
+  const maxW = 0.5 * artWidth;
+  if (width > maxW) {
+    width = maxW;
+    height = width / ratio;
+  }
+  return { width: Math.round(width), height: Math.round(height) };
+}
 
 /** Usa proxy para imagens externas: evita 403 (hotlink do Viva Real/etc.) e CORS/taint no Browserless. */
 function proxyIfNeeded(url, useProxy) {
@@ -77,7 +99,12 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const [heroProxyFailed, setHeroProxyFailed] = useState(false);
   const [logoProxyFailed, setLogoProxyFailed] = useState(false);
   const [posterPalette, setPosterPalette] = useState(null);
+  const [logoNaturalSize, setLogoNaturalSize] = useState(null);
   const wrapRef = useRef(null);
+  const logoBoxSize = useMemo(
+    () => getLogoBoxSize(logoNaturalSize?.w, logoNaturalSize?.h),
+    [logoNaturalSize?.w, logoNaturalSize?.h]
+  );
   const client = listing?.client || {};
   const amenities = listing?.amenitiesList || listing?.['amenities-list'] || [];
   const logoimob = listing?.logoimob;
@@ -118,6 +145,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
     const raw = listing?.logoimob;
     if (!raw || typeof raw !== 'string') {
       setPosterPalette(null);
+      setLogoNaturalSize(null);
       return;
     }
     const logoUrl = proxyIfNeeded(raw, true);
@@ -126,9 +154,9 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
       return;
     }
     let cancelled = false;
-    getDominantColorFromImageUrl(logoUrl).then((hex) => {
-      if (cancelled || !hex) return;
-      setPosterPalette(getPaletteFromPrimary(hex));
+    getDominantColorFromImageUrl(logoUrl).then((result) => {
+      if (cancelled || !result || !result.dominant) return;
+      setPosterPalette(getPaletteFromPrimary(result.dominant, result.darkest ?? null, result.lightest ?? null));
     });
     return () => { cancelled = true; };
   }, [listing?.logoimob]);
@@ -227,9 +255,23 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                 }}
           >
             <div className="brand-card">
-              <div className="brand-icon">
+              <div
+                className="brand-icon"
+                style={logoimob ? { width: 300, height: 300 } : undefined}
+              >
                 {logoimob ? (
-                  <img src={logoImg} alt="" crossOrigin="anonymous" onError={() => videoMode && setLogoProxyFailed(true)} />
+                  <img
+                    src={logoImg}
+                    alt=""
+                    crossOrigin="anonymous"
+                    onError={() => videoMode && setLogoProxyFailed(true)}
+                    onLoad={(e) => {
+                      const img = e.target;
+                      if (img?.naturalWidth && img?.naturalHeight)
+                        setLogoNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
                 ) : (
                   <span className="material-symbols-outlined">apartment</span>
                 )}
@@ -239,7 +281,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         </section>
         {layout === 'cards' && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 600, pointerEvents: 'none', display: 'flex', alignItems: 'flex-end', padding: '0 0 32px 32px' }}>
-            <span style={{ background: 'var(--primary)', color: '#fff', padding: '8px 24px', borderRadius: 8, fontWeight: 700, fontSize: 20, letterSpacing: '0.08em', opacity: stepMode ? progressAt(tMs, HERO_ANIM_END_S, 0.2) : started ? 1 : 0, transition: stepMode ? 'none' : `opacity 0.5s ease ${HERO_ANIM_END_S + 0.2}s` }}>{refText}</span>
+            <span style={{ background: 'var(--bg-poster)', color: '#fff', padding: '8px 24px', borderRadius: 8, fontWeight: 700, fontSize: 20, letterSpacing: '0.08em', opacity: stepMode ? progressAt(tMs, HERO_ANIM_END_S, 0.2) : started ? 1 : 0, transition: stepMode ? 'none' : `opacity 0.5s ease ${HERO_ANIM_END_S + 0.2}s` }}>{refText}</span>
           </div>
         )}
         {/* INFO */}
@@ -522,7 +564,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                 marginBottom: 150,
               }}
             >
-              <div style={{ width: 330, height: 330, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <div style={{ width: logoBoxSize.width, height: logoBoxSize.height, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {logoimob ? (
                   <img src={logoImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (

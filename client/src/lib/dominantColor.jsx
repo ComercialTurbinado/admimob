@@ -43,6 +43,25 @@ function rgbToHsl(r, g, b) {
   return ({ h: h * 360, s, l });
 }
 
+/** Luminância relativa (WCAG) para hex; retorna 0–1 */
+function relativeLuminance(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  const [rs, gs, bs] = [rgb.r, rgb.g, rgb.b].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+/** Contraste entre duas cores (ratio >= 1). Branco ≈ 1, preto ≈ 0. */
+function contrastRatio(hex1, hex2) {
+  const L1 = relativeLuminance(hex1);
+  const L2 = relativeLuminance(hex2);
+  const [lo, hi] = L1 <= L2 ? [L1, L2] : [L2, L1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 /** HSL -> RGB 0-255 */
 function hslToRgb(h, s, l) {
   h /= 360;
@@ -74,12 +93,13 @@ function quantize(v, levels = 16) {
 }
 
 /**
- * Extrai a cor predominante: agrupa pixels por cor similar,
- * usa a média real dos pixels do grupo (cor exata da imagem) e
- * prioriza a mais saturada entre as top (cor de marca).
- * skipLight/skipDark: exclui pixels muito claros ou escuros (0-1).
+ * Extrai cor predominante, mais escura e mais clara do logo em um único passe.
+ * dominant: mais saturada entre as top por frequência (cor de marca).
+ * darkest: mais escura entre os grupos com presença significativa (fundos e texto em fundo claro).
+ * lightest: mais clara com presença significativa (detalhes, se tiver contraste com branco).
+ * @returns {{ dominant: string, darkest: string | null, lightest: string | null } | null}
  */
-function extractDominant(data, skipLight = 0.95, skipDark = 0.08) {
+function extractPaletteFromImageData(data, skipLight = 0.95, skipDark = 0.08) {
   const levels = 12;
   const buckets = {};
   for (let i = 0; i < data.length; i += 4) {
@@ -108,6 +128,9 @@ function extractDominant(data, skipLight = 0.95, skipDark = 0.08) {
     }))
     .sort((a, b) => b.count - a.count);
   if (entries.length === 0) return null;
+  const total = entries.reduce((acc, e) => acc + e.count, 0);
+  const minCount = Math.max(1, total * 0.005);
+
   const top = entries.slice(0, 8);
   let best = top[0];
   let bestSat = 0;
@@ -115,9 +138,25 @@ function extractDominant(data, skipLight = 0.95, skipDark = 0.08) {
     const { s } = rgbToHsl(e.r, e.g, e.b);
     if (s > bestSat) { bestSat = s; best = e; }
   }
-  return rgbToHex(best.r, best.g, best.b);
+  const dominant = rgbToHex(best.r, best.g, best.b);
+
+  const withL = entries
+    .filter((e) => e.count >= minCount)
+    .map((e) => ({ ...e, l: rgbToHsl(e.r, e.g, e.b).l }));
+  const byLuminanceAsc = [...withL].sort((a, b) => a.l - b.l);
+  const byLuminanceDesc = [...withL].sort((a, b) => b.l - a.l);
+  const darkestEntry = byLuminanceAsc[0];
+  const lightestEntry = byLuminanceDesc[0];
+  const darkest = darkestEntry ? rgbToHex(darkestEntry.r, darkestEntry.g, darkestEntry.b) : null;
+  const lightest = lightestEntry ? rgbToHex(lightestEntry.r, lightestEntry.g, lightestEntry.b) : null;
+
+  return { dominant, darkest, lightest };
 }
 
+/**
+ * Extrai cor predominante, mais escura e mais clara do logo.
+ * @returns {Promise<{ dominant: string, darkest: string | null, lightest: string | null } | null>}
+ */
 export function getDominantColorFromImageUrl(url) {
   if (!url || typeof url !== 'string') return Promise.resolve(null);
   return new Promise((resolve) => {
@@ -133,9 +172,9 @@ export function getDominantColorFromImageUrl(url) {
         if (!ctx) { resolve(null); return; }
         ctx.drawImage(img, 0, 0, size, size);
         const data = ctx.getImageData(0, 0, size, size).data;
-        let hex = extractDominant(data, 0.95, 0.08);
-        if (!hex) hex = extractDominant(data, 0.99, 0.01);
-        resolve(hex || null);
+        let result = extractPaletteFromImageData(data, 0.95, 0.08);
+        if (!result) result = extractPaletteFromImageData(data, 0.99, 0.01);
+        resolve(result || null);
       } catch (e) {
         if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
           console.warn('[dominantColor] Extração falhou (CORS/taint?):', e?.message || e);
@@ -153,32 +192,51 @@ export function getDominantColorFromImageUrl(url) {
   });
 }
 
+/** Contraste mínimo com branco para usar a cor mais clara em detalhes (WCAG AA para texto grande) */
+const MIN_CONTRAST_DETAIL_ON_WHITE = 3;
+
 /** Valores padrão das variáveis do poster (quando não há logo ou extração falha) */
 const DEFAULT_PALETTE = {
   '--primary': '#1152d4',
   '--text-poster': '#0b1220',
+  '--bg-poster': '#0b1220',
   '--muted-poster': '#64748b',
+  '--detail-poster': '#64748b',
   '--line-poster': '#e6e8ee',
   '--amen-bg': '#f1f5fb',
   '--amen-bd': '#e7edf8',
 };
 
 /**
- * Gera objeto de variáveis CSS para o poster a partir da cor primária (hex).
- * Ajusta contraste e tons para fundo, texto e ícones.
- * @param {string} primaryHex - Cor em #rrggbb
- * @returns {Record<string, string>} - Variáveis CSS (--primary, --text-poster, etc.)
+ * Gera objeto de variáveis CSS para o poster.
+ * darkest: fundos de elementos (badge, pill) e texto em fundo claro (--text-poster).
+ * lightest: detalhes (--detail-poster) só se tiver contraste suficiente com branco.
+ * @param {string} primaryHex - Cor predominante #rrggbb
+ * @param {string | null} [darkestHex] - Cor mais escura do logo (fundos + texto)
+ * @param {string | null} [lightestHex] - Cor mais clara do logo (detalhes, se contraste OK)
+ * @returns {Record<string, string>} - Variáveis CSS
  */
-export function getPaletteFromPrimary(primaryHex) {
+export function getPaletteFromPrimary(primaryHex, darkestHex = null, lightestHex = null) {
   const rgb = hexToRgb(primaryHex);
   if (!rgb) return DEFAULT_PALETTE;
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
   const primary = rgbToHex(rgb.r, rgb.g, rgb.b);
-  const textRgb = hslToRgb(h, Math.min(1, s * 0.8), 0.12);
+  const darkRgb = darkestHex ? hexToRgb(darkestHex) : null;
+  const textRgb = darkRgb
+    ? { r: darkRgb.r, g: darkRgb.g, b: darkRgb.b }
+    : hslToRgb(h, Math.min(1, s * 0.8), 0.12);
   const text = rgbToHex(textRgb.r, textRgb.g, textRgb.b);
+  const bgPoster = darkRgb ? rgbToHex(darkRgb.r, darkRgb.g, darkRgb.b) : text;
+
   const mutedRgb = hslToRgb(h, s * 0.5, 0.45);
   const muted = rgbToHex(mutedRgb.r, mutedRgb.g, mutedRgb.b);
+  const detailFromLightest =
+    lightestHex && contrastRatio(lightestHex, '#ffffff') >= MIN_CONTRAST_DETAIL_ON_WHITE
+      ? lightestHex
+      : null;
+  const detail = detailFromLightest || muted;
+
   const lineRgb = hslToRgb(h, s * 0.2, 0.92);
   const line = rgbToHex(lineRgb.r, lineRgb.g, lineRgb.b);
   const amenBgRgb = hslToRgb(h, s * 0.25, 0.97);
@@ -194,7 +252,9 @@ export function getPaletteFromPrimary(primaryHex) {
     '--primary': primary,
     '--primary-tint': primaryTint,
     '--text-poster': text,
+    '--bg-poster': bgPoster,
     '--muted-poster': muted,
+    '--detail-poster': detail,
     '--line-poster': line,
     '--amen-bg': amenBg,
     '--amen-bd': amenBd,
