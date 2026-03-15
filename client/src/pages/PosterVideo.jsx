@@ -10,7 +10,7 @@ import AnimacaoCaracteristicas, { DURATION_MS } from '../components/AnimacaoCara
  * Capturar frames: ?capture=1 (usa webhook das Configurações) ou ?capture=1&webhook_url=...
  */
 const FPS = 24;
-const TOTAL_FRAMES = 120;
+const TOTAL_FRAMES = 240;
 const INTERVAL_MS = 1000 / FPS;
 
 export default function PosterVideo() {

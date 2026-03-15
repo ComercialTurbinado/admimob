@@ -38,8 +38,8 @@ function proxyIfNeeded(url, useProxy) {
  */
 const ART_WIDTH = 1080;
 const ART_HEIGHT = 1920;
-/** 120 frames a 24 fps = 5 s; mais leve para n8n/FFmpeg (menos memória). */
-const CAPTURE_FRAMES = 120;
+/** 240 frames a 24 fps = 10 s. */
+const CAPTURE_FRAMES = 240;
 const DURATION_MS = Math.round((CAPTURE_FRAMES / 24) * 1000);
 export { DURATION_MS };
 
