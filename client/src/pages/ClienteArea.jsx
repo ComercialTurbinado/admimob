@@ -33,6 +33,8 @@ export default function ClienteArea() {
   const [importing, setImporting] = useState(false);
   const [importingJson, setImportingJson] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [sendingLogo, setSendingLogo] = useState(false);
+  const [msgLogo, setMsgLogo] = useState(null);
 
   useEffect(() => {
     if (isDemo) {
@@ -56,6 +58,26 @@ export default function ClienteArea() {
   async function refetchListings() {
     const list = await fetch(API + '/listings?client_id=' + id).then((r) => r.json());
     setListings(Array.isArray(list) ? list : []);
+  }
+
+  async function handleSendLogo() {
+    if (isDemo) return;
+    setSendingLogo(true);
+    setMsgLogo(null);
+    try {
+      const res = await fetch(API + '/send-logo-to-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: Number(id) }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setMsgLogo('Logo enviado para o webhook com sucesso.');
+    } catch (e) {
+      setMsgLogo('Erro: ' + (e.message || 'Falha ao enviar'));
+    } finally {
+      setSendingLogo(false);
+    }
   }
 
   async function removeListing(listingId) {
@@ -168,6 +190,28 @@ export default function ClienteArea() {
           )}
         </div>
       </div>
+
+      {!isDemo && (
+        <section className="card" style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '1.1rem' }}>Enviar logo</h2>
+          <p style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 0.75rem' }}>
+            Envia o logo cadastrado deste cliente para o webhook configurado em Configurações. O webhook recebe <code>client_id</code>, <code>client_name</code> e <code>logo_url</code>.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSendLogo}
+            disabled={sendingLogo}
+          >
+            {sendingLogo ? 'Enviando...' : 'Enviar logo para webhook'}
+          </button>
+          {msgLogo && (
+            <p style={{ marginTop: '0.75rem', color: msgLogo.startsWith('Erro') ? 'var(--danger)' : 'var(--success)', fontSize: '0.9rem' }}>
+              {msgLogo}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="card" style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1.1rem' }}>Adicionar imóvel</h2>

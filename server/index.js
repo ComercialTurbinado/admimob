@@ -47,13 +47,14 @@ app.get('/api/dashboard', async (req, res) => {
     const webhook_frames_done = (await getSetting('webhook_frames_done', '')) || '';
     const browserless_ws_url = (await getSetting('browserless_ws_url', '')) || '';
     const webhook_montar_mp4 = (await getSetting('webhook_montar_mp4', '')) || '';
+    const webhook_logo = (await getSetting('webhook_logo', '')) || '';
     let plans = await getSetting('plans', [
       { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
       { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, webhook_logo, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -61,7 +62,7 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, webhook_logo, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
@@ -70,8 +71,34 @@ app.put('/api/dashboard', async (req, res) => {
     if (webhook_frames_done !== undefined) await setSetting('webhook_frames_done', webhook_frames_done);
     if (browserless_ws_url !== undefined) await setSetting('browserless_ws_url', browserless_ws_url);
     if (webhook_montar_mp4 !== undefined) await setSetting('webhook_montar_mp4', webhook_montar_mp4);
+    if (webhook_logo !== undefined) await setSetting('webhook_logo', webhook_logo);
     if (plans !== undefined) await setSetting('plans', plans);
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Envia logo do cliente para o webhook configurado (ex.: n8n). Payload: client_id, client_name, logo_url. */
+app.post('/api/send-logo-to-webhook', async (req, res) => {
+  try {
+    const webhookUrl = (await getSetting('webhook_logo', '')).trim();
+    if (!webhookUrl) return res.status(400).json({ error: 'Configure o webhook de logo em Configurações.' });
+    const clientId = req.body?.client_id != null ? Number(req.body.client_id) : null;
+    if (!clientId) return res.status(400).json({ error: 'client_id é obrigatório.' });
+    const r = await db.prepare('SELECT id, name, logo_url FROM clients WHERE id = ?').get(clientId);
+    if (!r) return res.status(404).json({ error: 'Cliente não encontrado.' });
+    const payload = { client_id: r.id, client_name: r.name || '', logo_url: r.logo_url || null };
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      return res.status(502).json({ error: `Webhook respondeu ${response.status}: ${text.slice(0, 200)}` });
+    }
+    res.json({ ok: true, message: 'Logo enviado para o webhook.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

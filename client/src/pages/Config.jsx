@@ -11,6 +11,7 @@ const DEFAULT_DATA = {
   webhook_frames_done: '',
   browserless_ws_url: '',
   webhook_montar_mp4: '',
+  webhook_logo: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -38,6 +39,7 @@ export default function Config() {
           webhook_frames_done: d.webhook_frames_done ?? '',
           browserless_ws_url: d.browserless_ws_url ?? '',
           webhook_montar_mp4: d.webhook_montar_mp4 ?? '',
+          webhook_logo: d.webhook_logo ?? '',
           plans,
         });
       })
@@ -87,6 +89,7 @@ export default function Config() {
           webhook_frames_done: data.webhook_frames_done,
           browserless_ws_url: data.browserless_ws_url,
           webhook_montar_mp4: data.webhook_montar_mp4,
+          webhook_logo: data.webhook_logo,
           plans: data.plans,
         }),
       });
@@ -252,6 +255,19 @@ export default function Config() {
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
             Ao abrir a página <strong>Materiais</strong>, o sistema envia <code>imobname</code> e <code>advertiserCode</code>. O webhook deve responder com array no formato S3 (<code>Key</code>, <code>LastModified</code>, etc.).
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[Logo]</span> Enviar logo do cliente</label>
+          <input
+            name="webhook_logo"
+            type="url"
+            value={data.webhook_logo ?? ''}
+            onChange={(e) => update('webhook_logo', null, e.target.value)}
+            placeholder="https://n8n.../webhook/logo"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Chamado em <strong>Área do cliente → Enviar logo</strong>. Envia <code>client_id</code>, <code>client_name</code>, <code>logo_url</code> (URL do logo cadastrado no cliente).
           </p>
         </div>
       </section>
