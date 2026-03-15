@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { API, API_NOT_RESPONDING_MSG, isLocalhost } from '../api';
+import { API, API_NOT_RESPONDING_MSG, isLocalhost, proxyImageUrl } from '../api';
 
 async function apiGet(url) {
   const res = await fetch(API + url);
@@ -269,7 +269,7 @@ export default function Dashboard() {
                     >
                       <div className="client-card-logo">
                         {c.logo_url ? (
-                          <img src={c.logo_url} alt="" />
+                          <img src={proxyImageUrl(c.logo_url)} alt="" />
                         ) : (
                           <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
                         )}
@@ -296,7 +296,7 @@ export default function Dashboard() {
                     >
                       <div className="client-card-logo">
                         {c.logo_url ? (
-                          <img src={c.logo_url} alt="" />
+                          <img src={proxyImageUrl(c.logo_url)} alt="" />
                         ) : (
                           <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
                         )}
@@ -321,7 +321,7 @@ export default function Dashboard() {
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/demo/area'); } }}
                   >
                     <div className="client-card-logo">
-                      <img src={MOCK_CLIENT.logo_url} alt="" />
+                      <img src={proxyImageUrl(MOCK_CLIENT.logo_url)} alt="" />
                     </div>
                     <span className="client-card-name">{MOCK_CLIENT.name}</span>
                     <span className="badge" style={{ marginTop: 4 }}>exemplo</span>
@@ -344,7 +344,7 @@ export default function Dashboard() {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/demo/area'); } }}
               >
                 <div className="client-card-logo">
-                  <img src={MOCK_CLIENT.logo_url} alt="" />
+                  <img src={proxyImageUrl(MOCK_CLIENT.logo_url)} alt="" />
                 </div>
                 <span className="client-card-name">{MOCK_CLIENT.name}</span>
                 <span className="badge" style={{ marginTop: 4 }}>exemplo</span>

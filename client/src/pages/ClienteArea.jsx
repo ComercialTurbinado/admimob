@@ -151,7 +151,7 @@ export default function ClienteArea() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div className="client-card-logo" style={{ width: 56, height: 56 }}>
             {client.logo_url ? (
-              <img src={client.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+              <img src={proxyImageUrl(client.logo_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
             ) : (
               <span className="client-card-initial" style={{ fontSize: '1.25rem' }}>{(client.name || '?').charAt(0).toUpperCase()}</span>
             )}
