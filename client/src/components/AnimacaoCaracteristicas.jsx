@@ -94,8 +94,23 @@ function getLocation(listing) {
 export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep, layout = 'classic', previewPhase = null }) {
   const [started, setStarted] = useState(false);
   const [showContactPhase, setShowContactPhase] = useState(false);
-  const showInfoPart = previewPhase === 'contact' ? false : (previewPhase === 'info' ? true : !showContactPhase);
-  const showContactPart = previewPhase === 'contact' ? true : (previewPhase === 'info' ? false : showContactPhase);
+  const stepMode = typeof captureStep === 'number' && captureStep >= 0;
+  const tMs = stepMode ? (captureStep / (CAPTURE_FRAMES - 1)) * DURATION_MS : 0;
+  const contactThresholdMs = CONTACT_START_S * 1000;
+  const showInfoPart = previewPhase === 'contact'
+    ? false
+    : previewPhase === 'info'
+      ? true
+      : stepMode
+        ? tMs < contactThresholdMs
+        : !showContactPhase;
+  const showContactPart = previewPhase === 'contact'
+    ? true
+    : previewPhase === 'info'
+      ? false
+      : stepMode
+        ? tMs >= contactThresholdMs
+        : showContactPhase;
   const [scale, setScale] = useState(1);
   const [heroProxyFailed, setHeroProxyFailed] = useState(false);
   const [logoProxyFailed, setLogoProxyFailed] = useState(false);
@@ -126,9 +141,6 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const refText = propertyCodes ? `REF: ${propertyCodes}` : 'REF: —';
   const site = listing?.website || 'www.exemplo.com';
   const copyright = `© ${new Date().getFullYear()} ${(imobname || 'IMOBILIÁRIA').toUpperCase()} - TODOS OS DIREITOS RESERVADOS`;
-
-  const stepMode = typeof captureStep === 'number' && captureStep >= 0;
-  const tMs = stepMode ? (captureStep / (CAPTURE_FRAMES - 1)) * DURATION_MS : 0;
 
   useEffect(() => {
     if (previewPhase === 'info' || previewPhase === 'contact') setStarted(true);
