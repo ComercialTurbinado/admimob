@@ -211,6 +211,7 @@ const CLIENT_COLUMNS = [
   'email', 'phone', 'phone_secondary', 'document', 'creci', 'contact_name',
   'address', 'city', 'state', 'zip',
   'website', 'instagram', 'facebook', 'notes',
+  'design_config',
   'created_at', 'updated_at',
 ];
 
@@ -243,6 +244,7 @@ app.post('/api/clients', async (req, res) => {
       const v = req.body[col];
       if (col === 'name') return v || '';
       if (col === 'status') return v || 'lead';
+      if (col === 'design_config' && v != null && v !== '') return typeof v === 'object' ? JSON.stringify(v) : v;
       return v ?? null;
     });
     const result = await db.prepare(`INSERT INTO clients (${insertCols.join(', ')}) VALUES (${placeholders})`).run(...values);
@@ -261,7 +263,12 @@ app.put('/api/clients/:id', async (req, res) => {
     for (const col of updatable) {
       if (req.body[col] !== undefined) {
         updates.push(`${col} = ?`);
-        values.push(req.body[col] === '' ? null : req.body[col]);
+        const v = req.body[col];
+        if (col === 'design_config' && v !== null && v !== '') {
+          values.push(typeof v === 'object' ? JSON.stringify(v) : v);
+        } else {
+          values.push(v === '' ? null : v);
+        }
       }
     }
     if (updates.length === 0) return res.status(400).json({ error: 'Nada para atualizar' });
@@ -399,8 +406,17 @@ async function listingWithClient(r, raw) {
   const listing = { id: r.id, client_id: r.client_id, ...raw };
   if (r.client_id) {
     try {
-      const c = await db.prepare('SELECT email, phone, phone_secondary, website, instagram FROM clients WHERE id = ?').get(r.client_id);
-      if (c) listing.client = { email: c.email, phone: c.phone, phone_secondary: c.phone_secondary, website: c.website, instagram: c.instagram };
+      const c = await db.prepare('SELECT email, phone, phone_secondary, website, instagram, design_config FROM clients WHERE id = ?').get(r.client_id);
+      if (c) {
+        listing.client = {
+          email: c.email,
+          phone: c.phone,
+          phone_secondary: c.phone_secondary,
+          website: c.website,
+          instagram: c.instagram,
+          design_config: c.design_config ? JSON.parse(c.design_config) : null,
+        };
+      }
     } catch (_) {}
   }
   return listing;

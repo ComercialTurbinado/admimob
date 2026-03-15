@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import ClienteForm from './pages/ClienteForm';
 import ClienteArea from './pages/ClienteArea';
+import ClienteDesign from './pages/ClienteDesign';
 import Producao from './pages/Producao';
 import Materiais from './pages/Materiais';
 import PosterVideo from './pages/PosterVideo';
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/config" element={<Config />} />
           <Route path="/cliente/novo" element={<ClienteForm />} />
           <Route path="/cliente/:id/area" element={<ClienteArea />} />
+          <Route path="/cliente/:id/design" element={<ClienteDesign />} />
           <Route path="/cliente/:id" element={<ClienteForm />} />
           <Route path="/cliente/:clientId/produto/:id" element={<Producao />} />
           <Route path="/cliente/:clientId/produto/:id/materiais" element={<Materiais />} />

@@ -4,10 +4,9 @@ import { getAmenityLabel, getAmenityIcon, CHARACTERISTIC_ICONS } from '../lib/am
 import { getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
 
 /**
- * Tamanho do box do logo a partir do intrinsic size (aspect ratio preservado).
- * Quadrado ou próximo: altura 20vh, largura proporcional.
- * Outros (retangular vertical/horizontal): altura mínima 25vh, largura proporcional.
- * No hero o box do logo é fixo 300×300px; imagem em object-fit: contain.
+ * Tamanho do box do logo a partir do intrinsic size da imagem (aspect ratio preservado).
+ * Quadrado ou próximo (ratio 0.85–1.15): altura 20% da arte, largura proporcional.
+ * Outros (ex.: 3:1): altura 25% da arte, largura proporcional; máx. 50% da largura da arte.
  */
 function getLogoBoxSize(naturalW, naturalH, artHeight = ART_HEIGHT, artWidth = ART_WIDTH) {
   if (!naturalW || !naturalH || naturalW <= 0 || naturalH <= 0) return { width: 186, height: 186 };
@@ -92,9 +91,11 @@ function getLocation(listing) {
   return parts.length ? parts.join(', ') : '—';
 }
 
-export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep, layout = 'classic' }) {
+export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColor, itemsPerRow, iconSize, videoMode, captureStep, layout = 'classic', previewPhase = null }) {
   const [started, setStarted] = useState(false);
   const [showContactPhase, setShowContactPhase] = useState(false);
+  const showInfoPart = previewPhase === 'contact' ? false : (previewPhase === 'info' ? true : !showContactPhase);
+  const showContactPart = previewPhase === 'contact' ? true : (previewPhase === 'info' ? false : showContactPhase);
   const [scale, setScale] = useState(1);
   const [heroProxyFailed, setHeroProxyFailed] = useState(false);
   const [logoProxyFailed, setLogoProxyFailed] = useState(false);
@@ -130,7 +131,11 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
   const tMs = stepMode ? (captureStep / (CAPTURE_FRAMES - 1)) * DURATION_MS : 0;
 
   useEffect(() => {
-    if (stepMode) return;
+    if (previewPhase === 'info' || previewPhase === 'contact') setStarted(true);
+  }, [previewPhase]);
+
+  useEffect(() => {
+    if (stepMode || (previewPhase != null && previewPhase !== undefined)) return;
     const t = setTimeout(() => setStarted(true), 100);
     const tContact = setTimeout(() => setShowContactPhase(true), CONTACT_START_S * 1000);
     const tEnd = setTimeout(() => onEnd?.(), TOTAL_DURATION_MS + 200);
@@ -139,7 +144,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
       clearTimeout(tContact);
       clearTimeout(tEnd);
     };
-  }, [onEnd, stepMode]);
+  }, [onEnd, stepMode, previewPhase]);
 
   useEffect(() => {
     const raw = listing?.logoimob;
@@ -187,6 +192,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
       className="poster-preview"
       style={{
         ...(posterPalette || {}),
+        ...(client?.design_config || {}),
         position: 'relative',
         width: '100%',
         height: '100%',
@@ -216,9 +222,9 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
       >
         <div
           style={{
-            opacity: showContactPhase && !stepMode ? 0 : 1,
+            opacity: showInfoPart ? 1 : 0,
             transition: 'opacity 0.5s ease',
-            pointerEvents: showContactPhase && !stepMode ? 'none' : 'auto',
+            pointerEvents: showInfoPart ? 'auto' : 'none',
           }}
         >
         {/* HERO */}
@@ -232,14 +238,10 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
               ? {
                   opacity: progressAt(tMs, 0, 0.8),
                   transition: 'none',
-                  borderBottomLeftRadius: 50,
-                  borderBottomRightRadius: 50,
                 }
               : {
                   opacity: started ? 1 : 0,
                   transition: 'opacity 0.8s ease',
-                  borderBottomLeftRadius: 50,
-                  borderBottomRightRadius: 50,
                 }}
           />
           <div
@@ -257,7 +259,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
             <div className="brand-card">
               <div
                 className="brand-icon"
-                style={logoimob ? { width: 300, height: 300 } : undefined}
+                style={logoimob ? { width: logoBoxSize.width, height: logoBoxSize.height } : undefined}
               >
                 {logoimob ? (
                   <img
@@ -521,7 +523,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
         </div>
 
         {/* Fase contato: após 3s só logo + whatsapp, email, site, instagram */}
-        {!stepMode && (() => {
+        {(!stepMode || previewPhase === 'contact') && (() => {
           const phoneVal = client.phone || client.phone_secondary || '(13) 99999-9999';
           const emailVal = client.email || 'contato@exemplo.com';
           const siteVal = client.website || site || 'www.exemplo.com';
@@ -530,27 +532,29 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
           const hasEmail = client.email;
           const hasSite = client.website || site;
           const hasInstagram = client.instagram;
-          const contactNegativo = { color: '#fff', fontWeight: 700, fontSize: 40, textDecoration: 'none' };
-          const iconStyle = { fontSize: 47, color: '#fff', flexShrink: 0 };
+          const contactTextColor = 'var(--contact-text)';
+          const contactNegativo = { color: contactTextColor, fontWeight: 700, fontSize: 40, textDecoration: 'none' };
+          const iconStyle = { fontSize: 47, color: contactTextColor, flexShrink: 0 };
           const InstagramIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={47} height={47} style={{ flexShrink: 0, color: '#fff' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={47} height={47} style={{ flexShrink: 0, color: contactTextColor }}>
               <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
             </svg>
           );
           return (
           <div
-            aria-hidden={!showContactPhase}
+            aria-hidden={!showContactPart}
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'var(--primary)',
+              background: 'var(--contact-bg)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: showContactPhase ? 1 : 0,
+              gap: 30,
+              opacity: showContactPart ? 1 : 0,
               transition: 'opacity 0.5s ease',
-              pointerEvents: showContactPhase ? 'auto' : 'none',
+              pointerEvents: showContactPart ? 'auto' : 'none',
             }}
           >
             <div
@@ -558,17 +562,17 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                transform: showContactPhase ? 'translateY(100px) scale(1.2)' : 'translateY(0) scale(1)',
+                transform: showContactPart ? 'translateY(100px) scale(1.2)' : 'translateY(0) scale(1)',
                 transition: 'transform 0.6s ease',
                 marginTop: 0,
-                marginBottom: 150,
+                marginBottom: 100 + (logoBoxSize.height || 180) * 0.15,
               }}
             >
               <div style={{ width: logoBoxSize.width, height: logoBoxSize.height, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {logoimob ? (
                   <img src={logoImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
-                  <span className="material-symbols-outlined" style={{ fontSize: 180, color: '#fff' }}>apartment</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 180, color: contactTextColor }}>apartment</span>
                 )}
               </div>
             </div>
@@ -596,8 +600,8 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                     alignItems: 'center',
                     gap: 12,
                     ...contactNegativo,
-                    opacity: showContactPhase ? 1 : 0,
-                    transform: showContactPhase ? 'translateY(0)' : 'translateY(20px)',
+                    opacity: showContactPart ? 1 : 0,
+                    transform: showContactPart ? 'translateY(0)' : 'translateY(20px)',
                     transition: `opacity 0.4s ease ${0.2 + index * 0.28}s, transform 0.4s ease ${0.2 + index * 0.28}s`,
                   }}
                 >

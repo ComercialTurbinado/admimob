@@ -160,7 +160,12 @@ export default function ClienteArea() {
             <h1 style={{ margin: 0, fontSize: '1.5rem' }}>{client.name}</h1>
             {client.contact_name && <p style={{ margin: '0.25rem 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>{client.contact_name}</p>}
           </div>
-          {!isDemo && <Link to={'/cliente/' + id} className="btn" style={{ marginLeft: 'auto' }}>Editar cadastro do cliente</Link>}
+          {!isDemo && (
+            <>
+              <Link to={'/cliente/' + id + '/design'} className="btn">Design do poster</Link>
+              <Link to={'/cliente/' + id} className="btn" style={{ marginLeft: 'auto' }}>Editar cadastro do cliente</Link>
+            </>
+          )}
         </div>
       </div>
 

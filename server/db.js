@@ -94,6 +94,7 @@ async function init() {
     'email', 'phone', 'phone_secondary', 'document', 'creci', 'contact_name',
     'address', 'city', 'state', 'zip', 'website', 'instagram', 'facebook', 'notes',
     'credits_remaining',
+    'design_config',
   ];
   for (const col of clientNewCols) {
     try {

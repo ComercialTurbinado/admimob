@@ -200,6 +200,8 @@ const DEFAULT_PALETTE = {
   '--primary': '#1152d4',
   '--text-poster': '#0b1220',
   '--bg-poster': '#0b1220',
+  '--contact-bg': '#1152d4',
+  '--contact-text': '#ffffff',
   '--muted-poster': '#64748b',
   '--detail-poster': '#64748b',
   '--line-poster': '#e6e8ee',
@@ -209,10 +211,10 @@ const DEFAULT_PALETTE = {
 
 /**
  * Gera objeto de variáveis CSS para o poster.
- * darkest: fundos de elementos (badge, pill) e texto em fundo claro (--text-poster).
- * lightest: detalhes (--detail-poster) só se tiver contraste suficiente com branco.
+ * Se a cor predominante for clara (ex.: logo com fundo branco), usa fundo branco e texto escuro
+ * na fase de contato para bom contraste. Se for escura, usa fundo escuro e texto branco.
  * @param {string} primaryHex - Cor predominante #rrggbb
- * @param {string | null} [darkestHex] - Cor mais escura do logo (fundos + texto)
+ * @param {string | null} [darkestHex] - Cor mais escura do logo (texto em fundo claro)
  * @param {string | null} [lightestHex] - Cor mais clara do logo (detalhes, se contraste OK)
  * @returns {Record<string, string>} - Variáveis CSS
  */
@@ -220,6 +222,7 @@ export function getPaletteFromPrimary(primaryHex, darkestHex = null, lightestHex
   const rgb = hexToRgb(primaryHex);
   if (!rgb) return DEFAULT_PALETTE;
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const primaryLum = relativeLuminance(primaryHex);
 
   const primary = rgbToHex(rgb.r, rgb.g, rgb.b);
   const darkRgb = darkestHex ? hexToRgb(darkestHex) : null;
@@ -248,11 +251,18 @@ export function getPaletteFromPrimary(primaryHex, darkestHex = null, lightestHex
   const tintB = Math.round(rgb.b * 0.1 + 255 * 0.9);
   const primaryTint = rgbToHex(tintR, tintG, tintB);
 
+  const lightestLum = lightestHex ? relativeLuminance(lightestHex) : 0;
+  const isLightBackgroundLogo = primaryLum > 0.55 || lightestLum > 0.92;
+  const contactBg = isLightBackgroundLogo ? '#ffffff' : (darkestHex || primary);
+  const contactText = isLightBackgroundLogo ? (darkestHex || text) : '#ffffff';
+
   return ({
     '--primary': primary,
     '--primary-tint': primaryTint,
     '--text-poster': text,
     '--bg-poster': bgPoster,
+    '--contact-bg': contactBg,
+    '--contact-text': contactText,
     '--muted-poster': muted,
     '--detail-poster': detail,
     '--line-poster': line,

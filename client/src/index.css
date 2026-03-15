@@ -376,6 +376,8 @@ input, textarea {
 .poster-preview {
   --primary: #1152d4;
   --text-poster: #0b1220;
+  --contact-bg: #1152d4;
+  --contact-text: #ffffff;
   --bg-poster: #0b1220;
   --muted-poster: #64748b;
   --detail-poster: #64748b;
@@ -409,8 +411,6 @@ input, textarea {
   height: 100%;
   object-fit: cover;
   display: block;
-  border-bottom-left-radius: 50px;
-  border-bottom-right-radius: 50px;
 }
 
 .poster-preview .brand-glass {
@@ -425,7 +425,7 @@ input, textarea {
 .poster-preview .brand-card {
   padding: 44px 40px 34px;
   border-radius: 22px;
-  background: #ffffff;
+  background: var(--contact-bg);
   border: 1px solid rgba(255, 255, 255, 0.28);
   display: flex;
   flex-direction: column;
@@ -496,7 +496,7 @@ input, textarea {
   font-size: 70px;
   line-height: 1.02;
   font-weight: 900;
-  color: var(--text-poster);
+  color: var(--primary);
   margin: 0 0 10px;
 }
 
