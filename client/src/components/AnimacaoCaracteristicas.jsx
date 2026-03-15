@@ -45,9 +45,9 @@ export { DURATION_MS };
 
 /** Tempo (em segundos) em que a animação da imagem de capa termina; os demais elementos só entram depois. */
 const HERO_ANIM_END_S = 0.8;
-/** Após os detalhes do imóvel, esperar 3s e então mostrar só logo + contatos. */
+/** Após os detalhes do imóvel, esperar 1s e então mostrar só logo + contatos. */
 const DETAILS_END_S = 5;
-const WAIT_CONTACT_S = 3;
+const WAIT_CONTACT_S = 1;
 const CONTACT_START_S = DETAILS_END_S + WAIT_CONTACT_S;
 const CONTACT_TRANSITION_S = 0.8;
 const TOTAL_DURATION_MS = (CONTACT_START_S + CONTACT_TRANSITION_S) * 1000;
