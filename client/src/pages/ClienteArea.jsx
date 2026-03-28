@@ -3,6 +3,55 @@ import { useParams, Link } from 'react-router-dom';
 
 import { API, proxyImageUrl } from '../api';
 
+function buildCatalogUrl(client) {
+  if (!client?.slug) return null;
+  const base = (import.meta.env.VITE_CATALOG_URL || '').replace(/\/$/, '');
+  if (base) return `${base}/catalogo/${client.slug}`;
+  // Em dev, usa a API na porta 3333
+  const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/api$/, '').replace(/\/$/, '');
+  return `${apiBase}/catalogo/${client.slug}`;
+}
+
+function CatalogCard({ client }) {
+  const [copied, setCopied] = useState(false);
+  const catalogUrl = buildCatalogUrl(client);
+  if (!catalogUrl) return null;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(catalogUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="card" style={{ marginBottom: '1.5rem', borderColor: 'var(--accent)', background: 'rgba(88,166,255,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '1.1rem' }}>🌐</span>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>Catálogo público</h2>
+        <span className="badge" style={{ background: 'var(--success)', color: '#fff', marginLeft: 'auto' }}>Ativo</span>
+      </div>
+      <p style={{ fontSize: '0.875rem', color: 'var(--muted)', margin: '0 0 0.75rem' }}>
+        Compartilhe este link na bio do Instagram ou com seus clientes. O catálogo mostra todos os imóveis com design personalizado e é otimizado para buscadores.
+      </p>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <code style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', background: 'var(--bg)', padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+          {catalogUrl}
+        </code>
+        <button type="button" className="btn btn-primary" onClick={handleCopy} style={{ flexShrink: 0 }}>
+          {copied ? '✓ Copiado!' : 'Copiar link'}
+        </button>
+        <a href={catalogUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ flexShrink: 0 }}>
+          Abrir →
+        </a>
+      </div>
+      {client.custom_domain && (
+        <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.5rem' }}>
+          Domínio próprio: <strong>{client.custom_domain}</strong>
+        </p>
+      )}
+    </div>
+  );
+}
+
 // Dados fictícios para exibir o layout quando não houver banco
 const MOCK_CLIENT = {
   id: 'demo',
@@ -184,12 +233,15 @@ export default function ClienteArea() {
           </div>
           {!isDemo && (
             <>
-              <Link to={'/cliente/' + id + '/design'} className="btn">Design do poster</Link>
-              <Link to={'/cliente/' + id} className="btn" style={{ marginLeft: 'auto' }}>Editar cadastro do cliente</Link>
+              <Link to={'/cliente/' + id + '/design'} className="btn">🎨 Design</Link>
+              <Link to={'/cliente/' + id} className="btn" style={{ marginLeft: 'auto' }}>Editar cadastro</Link>
             </>
           )}
         </div>
       </div>
+
+      {/* ── Card do catálogo público ── */}
+      {!isDemo && <CatalogCard client={client} />}
 
       {!isDemo && (
         <section className="card" style={{ marginBottom: '1.5rem' }}>

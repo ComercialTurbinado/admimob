@@ -95,6 +95,9 @@ async function init() {
     'address', 'city', 'state', 'zip', 'website', 'instagram', 'facebook', 'notes',
     'credits_remaining',
     'design_config',
+    'slug',
+    'custom_domain',
+    'whatsapp',
   ];
   for (const col of clientNewCols) {
     try {

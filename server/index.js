@@ -2,6 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import db, { init } from './db.js';
+import { Readable } from 'node:stream';
+import { buildRemotionRenderPayload, mergeRemotionPayload } from './remotionListing.js';
+import { slugify, renderCatalogPage, renderListingPage, renderSitemap } from './catalog.js';
 
 const app = express();
 app.use(cors());
@@ -239,6 +242,7 @@ const CLIENT_COLUMNS = [
   'address', 'city', 'state', 'zip',
   'website', 'instagram', 'facebook', 'notes',
   'design_config',
+  'slug', 'custom_domain', 'whatsapp',
   'created_at', 'updated_at',
 ];
 
@@ -267,10 +271,23 @@ app.post('/api/clients', async (req, res) => {
   try {
     const insertCols = CLIENT_COLUMNS.filter((c) => !['id', 'created_at', 'updated_at'].includes(c));
     const placeholders = insertCols.map(() => '?').join(', ');
+
+    // Auto-gera slug único a partir do nome
+    let baseSlug = slugify(req.body.name || '');
+    let finalSlug = baseSlug;
+    let attempt = 0;
+    while (true) {
+      const existing = await db.prepare('SELECT id FROM clients WHERE slug = ?').get(finalSlug);
+      if (!existing) break;
+      attempt++;
+      finalSlug = `${baseSlug}-${attempt}`;
+    }
+
     const values = insertCols.map((col) => {
       const v = req.body[col];
       if (col === 'name') return v || '';
       if (col === 'status') return v || 'lead';
+      if (col === 'slug') return (v && String(v).trim()) ? String(v).trim() : finalSlug;
       if (col === 'design_config' && v != null && v !== '') return typeof v === 'object' ? JSON.stringify(v) : v;
       return v ?? null;
     });
@@ -584,6 +601,105 @@ app.post('/api/listings/:id/render-merge', async (req, res) => {
     res.status(response.status).send(text);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/** Proxy para o serviço Remotion: POST JSON → MP4. Env: REMOTION_RENDER_URL (origem sem /render). Timeout longo (20 min). */
+const REMOTION_RENDER_BASE = (process.env.REMOTION_RENDER_URL || 'https://n8n-srcleads-remotion.dtna1d.easypanel.host').replace(/\/$/, '');
+const REMOTION_RENDER_ENDPOINT = `${REMOTION_RENDER_BASE}/render`;
+const REMOTION_RENDER_TIMEOUT_MS = Math.min(
+  Math.max(Number(process.env.REMOTION_RENDER_TIMEOUT_MS) || 20 * 60 * 1000, 60_000),
+  60 * 60 * 1000
+);
+
+app.post('/api/listings/:id/remotion-render', async (req, res) => {
+  try {
+    const listingId = Number(req.params.id);
+    const { animation, subtitlesSrt, inputOverride } = req.body || {};
+    const validAnim = new Set(['op1', 'op2', 'op3', 'op4', 'op5', 'op6']);
+    if (!animation || !validAnim.has(String(animation))) {
+      return res.status(400).json({ error: 'animation deve ser op1, op2, op3, op4, op5 ou op6' });
+    }
+
+    const r = await db.prepare(`
+      SELECT id, client_id, raw_data FROM listings WHERE id = ?
+    `).get(listingId);
+    if (!r) return res.status(404).json({ error: 'Não encontrado' });
+
+    const raw = JSON.parse(r.raw_data);
+    let selected = null;
+    try {
+      const rowSel = await db.prepare('SELECT selected_images FROM listings WHERE id = ?').get(listingId);
+      if (rowSel?.selected_images) selected = JSON.parse(rowSel.selected_images);
+    } catch (_) {}
+    const rawWithSelected = selected && Array.isArray(selected) ? { ...raw, selected_images: selected } : raw;
+
+    const listing = await listingWithClient(r, rawWithSelected);
+
+    const advertiserCode = raw.advertiserCode || '';
+    const imobname = raw.imobname || '';
+    const materiaisBaseUrl =
+      imobname && advertiserCode
+        ? `${MATERIAIS_S3_BASE}firemode/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/`
+        : advertiserCode
+          ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/`
+          : '';
+
+    let payload = buildRemotionRenderPayload({
+      listing,
+      animation: String(animation),
+      subtitlesSrt: typeof subtitlesSrt === 'string' ? subtitlesSrt : '',
+      baseUrl: materiaisBaseUrl || undefined,
+    });
+    if (inputOverride && typeof inputOverride === 'object') {
+      const { animation: _ignoredAnim, ...safeOverride } = inputOverride;
+      payload = mergeRemotionPayload(payload, safeOverride);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REMOTION_RENDER_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(REMOTION_RENDER_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const ct = (response.headers.get('content-type') || '').toLowerCase();
+
+    if (!response.ok || ct.includes('application/json')) {
+      const text = await response.text();
+      let msg = text;
+      try {
+        const j = JSON.parse(text);
+        if (j && typeof j.error === 'string') msg = j.error;
+      } catch (_) {}
+      return res.status(response.ok ? 502 : response.status).json({ error: msg || 'Erro no render Remotion' });
+    }
+
+    if (!response.body) {
+      const buf = Buffer.from(await response.arrayBuffer());
+      res.setHeader('Content-Type', 'video/mp4');
+      res.setHeader('Content-Disposition', `attachment; filename="remotion-${listingId}-${animation}.mp4"`);
+      return res.send(buf);
+    }
+
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Disposition', `attachment; filename="remotion-${listingId}-${animation}.mp4"`);
+    const nodeStream = Readable.fromWeb(response.body);
+    nodeStream.on('error', (err) => {
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+      else res.destroy(err);
+    });
+    nodeStream.pipe(res);
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'Tempo esgotado aguardando o render (aumente REMOTION_RENDER_TIMEOUT_MS ou tente de novo).' : e.message;
+    res.status(500).json({ error: msg });
   }
 });
 
@@ -934,6 +1050,173 @@ app.post('/api/webhook/send', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ─── API: slug único e URL base do catálogo ───────────────────────────────────
+
+/** Retorna a URL base do catálogo (configurável via CATALOG_BASE_URL ou auto-detectada) */
+function getCatalogBase(req) {
+  const env = process.env.CATALOG_BASE_URL;
+  if (env) return env.replace(/\/$/, '');
+  // Auto-detecção: usa mesma origem da API
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3333';
+  return `${proto}://${host}`;
+}
+
+/** Retorna a URL base da API para proxying de imagens */
+function getApiBase(req) {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3333';
+  return `${proto}://${host}`;
+}
+
+/** Busca cliente por slug (para a API do admin) */
+app.get('/api/clients/by-slug/:slug', async (req, res) => {
+  try {
+    const cols = CLIENT_COLUMNS.join(', ');
+    const r = await db.prepare(`SELECT ${cols} FROM clients WHERE slug = ?`).get(req.params.slug);
+    if (!r) return res.status(404).json({ error: 'Não encontrado' });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Verifica se um slug já está em uso (exceto pelo cliente atual) */
+app.get('/api/clients/check-slug', async (req, res) => {
+  try {
+    const { slug, exclude_id } = req.query;
+    if (!slug) return res.json({ available: false });
+    const existing = await db.prepare('SELECT id FROM clients WHERE slug = ?').get(slug);
+    const available = !existing || (exclude_id && String(existing.id) === String(exclude_id));
+    res.json({ available, slug });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Catálogo público SSR ─────────────────────────────────────────────────────
+
+/**
+ * Helper: resolve o cliente pelo slug da URL ou pelo custom_domain do Host header.
+ * Domínio próprio tem prioridade sobre slug.
+ */
+async function resolveClientForCatalog(req, slugParam) {
+  const host = (req.hostname || '').toLowerCase();
+  // Tenta custom_domain primeiro (ex.: imoveis.imobiliariaxyz.com.br)
+  const byDomain = await db.prepare(
+    `SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE LOWER(custom_domain) = ?`
+  ).get(host);
+  if (byDomain) return byDomain;
+  // Senão usa slug da URL
+  if (!slugParam) return null;
+  return db.prepare(`SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE slug = ?`).get(slugParam);
+}
+
+// Catálogo: lista de imóveis do cliente
+app.get('/catalogo/:slug', async (req, res) => {
+  try {
+    const client = await resolveClientForCatalog(req, req.params.slug);
+    if (!client) return res.status(404).send('<h1>Catálogo não encontrado</h1>');
+    const listings = await db.prepare(
+      'SELECT id, raw_data, selected_images, updated_at FROM listings WHERE client_id = ? ORDER BY updated_at DESC'
+    ).all(client.id);
+    const html = renderCatalogPage(client, listings, getCatalogBase(req), getApiBase(req));
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+    res.send(html);
+  } catch (e) {
+    console.error('[catalog]', e);
+    res.status(500).send('<h1>Erro interno</h1>');
+  }
+});
+
+// Catálogo: página individual do imóvel
+app.get('/catalogo/:slug/:listingId', async (req, res) => {
+  try {
+    const client = await resolveClientForCatalog(req, req.params.slug);
+    if (!client) return res.status(404).send('<h1>Catálogo não encontrado</h1>');
+    const row = await db.prepare(
+      'SELECT id, client_id, raw_data, selected_images, updated_at FROM listings WHERE id = ? AND client_id = ?'
+    ).get(Number(req.params.listingId), client.id);
+    if (!row) return res.status(404).send('<h1>Imóvel não encontrado</h1>');
+    const html = renderListingPage(client, row, getCatalogBase(req), getApiBase(req));
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    res.send(html);
+  } catch (e) {
+    console.error('[catalog listing]', e);
+    res.status(500).send('<h1>Erro interno</h1>');
+  }
+});
+
+// Catálogo: sitemap XML
+app.get('/catalogo/:slug/sitemap.xml', async (req, res) => {
+  try {
+    const client = await resolveClientForCatalog(req, req.params.slug);
+    if (!client) return res.status(404).send('');
+    const listings = await db.prepare(
+      'SELECT id, updated_at FROM listings WHERE client_id = ? ORDER BY updated_at DESC'
+    ).all(client.id);
+    const xml = renderSitemap(client, listings, getCatalogBase(req));
+    res.set('Content-Type', 'application/xml; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(xml);
+  } catch (e) {
+    res.status(500).send('');
+  }
+});
+
+// Catálogo: robots.txt
+app.get('/catalogo/:slug/robots.txt', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.send('User-agent: *\nAllow: /\n');
+});
+
+// Domínio próprio: raiz → catálogo do cliente pelo custom_domain
+app.get('/', async (req, res, next) => {
+  try {
+    const host = (req.hostname || '').toLowerCase();
+    if (!host || host === 'localhost') return next();
+    const client = await db.prepare(
+      `SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE LOWER(custom_domain) = ?`
+    ).get(host);
+    if (!client) return next();
+    const listings = await db.prepare(
+      'SELECT id, raw_data, selected_images, updated_at FROM listings WHERE client_id = ? ORDER BY updated_at DESC'
+    ).all(client.id);
+    const html = renderCatalogPage(client, listings, `https://${host}`, getApiBase(req));
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+    res.send(html);
+  } catch (e) {
+    next();
+  }
+});
+
+// Domínio próprio: /:id → imóvel do cliente pelo custom_domain
+app.get('/:listingId(\\d+)', async (req, res, next) => {
+  try {
+    const host = (req.hostname || '').toLowerCase();
+    if (!host || host === 'localhost') return next();
+    const client = await db.prepare(
+      `SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE LOWER(custom_domain) = ?`
+    ).get(host);
+    if (!client) return next();
+    const row = await db.prepare(
+      'SELECT id, client_id, raw_data, selected_images, updated_at FROM listings WHERE id = ? AND client_id = ?'
+    ).get(Number(req.params.listingId), client.id);
+    if (!row) return res.status(404).send('<h1>Imóvel não encontrado</h1>');
+    const html = renderListingPage(client, row, `https://${host}`, getApiBase(req));
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    res.send(html);
+  } catch (e) {
+    next();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 init()
   .then(() => {
