@@ -9,3 +9,6 @@ dist/
 # Repos separados (cada um tem seu .git e sobe no GitHub próprio)
 ffmpeg/
 browseless/
+
+# Projeto Remotion fica fora daqui (em ../remotion-boxes)
+remotion-boxes/

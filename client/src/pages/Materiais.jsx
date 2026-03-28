@@ -127,6 +127,135 @@ function getAvailableMedia(folderListing) {
   return { videos, audios };
 }
 
+const REMOTION_ANIMATIONS = [
+  { id: 'op1', label: 'Op. 1', hint: 'Boxes + carrossel + infos (sem legenda na tela)' },
+  { id: 'op2', label: 'Op. 2', hint: 'Slideshow + infos + legenda SRT' },
+  { id: 'op3', label: 'Op. 3', hint: 'Barra superior + vidro + legenda SRT' },
+  { id: 'op4', label: 'Op. 4', hint: 'Abertura + slideshow + legenda SRT' },
+  { id: 'op5', label: 'Op. 5', hint: 'Painel vidro compacto (sem legenda na tela)' },
+  { id: 'op6', label: 'Op. 6', hint: 'Card flyer + cores design_config (sem legenda na tela)' },
+];
+
+function RemotionRenderPanel({ listingId, listing }) {
+  const [animation, setAnimation] = useState('op3');
+  const [subtitlesSrt, setSubtitlesSrt] = useState('');
+  const [openSrt, setOpenSrt] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const handleRender = async () => {
+    setStatus({ loading: true });
+    try {
+      const res = await fetch(`${API}/listings/${listingId}/remotion-render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          animation,
+          subtitlesSrt: subtitlesSrt.trim() || undefined,
+        }),
+      });
+      const ct = res.headers.get('content-type') || '';
+      if (!res.ok) {
+        let errMsg = `Erro ${res.status}`;
+        try {
+          if (ct.includes('application/json')) {
+            const j = await res.json();
+            if (j && typeof j.error === 'string') errMsg = j.error;
+          } else {
+            const t = await res.text();
+            if (t) errMsg = t;
+          }
+        } catch (_) {}
+        setStatus({ error: errMsg });
+        return;
+      }
+      const blob = await res.blob();
+      const code = listing?.advertiserCode || listingId;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `remotion-${code}-${animation}.mp4`;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      setStatus({ success: true, message: 'Download do MP4 iniciado.' });
+    } catch (e) {
+      setStatus({ error: e.message || 'Falha na requisição' });
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginTop: '1.5rem' }}>
+      <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Vídeo Remotion (templates)</h3>
+      <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+        Gera MP4 no servidor Remotion com os dados deste imóvel (fotos, preço, cards, comodidades, logo/contatos do cliente).
+        O render pode levar vários minutos — aguarde sem fechar a página.
+      </p>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.35rem' }}>Animação</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {REMOTION_ANIMATIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className="btn"
+              title={opt.hint}
+              style={{
+                fontSize: '0.8rem',
+                padding: '0.4rem 0.65rem',
+                background: animation === opt.id ? 'var(--primary)' : 'var(--bg)',
+                color: animation === opt.id ? '#fff' : 'var(--text)',
+                border: '1px solid var(--border)',
+              }}
+              onClick={() => setAnimation(opt.id)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.8rem' }}>
+          {REMOTION_ANIMATIONS.find((o) => o.id === animation)?.hint}
+        </p>
+      </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <button
+          type="button"
+          className="btn"
+          style={{ fontSize: '0.85rem', padding: '0.35rem 0.6rem' }}
+          onClick={() => setOpenSrt((v) => !v)}
+        >
+          {openSrt ? 'Ocultar' : 'Opcional:'} legenda SRT (op2–op4 exibem na tela)
+        </button>
+        {openSrt && (
+          <textarea
+            value={subtitlesSrt}
+            onChange={(e) => setSubtitlesSrt(e.target.value)}
+            placeholder={'1\n00:00:00,000 --> 00:00:03,000\nTexto da legenda.\n'}
+            rows={8}
+            style={{
+              display: 'block',
+              width: '100%',
+              maxWidth: 560,
+              marginTop: '0.5rem',
+              padding: '0.5rem',
+              fontSize: '0.85rem',
+              fontFamily: 'monospace',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+            }}
+          />
+        )}
+      </div>
+      <button type="button" className="btn" onClick={handleRender} disabled={status?.loading}>
+        {status?.loading ? 'Renderizando… (pode demorar)' : 'Gerar e baixar MP4'}
+      </button>
+      {status?.error && <p style={{ color: 'var(--danger)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{status.error}</p>}
+      {status?.success && <p style={{ color: 'var(--success)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{status.message}</p>}
+    </div>
+  );
+}
+
 function TimelineEditor({ listingId, listing, folderListing, folderBaseUrl }) {
   const { videos: availableVideos, audios: availableAudios } = getAvailableMedia(folderListing);
   const defaultOutputPath = listing
@@ -750,6 +879,8 @@ export default function Materiais() {
           )}
         </div>
       </div>
+
+      <RemotionRenderPanel listingId={id} listing={listing} />
 
       {folderListing && folderListing.length > 0 && (
         <TimelineEditor listingId={id} listing={listing} folderListing={folderListing} folderBaseUrl={folderBaseUrl} />
