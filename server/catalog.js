@@ -680,19 +680,19 @@ export function renderProfilePage(client, baseUrl, apiBase) {
 ${logoUrl ? `<meta property="og:image" content="${esc(logoUrl)}"/>` : ''}
 <link rel="canonical" href="${esc(profileUrl)}"/>
 <script type="application/ld+json">${jsonLd}</script>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --client-primary: ${esc(primary)};
-  --client-btn-bg: ${esc(btnBg)};
-  --client-btn-text: ${esc(btnText)};
-  --client-accent: ${esc(accentBg)};
+  --cp: ${esc(primary)};
+  --cb: ${esc(btnBg)};
+  --cbt: ${esc(btnText)};
+  --ca: ${esc(accentBg)};
 }
 </style>
-<script id="tailwind-config">
-tailwind.config = {
+<script>
+/* Tailwind config deve vir ANTES do CDN script */
+tailwind = { config: {
   darkMode: "class",
   theme: {
     extend: {
@@ -748,18 +748,18 @@ tailwind.config = {
       },
       borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
     },
-  },
-}
+  }};
 </script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <style>
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-.pulsing-aura { box-shadow: 0 0 0 0 rgba(212,175,55,.4); animation: pulse 2s infinite; }
+.pulsing-aura { animation: pulse 2s infinite; }
 @keyframes pulse {
-  0%   { transform: scale(1);    box-shadow: 0 0 0  0px rgba(212,175,55,.4); }
-  70%  { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(212,175,55,0);  }
-  100% { transform: scale(1);    box-shadow: 0 0 0  0px rgba(212,175,55,.4); }
+  0%   { transform: scale(1);    box-shadow: 0 0 0  0px color-mix(in srgb, var(--cb) 40%, transparent); }
+  70%  { transform: scale(1.02); box-shadow: 0 0 0 10px color-mix(in srgb, var(--cb)  0%, transparent); }
+  100% { transform: scale(1);    box-shadow: 0 0 0  0px color-mix(in srgb, var(--cb) 40%, transparent); }
 }
-body { min-height: max(884px, 100dvh); }
+body { background:#131313; color:#e5e2e1; min-height:max(884px,100dvh); }
 </style>
 </head>
 <body class="bg-background text-on-surface font-body selection:bg-primary/30">
@@ -767,17 +767,23 @@ body { min-height: max(884px, 100dvh); }
 <!-- Header / Profile -->
 <header class="relative pt-16 pb-8 px-6 flex flex-col items-center text-center">
   <div class="relative mb-6">
-    <div class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-primary-container to-primary">
-      ${logoUrl
-        ? (pc.logo_style === 'circle'
-            ? `<img alt="${esc(client.name)}" class="w-full h-full rounded-full object-cover border-4 border-background" src="${esc(logoUrl)}"/>`
-            : `<img alt="${esc(client.name)}" class="w-full h-full object-contain p-2 border-4 border-background rounded-full bg-surface-container-low" src="${esc(logoUrl)}"/>`)
-        : `<div class="w-full h-full rounded-full border-4 border-background bg-surface-container-high flex items-center justify-center font-headline font-black text-4xl text-primary">${esc((client.name || '?').charAt(0).toUpperCase())}</div>`
-      }
-    </div>
+    ${logoUrl
+      ? (pc.logo_style === 'circle'
+          ? `<div style="padding:3px;border-radius:50%;background:linear-gradient(135deg,${esc(btnBg)},${esc(primary)});display:inline-flex">
+               <img alt="${esc(client.name)}" src="${esc(logoUrl)}"
+                 style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid #131313;display:block"/>
+             </div>`
+          : `<div style="padding:3px;border-radius:16px;background:linear-gradient(135deg,${esc(btnBg)},${esc(primary)});display:inline-flex">
+               <img alt="${esc(client.name)}" src="${esc(logoUrl)}"
+                 style="height:120px;width:auto;max-width:300px;min-width:80px;object-fit:contain;border-radius:12px;background:#1c1b1b;padding:10px;display:block"/>
+             </div>`)
+      : `<div style="padding:3px;border-radius:50%;background:linear-gradient(135deg,${esc(btnBg)},${esc(primary)});display:inline-flex">
+           <div style="width:120px;height:120px;border-radius:50%;border:4px solid #131313;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif',serif;font-size:2.5rem;font-weight:900;color:${esc(primary)}">${esc((client.name || '?').charAt(0).toUpperCase())}</div>
+         </div>`
+    }
   </div>
   <h1 class="font-headline text-3xl font-bold tracking-tight text-on-surface mb-1 uppercase">${esc(client.name)}</h1>
-  ${client.creci ? `<p class="text-primary font-label text-xs tracking-[0.2em] mb-3">CRECI ${esc(client.creci)}</p>` : ''}
+  ${client.creci ? `<p class="font-label text-xs tracking-[0.2em] mb-3" style="color:var(--cp)">CRECI ${esc(client.creci)}</p>` : ''}
   ${specialty ? `<p class="font-headline italic text-lg text-on-surface-variant opacity-80">${esc(specialty)}</p>` : ''}
 </header>
 
@@ -797,9 +803,9 @@ body { min-height: max(884px, 100dvh); }
       links: `<!-- Links secundários -->
   <nav class="flex flex-col gap-4">
     ${profileLinks.filter((l) => !l.isPrimary).map((l) => `
-    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(l.href)}" target="_blank" rel="noopener nofollow">
+    <a style="border:1px solid rgba(77,70,53,0.4)" class="hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(l.href)}" target="_blank" rel="noopener nofollow">
       <div class="flex items-center gap-4">
-        <span class="material-symbols-outlined text-primary-fixed-dim">${esc(l.icon)}</span>
+        <span class="material-symbols-outlined" style="color:var(--cp)">${esc(l.icon)}</span>
         <span class="font-body font-semibold tracking-wide">${esc(l.label)}</span>
       </div>
       <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
@@ -827,7 +833,7 @@ body { min-height: max(884px, 100dvh); }
 <!-- Footer -->
 <footer class="py-12 px-6 flex flex-col items-center gap-4 bg-surface-container-lowest border-t border-outline-variant/10">
   <div class="flex items-center gap-2">
-    <span class="font-headline font-black text-primary text-xl tracking-widest uppercase">${esc(client.name)}</span>
+    <span class="font-headline font-black text-xl tracking-widest uppercase" style="color:var(--cp)">${esc(client.name)}</span>
   </div>
   ${client.creci ? `<p class="text-on-surface-variant/60 text-xs tracking-widest">CRECI ${esc(client.creci)}</p>` : ''}
   <p class="text-on-surface-variant/40 text-[10px] tracking-widest">© ${new Date().getFullYear()} ${esc(client.name).toUpperCase()}. TODOS OS DIREITOS RESERVADOS.</p>
@@ -835,7 +841,7 @@ body { min-height: max(884px, 100dvh); }
 
 <!-- Bottom Nav (mobile) -->
 <nav class="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl flex justify-around items-center py-3 z-50 border-t border-outline-variant/15 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
-  <a class="flex flex-col items-center justify-center text-primary scale-110" href="${esc(profileUrl)}">
+  <a class="flex flex-col items-center justify-center scale-110" style="color:var(--cp)" href="${esc(profileUrl)}">
     <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">badge</span>
     <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Perfil</span>
   </a>
