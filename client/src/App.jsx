@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Link, lazy, Suspense } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import ClienteForm from './pages/ClienteForm';
