@@ -243,6 +243,7 @@ const CLIENT_COLUMNS = [
   'website', 'instagram', 'facebook', 'notes',
   'design_config',
   'slug', 'custom_domain', 'whatsapp',
+  'profile_config',
   'created_at', 'updated_at',
 ];
 
@@ -288,7 +289,7 @@ app.post('/api/clients', async (req, res) => {
       if (col === 'name') return v || '';
       if (col === 'status') return v || 'lead';
       if (col === 'slug') return (v && String(v).trim()) ? String(v).trim() : finalSlug;
-      if (col === 'design_config' && v != null && v !== '') return typeof v === 'object' ? JSON.stringify(v) : v;
+      if ((col === 'design_config' || col === 'profile_config') && v != null && v !== '') return typeof v === 'object' ? JSON.stringify(v) : v;
       return v ?? null;
     });
     const result = await db.prepare(`INSERT INTO clients (${insertCols.join(', ')}) VALUES (${placeholders})`).run(...values);
@@ -308,7 +309,7 @@ app.put('/api/clients/:id', async (req, res) => {
       if (req.body[col] !== undefined) {
         updates.push(`${col} = ?`);
         const v = req.body[col];
-        if (col === 'design_config' && v !== null && v !== '') {
+        if ((col === 'design_config' || col === 'profile_config') && v !== null && v !== '') {
           values.push(typeof v === 'object' ? JSON.stringify(v) : v);
         } else {
           values.push(v === '' ? null : v);

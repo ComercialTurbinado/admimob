@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, lazy, Suspense } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import ClienteForm from './pages/ClienteForm';
@@ -8,6 +8,7 @@ import Producao from './pages/Producao';
 import Materiais from './pages/Materiais';
 import PosterVideo from './pages/PosterVideo';
 import SimulacaoLayouts from './pages/SimulacaoLayouts';
+const ClienteProfile = lazy(() => import('./pages/ClienteProfile'));
 
 export default function App() {
   return (
@@ -17,20 +18,23 @@ export default function App() {
         <Link to="/config">Configurações</Link>
       </nav>
       <div className="container">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/config" element={<Config />} />
-          <Route path="/cliente/novo" element={<ClienteForm />} />
-          <Route path="/cliente/:id/area" element={<ClienteArea />} />
-          <Route path="/cliente/:id/design" element={<ClienteDesign />} />
-          <Route path="/cliente/:id" element={<ClienteForm />} />
-          <Route path="/cliente/:clientId/produto/:id" element={<Producao />} />
-          <Route path="/cliente/:clientId/produto/:id/materiais" element={<Materiais />} />
-          <Route path="/cliente/:clientId/produto/:id/poster-video" element={<PosterVideo />} />
-          <Route path="/poster-video/:id" element={<PosterVideo />} />
-          <Route path="/simulacao-layouts" element={<SimulacaoLayouts />} />
-          <Route path="/producao/:id" element={<Producao />} />
-        </Routes>
+        <Suspense fallback={<p style={{ padding: '2rem' }}>Carregando...</p>}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/config" element={<Config />} />
+            <Route path="/cliente/novo" element={<ClienteForm />} />
+            <Route path="/cliente/:id/area" element={<ClienteArea />} />
+            <Route path="/cliente/:id/design" element={<ClienteDesign />} />
+            <Route path="/cliente/:id/perfil" element={<ClienteProfile />} />
+            <Route path="/cliente/:id" element={<ClienteForm />} />
+            <Route path="/cliente/:clientId/produto/:id" element={<Producao />} />
+            <Route path="/cliente/:clientId/produto/:id/materiais" element={<Materiais />} />
+            <Route path="/cliente/:clientId/produto/:id/poster-video" element={<PosterVideo />} />
+            <Route path="/poster-video/:id" element={<PosterVideo />} />
+            <Route path="/simulacao-layouts" element={<SimulacaoLayouts />} />
+            <Route path="/producao/:id" element={<Producao />} />
+          </Routes>
+        </Suspense>
       </div>
     </BrowserRouter>
   );

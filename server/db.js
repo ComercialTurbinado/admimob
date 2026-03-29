@@ -98,6 +98,7 @@ async function init() {
     'slug',
     'custom_domain',
     'whatsapp',
+    'profile_config',
   ];
   for (const col of clientNewCols) {
     try {

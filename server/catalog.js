@@ -580,22 +580,76 @@ export function renderListingPage(client, row, baseUrl, apiBase) {
 }
 
 // ─── Página de Perfil (home do cliente) ──────────────────────────────────────
+
+/** Parse seguro do profile_config do cliente */
+function parseProfileConfig(raw) {
+  if (!raw) return {};
+  try { return typeof raw === 'string' ? JSON.parse(raw) : (raw || {}); } catch { return {}; }
+}
+
+/** Detecta ícone Material Symbol a partir do rótulo do link */
+function iconForLinkLabel(label = '') {
+  const l = label.toLowerCase();
+  if (l.includes('whatsapp') || l.includes('zap')) return 'chat';
+  if (l.includes('instagram') || l.includes('insta')) return 'camera_alt';
+  if (l.includes('youtube') || l.includes('video')) return 'play_circle';
+  if (l.includes('catalogo') || l.includes('catálogo') || l.includes('imóveis') || l.includes('imoveis')) return 'apartment';
+  if (l.includes('site') || l.includes('web')) return 'language';
+  return 'link';
+}
+
+/** Converte URL de YouTube (watch, shorts, youtu.be) para embed */
+function youtubeEmbedUrl(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    let vid = null;
+    if (u.hostname === 'youtu.be') { vid = u.pathname.slice(1); }
+    else if (u.hostname.includes('youtube.com')) {
+      vid = u.searchParams.get('v') || (u.pathname.startsWith('/shorts/') ? u.pathname.split('/shorts/')[1] : null);
+    }
+    return vid ? `https://www.youtube.com/embed/${vid}` : null;
+  } catch { return null; }
+}
+
 export function renderProfilePage(client, baseUrl, apiBase) {
   const d = parseDesignConfig(client.design_config);
   const primary    = d['--primary'] || '#f2ca50';
   const primaryCt  = d['--contact-bg'] || darkenHex(primary, 0.12);
 
+  const pc = parseProfileConfig(client.profile_config);
+
   const profileUrl  = `${baseUrl}/${client.slug}`;
   const catalogUrl  = `${baseUrl}/${client.slug}/catalogo`;
 
-  const wp = (client.whatsapp || client.phone || '').replace(/\D/g, '');
-  const wpLink  = wp ? `https://wa.me/55${wp}` : null;
-  const instaHandle = client.instagram ? client.instagram.replace(/^@/, '') : null;
-  const instaLink   = instaHandle ? `https://instagram.com/${instaHandle}` : null;
-
   const logoUrl = client.logo_url ? proxyImg(client.logo_url, apiBase) : null;
-  const specialty = client.contact_name || '';
-  const aboutText = client.notes || '';
+  const specialty = pc.specialty || client.contact_name || '';
+  const aboutText = (pc.about_enabled !== false) ? (pc.about_bio || client.notes || '') : '';
+  const aboutVideo = (pc.about_enabled !== false) ? (pc.about_video || '') : '';
+  const aboutImages = (pc.about_enabled !== false && Array.isArray(pc.about_images)) ? pc.about_images.slice(0, 3).filter(Boolean) : [];
+  const embedUrl = youtubeEmbedUrl(aboutVideo);
+
+  // Build links from profile_config.links; fall back to legacy WhatsApp/Instagram/website
+  let profileLinks = [];
+  if (Array.isArray(pc.links) && pc.links.length > 0) {
+    profileLinks = pc.links.map((l) => ({
+      label: l.label || 'Link',
+      href: l.url === 'auto' ? catalogUrl : (l.url || '#'),
+      icon: iconForLinkLabel(l.label || ''),
+      isPrimary: l.url === 'auto',
+    }));
+  } else {
+    // Legacy fallback
+    profileLinks.push({ label: 'Ver Catálogo de Imóveis', href: catalogUrl, icon: 'apartment', isPrimary: true });
+    const wp = (client.whatsapp || client.phone || '').replace(/\D/g, '');
+    if (wp) profileLinks.push({ label: 'Falar no WhatsApp', href: `https://wa.me/55${wp}`, icon: 'chat', isPrimary: false });
+    const instaHandle = client.instagram ? client.instagram.replace(/^@/, '') : null;
+    if (instaHandle) profileLinks.push({ label: 'Meu Instagram', href: `https://instagram.com/${instaHandle}`, icon: 'camera_alt', isPrimary: false });
+    if (client.website) profileLinks.push({ label: 'Meu Site', href: client.website, icon: 'language', isPrimary: false });
+  }
+
+  const instaHandleForLd = client.instagram ? client.instagram.replace(/^@/, '') : null;
+  const instaLinkForLd   = instaHandleForLd ? `https://instagram.com/${instaHandleForLd}` : null;
 
   const jsonLd = JSON.stringify({
     '@context': 'https://schema.org',
@@ -605,7 +659,7 @@ export function renderProfilePage(client, baseUrl, apiBase) {
     image: client.logo_url || undefined,
     telephone: client.phone || undefined,
     email: client.email || undefined,
-    sameAs: [client.website, instaLink].filter(Boolean),
+    sameAs: [client.website, instaLinkForLd].filter(Boolean),
   });
 
   const html = `<!DOCTYPE html>
@@ -625,6 +679,12 @@ ${logoUrl ? `<meta property="og:image" content="${esc(logoUrl)}"/>` : ''}
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --client-primary: ${esc(primary)};
+  --client-primary-ct: ${esc(primaryCt)};
+}
+</style>
 <script id="tailwind-config">
 tailwind.config = {
   darkMode: "class",
@@ -716,47 +776,40 @@ body { min-height: max(884px, 100dvh); }
 <!-- Main -->
 <main class="max-w-xl mx-auto px-6 pb-24 space-y-12">
 
-  <!-- Primary CTA -->
+  <!-- Links (primary CTA first, then secondary) -->
   <section class="flex flex-col gap-4">
-    <a class="pulsing-aura bg-primary-container text-on-primary-container py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(catalogUrl)}">
-      <span class="material-symbols-outlined text-2xl">apartment</span>
-      <span class="font-headline font-bold text-lg tracking-wide">Ver Catálogo de Imóveis</span>
-    </a>
+    ${profileLinks.filter((l) => l.isPrimary).map((l) => `
+    <a class="pulsing-aura text-on-primary-container py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--client-primary-ct)">
+      <span class="material-symbols-outlined text-2xl">${esc(l.icon)}</span>
+      <span class="font-headline font-bold text-lg tracking-wide">${esc(l.label)}</span>
+    </a>`).join('')}
   </section>
 
   <!-- Links secundários -->
   <nav class="flex flex-col gap-4">
-    ${wpLink ? `
-    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(wpLink)}" target="_blank" rel="noopener nofollow">
+    ${profileLinks.filter((l) => !l.isPrimary).map((l) => `
+    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(l.href)}" target="_blank" rel="noopener nofollow">
       <div class="flex items-center gap-4">
-        <span class="material-symbols-outlined text-primary-fixed-dim">chat</span>
-        <span class="font-body font-semibold tracking-wide">Falar no WhatsApp</span>
+        <span class="material-symbols-outlined text-primary-fixed-dim">${esc(l.icon)}</span>
+        <span class="font-body font-semibold tracking-wide">${esc(l.label)}</span>
       </div>
       <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
-    </a>` : ''}
-    ${instaLink ? `
-    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(instaLink)}" target="_blank" rel="noopener nofollow">
-      <div class="flex items-center gap-4">
-        <span class="material-symbols-outlined text-primary-fixed-dim">camera</span>
-        <span class="font-body font-semibold tracking-wide">Meu Instagram</span>
-      </div>
-      <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
-    </a>` : ''}
-    ${client.website ? `
-    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(client.website)}" target="_blank" rel="noopener">
-      <div class="flex items-center gap-4">
-        <span class="material-symbols-outlined text-primary-fixed-dim">language</span>
-        <span class="font-body font-semibold tracking-wide">Meu Site</span>
-      </div>
-      <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
-    </a>` : ''}
+    </a>`).join('')}
   </nav>
 
-  ${aboutText ? `
+  ${aboutText || embedUrl || aboutImages.length ? `
   <!-- Sobre -->
-  <section id="about" class="space-y-4 pt-8">
+  <section id="about" class="space-y-6 pt-8">
     <h2 class="font-headline text-2xl font-bold border-l-2 pl-4" style="border-color:${esc(primaryCt)}">Sobre</h2>
-    <p class="text-on-surface-variant leading-relaxed font-light">${esc(aboutText)}</p>
+    ${aboutText ? `<p class="text-on-surface-variant leading-relaxed font-light">${esc(aboutText)}</p>` : ''}
+    ${embedUrl ? `
+    <div class="relative w-full" style="padding-bottom:56.25%">
+      <iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="absolute inset-0 w-full h-full rounded-lg" src="${esc(embedUrl)}" title="Vídeo"></iframe>
+    </div>` : ''}
+    ${aboutImages.length ? `
+    <div class="grid gap-2" style="grid-template-columns:repeat(${aboutImages.length},1fr)">
+      ${aboutImages.map((img) => `<img alt="" class="w-full aspect-square object-cover rounded" src="${esc(img)}" loading="lazy"/>`).join('')}
+    </div>` : ''}
   </section>` : ''}
 
 </main>
@@ -780,7 +833,7 @@ body { min-height: max(884px, 100dvh); }
     <span class="material-symbols-outlined">apartment</span>
     <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Imóveis</span>
   </a>
-  ${aboutText ? `
+  ${(aboutText || embedUrl || aboutImages.length) ? `
   <a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-50" href="#about">
     <span class="material-symbols-outlined">article</span>
     <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Sobre</span>
