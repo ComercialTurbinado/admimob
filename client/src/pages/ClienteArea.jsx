@@ -233,8 +233,17 @@ export default function ClienteArea() {
           </div>
           {!isDemo && (
             <>
-              <Link to={'/cliente/' + id + '/design'} className="btn">🎨 Design</Link>
-              <Link to={'/cliente/' + id + '/perfil'} className="btn">✦ Curadoria de Identidade</Link>
+              <Link
+                to={'/cliente/' + id + '/hub'}
+                className="btn"
+                style={{
+                  background: '#d4af37',
+                  color: '#3c2f00',
+                  fontWeight: 700,
+                  border: 'none',
+                  letterSpacing: '0.04em',
+                }}
+              >✦ Hub do Cliente</Link>
               <Link to={'/cliente/' + id} className="btn" style={{ marginLeft: 'auto' }}>Editar cadastro</Link>
             </>
           )}

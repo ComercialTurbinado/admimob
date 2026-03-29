@@ -9,6 +9,7 @@ import Materiais from './pages/Materiais';
 import PosterVideo from './pages/PosterVideo';
 import SimulacaoLayouts from './pages/SimulacaoLayouts';
 const ClienteProfile = lazy(() => import('./pages/ClienteProfile'));
+const ClienteHub = lazy(() => import('./pages/ClienteHub'));
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/cliente/:id/area" element={<ClienteArea />} />
             <Route path="/cliente/:id/design" element={<ClienteDesign />} />
             <Route path="/cliente/:id/perfil" element={<ClienteProfile />} />
+            <Route path="/cliente/:id/hub" element={<ClienteHub />} />
             <Route path="/cliente/:id" element={<ClienteForm />} />
             <Route path="/cliente/:clientId/produto/:id" element={<Producao />} />
             <Route path="/cliente/:clientId/produto/:id/materiais" element={<Materiais />} />
