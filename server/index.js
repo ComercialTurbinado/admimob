@@ -4,7 +4,7 @@ import cors from 'cors';
 import db, { init } from './db.js';
 import { Readable } from 'node:stream';
 import { buildRemotionRenderPayload, mergeRemotionPayload } from './remotionListing.js';
-import { slugify, renderCatalogPage, renderListingPage, renderSitemap } from './catalog.js';
+import { slugify, renderProfilePage, renderCatalogPage, renderListingPage, renderSitemap } from './catalog.js';
 
 const app = express();
 app.use(cors());
@@ -1113,8 +1113,31 @@ async function resolveClientForCatalog(req, slugParam) {
   return db.prepare(`SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE slug = ?`).get(slugParam);
 }
 
+// Redirecionamentos de compatibilidade (URLs antigas → novas)
+app.get('/catalogo/:slug', (req, res) => {
+  res.redirect(301, `/${req.params.slug}/catalogo`);
+});
+app.get('/catalogo/:slug/:listingId', (req, res) => {
+  res.redirect(301, `/${req.params.slug}/catalogo/${req.params.listingId}`);
+});
+
+// Perfil público do cliente (home)
+app.get('/:slug([a-z0-9-]{2,60})', async (req, res, next) => {
+  try {
+    const client = await resolveClientForCatalog(req, req.params.slug);
+    if (!client) return next();
+    const html = renderProfilePage(client, getCatalogBase(req), getApiBase(req));
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+    res.send(html);
+  } catch (e) {
+    console.error('[profile]', e);
+    next();
+  }
+});
+
 // Catálogo: lista de imóveis do cliente
-app.get('/catalogo/:slug', async (req, res) => {
+app.get('/:slug([a-z0-9-]{2,60})/catalogo', async (req, res, next) => {
   try {
     const client = await resolveClientForCatalog(req, req.params.slug);
     if (!client) return res.status(404).send('<h1>Catálogo não encontrado</h1>');
@@ -1132,7 +1155,7 @@ app.get('/catalogo/:slug', async (req, res) => {
 });
 
 // Catálogo: página individual do imóvel
-app.get('/catalogo/:slug/:listingId', async (req, res) => {
+app.get('/:slug([a-z0-9-]{2,60})/catalogo/:listingId', async (req, res) => {
   try {
     const client = await resolveClientForCatalog(req, req.params.slug);
     if (!client) return res.status(404).send('<h1>Catálogo não encontrado</h1>');
@@ -1150,8 +1173,8 @@ app.get('/catalogo/:slug/:listingId', async (req, res) => {
   }
 });
 
-// Catálogo: sitemap XML
-app.get('/catalogo/:slug/sitemap.xml', async (req, res) => {
+// Sitemap XML
+app.get('/:slug([a-z0-9-]{2,60})/sitemap.xml', async (req, res) => {
   try {
     const client = await resolveClientForCatalog(req, req.params.slug);
     if (!client) return res.status(404).send('');
@@ -1167,13 +1190,13 @@ app.get('/catalogo/:slug/sitemap.xml', async (req, res) => {
   }
 });
 
-// Catálogo: robots.txt
-app.get('/catalogo/:slug/robots.txt', (req, res) => {
+// Robots.txt
+app.get('/:slug([a-z0-9-]{2,60})/robots.txt', (req, res) => {
   res.set('Content-Type', 'text/plain');
   res.send('User-agent: *\nAllow: /\n');
 });
 
-// Domínio próprio: raiz → catálogo do cliente pelo custom_domain
+// Domínio próprio: raiz → perfil do cliente pelo custom_domain
 app.get('/', async (req, res, next) => {
   try {
     const host = (req.hostname || '').toLowerCase();
@@ -1182,10 +1205,7 @@ app.get('/', async (req, res, next) => {
       `SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE LOWER(custom_domain) = ?`
     ).get(host);
     if (!client) return next();
-    const listings = await db.prepare(
-      'SELECT id, raw_data, selected_images, updated_at FROM listings WHERE client_id = ? ORDER BY updated_at DESC'
-    ).all(client.id);
-    const html = renderCatalogPage(client, listings, `https://${host}`, getApiBase(req));
+    const html = renderProfilePage(client, `https://${host}`, getApiBase(req));
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     res.send(html);

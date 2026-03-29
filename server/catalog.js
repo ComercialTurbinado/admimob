@@ -5,9 +5,10 @@
  * Não usa frameworks no cliente — apenas HTML + CSS + JS mínimo inline.
  *
  * Rotas:
- *   GET /catalogo/:slug          → página do cliente (perfil + grid de imóveis)
- *   GET /catalogo/:slug/:id      → página individual do imóvel
- *   GET /catalogo/:slug/sitemap.xml → sitemap XML
+ *   GET /:slug                   → página de perfil do cliente (home)
+ *   GET /:slug/catalogo          → catálogo de imóveis
+ *   GET /:slug/catalogo/:id      → página individual do imóvel
+ *   GET /:slug/sitemap.xml       → sitemap XML
  *   GET /catalogo/:slug/robots.txt  → robots.txt liberado
  *
  * Domínio próprio:
@@ -317,7 +318,7 @@ export function renderCatalogPage(client, listings, baseUrl, apiBase) {
   // WhatsApp: usa campo whatsapp, senão phone principal
   const wp = (client.whatsapp || client.phone || '').replace(/\D/g, '');
   const wpLink = wp ? `https://wa.me/55${wp}` : null;
-  const clientUrl = `${baseUrl}/catalogo/${client.slug}`;
+  const clientUrl = `${baseUrl}/${client.slug}/catalogo`;
 
   // Hero links
   const heroLinks = [];
@@ -461,7 +462,7 @@ export function renderListingPage(client, row, baseUrl, apiBase) {
   const css = buildCss(colors);
   const l = parseListing(row);
 
-  const clientUrl = `${baseUrl}/catalogo/${client.slug}`;
+  const clientUrl = `${baseUrl}/${client.slug}/catalogo`;
   const listingUrl = `${clientUrl}/${l.id}`;
   const location = [client.city, client.state].filter(Boolean).join(', ');
 
@@ -578,12 +579,228 @@ export function renderListingPage(client, row, baseUrl, apiBase) {
   });
 }
 
+// ─── Página de Perfil (home do cliente) ──────────────────────────────────────
+export function renderProfilePage(client, baseUrl, apiBase) {
+  const d = parseDesignConfig(client.design_config);
+  const primary    = d['--primary'] || '#f2ca50';
+  const primaryCt  = d['--contact-bg'] || darkenHex(primary, 0.12);
+
+  const profileUrl  = `${baseUrl}/${client.slug}`;
+  const catalogUrl  = `${baseUrl}/${client.slug}/catalogo`;
+
+  const wp = (client.whatsapp || client.phone || '').replace(/\D/g, '');
+  const wpLink  = wp ? `https://wa.me/55${wp}` : null;
+  const instaHandle = client.instagram ? client.instagram.replace(/^@/, '') : null;
+  const instaLink   = instaHandle ? `https://instagram.com/${instaHandle}` : null;
+
+  const logoUrl = client.logo_url ? proxyImg(client.logo_url, apiBase) : null;
+  const specialty = client.contact_name || '';
+  const aboutText = client.notes || '';
+
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'RealEstateAgent',
+    name: client.name,
+    url: profileUrl,
+    image: client.logo_url || undefined,
+    telephone: client.phone || undefined,
+    email: client.email || undefined,
+    sameAs: [client.website, instaLink].filter(Boolean),
+  });
+
+  const html = `<!DOCTYPE html>
+<html class="dark" lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>${esc(client.name)}${specialty ? ' | ' + esc(specialty) : ''}</title>
+<meta name="description" content="${esc(client.name)}${specialty ? ' — ' + esc(specialty) : ''}${aboutText ? '. ' + esc(aboutText.substring(0, 120)) : ''}"/>
+<meta property="og:title" content="${esc(client.name)}"/>
+<meta property="og:description" content="${specialty ? esc(specialty) : 'Catálogo de imóveis'}"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="${esc(profileUrl)}"/>
+${logoUrl ? `<meta property="og:image" content="${esc(logoUrl)}"/>` : ''}
+<link rel="canonical" href="${esc(profileUrl)}"/>
+<script type="application/ld+json">${jsonLd}</script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "background": "#131313",
+        "on-surface": "#e5e2e1",
+        "surface": "#131313",
+        "surface-dim": "#131313",
+        "surface-container-lowest": "#0e0e0e",
+        "surface-container-low": "#1c1b1b",
+        "surface-container": "#201f1f",
+        "surface-container-high": "#2a2a2a",
+        "surface-container-highest": "#353534",
+        "surface-bright": "#393939",
+        "on-surface-variant": "#d0c5af",
+        "outline": "#99907c",
+        "outline-variant": "#4d4635",
+        "primary": "${esc(primary)}",
+        "primary-container": "${esc(primaryCt)}",
+        "primary-fixed": "#ffe088",
+        "primary-fixed-dim": "#e9c349",
+        "on-primary": "#3c2f00",
+        "on-primary-container": "#554300",
+        "secondary": "#c8c6c5",
+        "secondary-container": "#474747",
+        "secondary-fixed": "#e4e2e1",
+        "secondary-fixed-dim": "#c8c6c5",
+        "on-secondary": "#303030",
+        "on-secondary-container": "#b6b5b4",
+        "on-secondary-fixed": "#1b1c1c",
+        "on-secondary-fixed-variant": "#474747",
+        "tertiary": "#d0cdcd",
+        "tertiary-container": "#b4b2b2",
+        "tertiary-fixed": "#e5e2e1",
+        "tertiary-fixed-dim": "#c8c6c5",
+        "on-tertiary": "#313030",
+        "on-tertiary-container": "#454544",
+        "on-tertiary-fixed": "#1c1b1b",
+        "on-tertiary-fixed-variant": "#474746",
+        "error": "#ffb4ab",
+        "error-container": "#93000a",
+        "on-error": "#690005",
+        "on-error-container": "#ffdad6",
+        "inverse-primary": "#735c00",
+        "inverse-on-surface": "#313030",
+        "inverse-surface": "#e5e2e1",
+        "surface-tint": "#e9c349",
+      },
+      fontFamily: {
+        "headline": ["Noto Serif"],
+        "body": ["Manrope"],
+        "label": ["Manrope"],
+      },
+      borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+    },
+  },
+}
+</script>
+<style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.pulsing-aura { box-shadow: 0 0 0 0 rgba(212,175,55,.4); animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0  0px rgba(212,175,55,.4); }
+  70%  { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(212,175,55,0);  }
+  100% { transform: scale(1);    box-shadow: 0 0 0  0px rgba(212,175,55,.4); }
+}
+body { min-height: max(884px, 100dvh); }
+</style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30">
+
+<!-- Header / Profile -->
+<header class="relative pt-16 pb-8 px-6 flex flex-col items-center text-center">
+  <div class="relative mb-6">
+    <div class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-primary-container to-primary">
+      ${logoUrl
+        ? `<img alt="${esc(client.name)}" class="w-full h-full rounded-full object-cover border-4 border-background" src="${esc(logoUrl)}"/>`
+        : `<div class="w-full h-full rounded-full border-4 border-background bg-surface-container-high flex items-center justify-center font-headline font-black text-4xl text-primary">${esc((client.name || '?').charAt(0).toUpperCase())}</div>`
+      }
+    </div>
+  </div>
+  <h1 class="font-headline text-3xl font-bold tracking-tight text-on-surface mb-1 uppercase">${esc(client.name)}</h1>
+  ${client.creci ? `<p class="text-primary font-label text-xs tracking-[0.2em] mb-3">CRECI ${esc(client.creci)}</p>` : ''}
+  ${specialty ? `<p class="font-headline italic text-lg text-on-surface-variant opacity-80">${esc(specialty)}</p>` : ''}
+</header>
+
+<!-- Main -->
+<main class="max-w-xl mx-auto px-6 pb-24 space-y-12">
+
+  <!-- Primary CTA -->
+  <section class="flex flex-col gap-4">
+    <a class="pulsing-aura bg-primary-container text-on-primary-container py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(catalogUrl)}">
+      <span class="material-symbols-outlined text-2xl">apartment</span>
+      <span class="font-headline font-bold text-lg tracking-wide">Ver Catálogo de Imóveis</span>
+    </a>
+  </section>
+
+  <!-- Links secundários -->
+  <nav class="flex flex-col gap-4">
+    ${wpLink ? `
+    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(wpLink)}" target="_blank" rel="noopener nofollow">
+      <div class="flex items-center gap-4">
+        <span class="material-symbols-outlined text-primary-fixed-dim">chat</span>
+        <span class="font-body font-semibold tracking-wide">Falar no WhatsApp</span>
+      </div>
+      <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
+    </a>` : ''}
+    ${instaLink ? `
+    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(instaLink)}" target="_blank" rel="noopener nofollow">
+      <div class="flex items-center gap-4">
+        <span class="material-symbols-outlined text-primary-fixed-dim">camera</span>
+        <span class="font-body font-semibold tracking-wide">Meu Instagram</span>
+      </div>
+      <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
+    </a>` : ''}
+    ${client.website ? `
+    <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(client.website)}" target="_blank" rel="noopener">
+      <div class="flex items-center gap-4">
+        <span class="material-symbols-outlined text-primary-fixed-dim">language</span>
+        <span class="font-body font-semibold tracking-wide">Meu Site</span>
+      </div>
+      <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
+    </a>` : ''}
+  </nav>
+
+  ${aboutText ? `
+  <!-- Sobre -->
+  <section id="about" class="space-y-4 pt-8">
+    <h2 class="font-headline text-2xl font-bold border-l-2 pl-4" style="border-color:${esc(primaryCt)}">Sobre</h2>
+    <p class="text-on-surface-variant leading-relaxed font-light">${esc(aboutText)}</p>
+  </section>` : ''}
+
+</main>
+
+<!-- Footer -->
+<footer class="py-12 px-6 flex flex-col items-center gap-4 bg-surface-container-lowest border-t border-outline-variant/10">
+  <div class="flex items-center gap-2">
+    <span class="font-headline font-black text-primary text-xl tracking-widest uppercase">${esc(client.name)}</span>
+  </div>
+  ${client.creci ? `<p class="text-on-surface-variant/60 text-xs tracking-widest">CRECI ${esc(client.creci)}</p>` : ''}
+  <p class="text-on-surface-variant/40 text-[10px] tracking-widest">© ${new Date().getFullYear()} ${esc(client.name).toUpperCase()}. TODOS OS DIREITOS RESERVADOS.</p>
+</footer>
+
+<!-- Bottom Nav (mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl flex justify-around items-center py-3 z-50 border-t border-outline-variant/15 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+  <a class="flex flex-col items-center justify-center text-primary scale-110" href="${esc(profileUrl)}">
+    <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">badge</span>
+    <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Perfil</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-50" href="${esc(catalogUrl)}">
+    <span class="material-symbols-outlined">apartment</span>
+    <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Imóveis</span>
+  </a>
+  ${aboutText ? `
+  <a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-50" href="#about">
+    <span class="material-symbols-outlined">article</span>
+    <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Sobre</span>
+  </a>` : ''}
+</nav>
+
+</body>
+</html>`;
+
+  return html;
+}
+
 // ─── Sitemap XML ──────────────────────────────────────────────────────────────
 export function renderSitemap(client, listings, baseUrl) {
-  const clientUrl = `${baseUrl}/catalogo/${client.slug}`;
+  const profileUrl = `${baseUrl}/${client.slug}`;
+  const clientUrl = `${baseUrl}/${client.slug}/catalogo`;
   const now = new Date().toISOString().split('T')[0];
   const urls = [
-    `  <url><loc>${esc(clientUrl)}</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    `  <url><loc>${esc(profileUrl)}</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    `  <url><loc>${esc(clientUrl)}</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`,
     ...listings.map((r) =>
       `  <url><loc>${esc(`${clientUrl}/${r.id}`)}</loc><lastmod>${(r.updated_at || now).split('T')[0]}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
     ),
