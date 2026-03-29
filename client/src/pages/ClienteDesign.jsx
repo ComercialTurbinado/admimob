@@ -14,6 +14,8 @@ const DESIGN_KEYS = [
   { key: '--line-poster',  shortLabel: 'Linhas',        label: 'Linhas e bordas',        hint: 'Separadores do poster' },
   { key: '--amen-bg',      shortLabel: 'Lazer fundo',   label: 'Fundo de lazer',         hint: 'Background dos cards de amenities' },
   { key: '--amen-bd',      shortLabel: 'Lazer borda',   label: 'Borda de lazer',         hint: 'Borda dos cards de amenities' },
+  { key: '--btn-bg',       shortLabel: 'Botão fundo',   label: 'Fundo do botão CTA',     hint: 'Cor do botão principal no perfil público (padrão: mesma cor principal)' },
+  { key: '--btn-text',     shortLabel: 'Botão texto',   label: 'Texto do botão CTA',     hint: 'Cor do texto dentro do botão principal do perfil público' },
 ];
 
 function parseDesignConfig(raw) {

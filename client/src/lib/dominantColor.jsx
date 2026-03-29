@@ -207,6 +207,8 @@ const DEFAULT_PALETTE = {
   '--line-poster': '#e6e8ee',
   '--amen-bg': '#f1f5fb',
   '--amen-bd': '#e7edf8',
+  '--btn-bg': '',
+  '--btn-text': '#1a1200',
 };
 
 /**

@@ -155,7 +155,7 @@ img{display:block;max-width:100%}
 .hero{background:linear-gradient(135deg,${heroBg} 0%,${primary} 100%);color:${heroText};padding:2.5rem 1rem 3rem;text-align:center;position:relative;overflow:hidden}
 .hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
 .hero-logo-wrap{width:90px;height:90px;border-radius:50%;overflow:hidden;border:3px solid rgba(255,255,255,0.35);margin:0 auto 1rem;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.2)}
-.hero-logo-wrap img{width:100%;height:100%;object-fit:cover}
+.hero-logo-wrap img{width:100%;height:100%;object-fit:contain;padding:4px;background:#fff}
 .hero-initial{font-size:2.2rem;font-weight:700;color:${primary}}
 .hero h1{font-size:clamp(1.4rem,4vw,2rem);font-weight:700;margin-bottom:0.25rem;position:relative;z-index:1}
 .hero-sub{font-size:0.95rem;opacity:0.88;margin-bottom:1.25rem;position:relative;z-index:1}
@@ -615,7 +615,9 @@ function youtubeEmbedUrl(url) {
 export function renderProfilePage(client, baseUrl, apiBase) {
   const d = parseDesignConfig(client.design_config);
   const primary    = d['--primary'] || '#f2ca50';
-  const primaryCt  = d['--contact-bg'] || darkenHex(primary, 0.12);
+  const btnBg      = d['--btn-bg'] || primary;
+  const btnText    = d['--btn-text'] || '#1a1200';
+  const accentBg   = d['--contact-bg'] || darkenHex(primary, 0.2);
 
   const pc = parseProfileConfig(client.profile_config);
 
@@ -628,6 +630,8 @@ export function renderProfilePage(client, baseUrl, apiBase) {
   const aboutVideo = (pc.about_enabled !== false) ? (pc.about_video || '') : '';
   const aboutImages = (pc.about_enabled !== false && Array.isArray(pc.about_images)) ? pc.about_images.slice(0, 3).filter(Boolean) : [];
   const embedUrl = youtubeEmbedUrl(aboutVideo);
+
+  const sectionsOrder = Array.isArray(pc.sections_order) ? pc.sections_order : ['cta', 'links', 'about'];
 
   // Build links from profile_config.links; fall back to legacy WhatsApp/Instagram/website
   let profileLinks = [];
@@ -682,7 +686,9 @@ ${logoUrl ? `<meta property="og:image" content="${esc(logoUrl)}"/>` : ''}
 <style>
 :root {
   --client-primary: ${esc(primary)};
-  --client-primary-ct: ${esc(primaryCt)};
+  --client-btn-bg: ${esc(btnBg)};
+  --client-btn-text: ${esc(btnText)};
+  --client-accent: ${esc(accentBg)};
 }
 </style>
 <script id="tailwind-config">
@@ -705,11 +711,11 @@ tailwind.config = {
         "outline": "#99907c",
         "outline-variant": "#4d4635",
         "primary": "${esc(primary)}",
-        "primary-container": "${esc(primaryCt)}",
+        "primary-container": "${esc(btnBg)}",
         "primary-fixed": "#ffe088",
         "primary-fixed-dim": "#e9c349",
         "on-primary": "#3c2f00",
-        "on-primary-container": "#554300",
+        "on-primary-container": "${esc(btnText)}",
         "secondary": "#c8c6c5",
         "secondary-container": "#474747",
         "secondary-fixed": "#e4e2e1",
@@ -763,7 +769,9 @@ body { min-height: max(884px, 100dvh); }
   <div class="relative mb-6">
     <div class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-primary-container to-primary">
       ${logoUrl
-        ? `<img alt="${esc(client.name)}" class="w-full h-full rounded-full object-cover border-4 border-background" src="${esc(logoUrl)}"/>`
+        ? (pc.logo_style === 'circle'
+            ? `<img alt="${esc(client.name)}" class="w-full h-full rounded-full object-cover border-4 border-background" src="${esc(logoUrl)}"/>`
+            : `<img alt="${esc(client.name)}" class="w-full h-full object-contain p-2 border-4 border-background rounded-full bg-surface-container-low" src="${esc(logoUrl)}"/>`)
         : `<div class="w-full h-full rounded-full border-4 border-background bg-surface-container-high flex items-center justify-center font-headline font-black text-4xl text-primary">${esc((client.name || '?').charAt(0).toUpperCase())}</div>`
       }
     </div>
@@ -776,16 +784,17 @@ body { min-height: max(884px, 100dvh); }
 <!-- Main -->
 <main class="max-w-xl mx-auto px-6 pb-24 space-y-12">
 
-  <!-- Links (primary CTA first, then secondary) -->
+  ${(() => {
+    const sectionHtml = {
+      cta: `<!-- Links (primary CTA) -->
   <section class="flex flex-col gap-4">
     ${profileLinks.filter((l) => l.isPrimary).map((l) => `
-    <a class="pulsing-aura text-on-primary-container py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--client-primary-ct)">
+    <a class="pulsing-aura py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--client-btn-bg);color:var(--client-btn-text)">
       <span class="material-symbols-outlined text-2xl">${esc(l.icon)}</span>
       <span class="font-headline font-bold text-lg tracking-wide">${esc(l.label)}</span>
     </a>`).join('')}
-  </section>
-
-  <!-- Links secundários -->
+  </section>`,
+      links: `<!-- Links secundários -->
   <nav class="flex flex-col gap-4">
     ${profileLinks.filter((l) => !l.isPrimary).map((l) => `
     <a class="border border-outline-variant hover:bg-surface-container-high transition-colors py-4 px-6 flex items-center justify-between group" href="${esc(l.href)}" target="_blank" rel="noopener nofollow">
@@ -795,12 +804,10 @@ body { min-height: max(884px, 100dvh); }
       </div>
       <span class="material-symbols-outlined text-sm opacity-40 group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
     </a>`).join('')}
-  </nav>
-
-  ${aboutText || embedUrl || aboutImages.length ? `
-  <!-- Sobre -->
+  </nav>`,
+      about: (aboutText || embedUrl || aboutImages.length) ? `<!-- Sobre -->
   <section id="about" class="space-y-6 pt-8">
-    <h2 class="font-headline text-2xl font-bold border-l-2 pl-4" style="border-color:${esc(primaryCt)}">Sobre</h2>
+    <h2 class="font-headline text-2xl font-bold border-l-2 pl-4" style="border-color:${esc(accentBg)}">Sobre</h2>
     ${aboutText ? `<p class="text-on-surface-variant leading-relaxed font-light">${esc(aboutText)}</p>` : ''}
     ${embedUrl ? `
     <div class="relative w-full" style="padding-bottom:56.25%">
@@ -810,7 +817,10 @@ body { min-height: max(884px, 100dvh); }
     <div class="grid gap-2" style="grid-template-columns:repeat(${aboutImages.length},1fr)">
       ${aboutImages.map((img) => `<img alt="" class="w-full aspect-square object-cover rounded" src="${esc(img)}" loading="lazy"/>`).join('')}
     </div>` : ''}
-  </section>` : ''}
+  </section>` : '',
+    };
+    return sectionsOrder.map((k) => sectionHtml[k] || '').join('\n');
+  })()}
 
 </main>
 

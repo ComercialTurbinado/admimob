@@ -200,11 +200,17 @@ export default function ClienteProfile() {
   // Section 2: Links
   const [links, setLinks] = useState([]);
 
+  // Section 1 extras
+  const [logoStyle, setLogoStyle] = useState('contain'); // 'contain' | 'circle'
+
   // Section 3: Quem Somos
   const [aboutEnabled, setAboutEnabled] = useState(true);
   const [aboutBio, setAboutBio] = useState('');
   const [aboutVideo, setAboutVideo] = useState('');
   const [aboutImages, setAboutImages] = useState(['', '', '']);
+
+  // Section 4: Ordem das Seções
+  const [sectionsOrder, setSectionsOrder] = useState(['cta', 'links', 'about']);
 
   useEffect(() => {
     // Load Google Fonts
@@ -235,11 +241,13 @@ export default function ClienteProfile() {
         const hasAutoLink = otherLinks.some((l) => l.id === 'catalog' || l.url === 'auto');
         setLinks(hasAutoLink ? otherLinks : [catalogLink, ...otherLinks]);
 
+        setLogoStyle(pc.logo_style || 'contain');
         setAboutEnabled(pc.about_enabled !== false);
         setAboutBio(pc.about_bio || c.notes || '');
         setAboutVideo(pc.about_video || '');
         const imgs = Array.isArray(pc.about_images) ? pc.about_images : [];
         setAboutImages([imgs[0] || '', imgs[1] || '', imgs[2] || '']);
+        setSectionsOrder(Array.isArray(pc.sections_order) ? pc.sections_order : ['cta', 'links', 'about']);
       })
       .catch((e) => setErrorMsg('Erro ao carregar: ' + e.message))
       .finally(() => setLoading(false));
@@ -265,11 +273,13 @@ export default function ClienteProfile() {
     try {
       const profile_config = {
         specialty,
+        logo_style: logoStyle,
         links,
         about_enabled: aboutEnabled,
         about_bio: aboutBio,
         about_video: aboutVideo,
         about_images: aboutImages.filter(Boolean),
+        sections_order: sectionsOrder,
       };
 
       const body = {
@@ -379,6 +389,36 @@ export default function ClienteProfile() {
                     URL da imagem (PNG, JPG ou WebP recomendado)
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Logo Style */}
+            <div style={s.formGroup}>
+              <label style={s.label}>Formato do Logo</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {[
+                  { value: 'contain', label: 'Conter (recomendado)' },
+                  { value: 'circle', label: 'Circular (avatar)' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setLogoStyle(opt.value)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: 3,
+                      border: `1px solid ${T.outlineVariant}`,
+                      fontFamily: 'Manrope, sans-serif',
+                      fontSize: '0.82rem',
+                      fontWeight: logoStyle === opt.value ? 700 : 400,
+                      cursor: 'pointer',
+                      background: logoStyle === opt.value ? T.primaryCt : 'transparent',
+                      color: logoStyle === opt.value ? T.bg : T.onSurfaceVariant,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -592,6 +632,66 @@ export default function ClienteProfile() {
               Este módulo está oculto no perfil público. Ative para configurá-lo.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* ── Section 4: Ordem das Seções ── */}
+      <div style={{ padding: '0 1.5rem' }}>
+        <div style={s.card}>
+          <h2 style={s.sectionTitle}>Ordem das Seções</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {sectionsOrder.map((key, idx) => {
+              const labels = { cta: 'Botão Catálogo', links: 'Links Estratégicos', about: 'Quem Somos' };
+              return (
+                <div key={key} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  background: T.surfaceHigh,
+                  border: `1px solid ${T.outlineVariant}`,
+                  borderRadius: 3,
+                  padding: '0.65rem 0.85rem',
+                }}>
+                  <span style={{ fontSize: '0.72rem', color: T.onSurfaceVariant, width: 16, textAlign: 'center', fontFamily: 'Manrope, sans-serif' }}>{idx + 1}</span>
+                  <span style={{ flex: 1, fontSize: '0.88rem', fontFamily: 'Manrope, sans-serif', color: T.onSurface }}>{labels[key] || key}</span>
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => setSectionsOrder((prev) => {
+                        const next = [...prev];
+                        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                        return next;
+                      })}
+                      style={{
+                        ...s.btnSecondary,
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.75rem',
+                        opacity: idx === 0 ? 0.3 : 1,
+                      }}
+                      aria-label="Mover para cima"
+                    >▲</button>
+                    <button
+                      type="button"
+                      disabled={idx === sectionsOrder.length - 1}
+                      onClick={() => setSectionsOrder((prev) => {
+                        const next = [...prev];
+                        [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                        return next;
+                      })}
+                      style={{
+                        ...s.btnSecondary,
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.75rem',
+                        opacity: idx === sectionsOrder.length - 1 ? 0.3 : 1,
+                      }}
+                      aria-label="Mover para baixo"
+                    >▼</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
