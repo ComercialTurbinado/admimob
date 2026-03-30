@@ -6,32 +6,94 @@ async function apiGet(url) {
   const res = await fetch(API + url);
   const ct = res.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
-    throw new Error('A API não está respondendo. Execute no terminal: npm run dev');
+    throw new Error(API_NOT_RESPONDING_MSG);
   }
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data;
 }
 
-const KPI_LABELS = {
-  leads: 'Leads',
-  clientes_ativos: 'Clientes Ativos',
-  negociacoes: 'Negociações',
-  vendas_mes: 'Vendas (Mês)',
+const KPI_DEFS = [
+  { key: 'leads', label: 'Leads', icon: '◎', desc: 'Novos contatos' },
+  { key: 'negociacoes', label: 'Qualificados', icon: '◈', desc: 'Em negociação' },
+  { key: 'clientes_ativos', label: 'Ativos', icon: '◉', desc: 'Clientes ativos' },
+  { key: 'vendas_mes', label: 'Vendas (Mês)', icon: '✦', desc: 'Este mês' },
+];
+
+const STATUS_CLASS = {
+  lead: 'status-lead',
+  qualified: 'status-qualified',
+  negotiation: 'status-qualified',
+  onboarding: 'status-onboarding',
+  active: 'status-active',
+  inactive: 'status-inactive',
 };
 
-// Cliente fictício para exibir o layout quando não houver dados do banco
-const MOCK_CLIENT = {
-  id: 'demo',
-  name: 'Regina Guerreiro Imoveis',
-  logo_url: 'https://resizedimgs.vivareal.com/img/vr-listing/e9cfb78f81731ee3743dc1b24339625a/regina-guerreiro-imoveis.webp',
+const STATUS_LABELS = {
+  lead: 'Lead',
+  qualified: 'Qualificado',
+  negotiation: 'Qualificado',
+  onboarding: 'Onboarding',
+  active: 'Ativo',
+  inactive: 'Inativo',
 };
+
+function ClientLogo({ client, size = 40 }) {
+  if (client.logo_url) {
+    return (
+      <img
+        src={proxyImageUrl(client.logo_url)}
+        alt=""
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 6,
+          objectFit: 'contain',
+          background: 'var(--surface-hi)',
+          display: 'block',
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 6,
+        background: 'var(--surface-hi)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Noto Serif', serif",
+        fontWeight: 900,
+        color: 'var(--gold)',
+        fontSize: size * 0.44,
+        flexShrink: 0,
+      }}
+    >
+      {(client.name || '?').charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+    });
+  } catch {
+    return null;
+  }
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [clients, setClients] = useState([]);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [loadingSeed, setLoadingSeed] = useState(false);
@@ -39,17 +101,6 @@ export default function Dashboard() {
   const [importingUrl, setImportingUrl] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
   const [lastImportedClientId, setLastImportedClientId] = useState(null);
-
-  const searchLower = (search || '').trim().toLowerCase();
-  const filtered = searchLower
-    ? clients.filter((c) => {
-        const name = (c.name || '').toLowerCase();
-        const contact = (c.contact_name || '').toLowerCase();
-        return name.includes(searchLower) || contact.includes(searchLower);
-      })
-    : clients;
-  const leads = filtered.filter((c) => (c.status || 'lead') === 'lead');
-  const clientes = filtered.filter((c) => (c.status || '') !== 'lead');
 
   function loadData() {
     setApiError(null);
@@ -60,7 +111,11 @@ export default function Dashboard() {
       })
       .catch((e) => {
         const msg = e.message || 'Não foi possível conectar à API.';
-        setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? API_NOT_RESPONDING_MSG : msg);
+        setApiError(
+          msg.includes('<!DOCTYPE') || msg.includes('Unexpected token')
+            ? API_NOT_RESPONDING_MSG
+            : msg
+        );
         setDashboard(null);
         setClients([]);
       })
@@ -83,7 +138,11 @@ export default function Dashboard() {
       await loadData();
     } catch (e) {
       const msg = e.message || 'Erro ao carregar exemplo.';
-      setApiError(msg.includes('<!DOCTYPE') || msg.includes('Unexpected token') ? API_NOT_RESPONDING_MSG : msg);
+      setApiError(
+        msg.includes('<!DOCTYPE') || msg.includes('Unexpected token')
+          ? API_NOT_RESPONDING_MSG
+          : msg
+      );
     } finally {
       setLoadingSeed(false);
     }
@@ -101,11 +160,11 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setImportMsg(data.message || 'Imóvel importado.');
+      setImportMsg(data.message || 'Imóvel importado com sucesso.');
       setImportUrl('');
       if (data.client_id) {
         setLastImportedClientId(data.client_id);
-        await loadData();
+        loadData();
       } else {
         setLastImportedClientId(null);
       }
@@ -116,79 +175,116 @@ export default function Dashboard() {
     }
   }
 
-  if (loading) return <p className="muted">Carregando...</p>;
   const kpis = dashboard?.kpis || {};
-  const links = dashboard?.payment_links || {};
-  const plans = dashboard?.plans || [];
+  const recentClients = clients.slice(0, 6);
+
+  const today = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  if (loading) {
+    return (
+      <div className="page-wrap">
+        <p style={{ color: 'var(--muted)', paddingTop: '2rem' }}>Carregando...</p>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <h1 style={{ marginBottom: '1.5rem' }}>Dashboard Executivo</h1>
-
-      <section className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Indicadores</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-          {Object.entries(KPI_LABELS).map(([key, label]) => (
-            <div key={key} className="kpi-card">
-              <div className="kpi-value">{dashboard ? (Number(kpis[key]) ?? 0) : '—'}</div>
-              <div className="kpi-label">{label}</div>
-            </div>
-          ))}
+    <div className="page-wrap">
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{today}</p>
         </div>
-      </section>
+        <Link to="/cliente/novo" className="btn btn-primary">
+          + Novo Cliente
+        </Link>
+      </div>
 
-      <section className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Links de Pagamento</h2>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {plans.filter((p) => p.payment_url).map((p) => (
-            <a
-              key={p.id}
-              href={p.payment_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary"
-            >
-              {p.label}
-            </a>
-          ))}
-          {plans.filter((p) => p.payment_url).length === 0 && (
-            <>
-              {[
-                { key: 'plan_65', label: 'R$ 65', url: links.plan_65 },
-                { key: 'plan_297', label: 'R$ 297', url: links.plan_297 },
-                { key: 'plan_497', label: 'R$ 497', url: links.plan_497 },
-              ].map(({ key, label, url }) => (
-                <a
-                  key={key}
-                  href={url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-primary"
-                  style={{ opacity: url ? 1 : 0.6 }}
-                >
-                  {label}
-                </a>
-              ))}
-            </>
+      {/* API Error */}
+      {apiError && (
+        <div
+          className="card"
+          style={{ borderColor: 'var(--danger)', marginBottom: '1.5rem' }}
+        >
+          <p style={{ color: 'var(--danger)', margin: 0, fontWeight: 600 }}>{apiError}</p>
+          {apiError === API_NOT_RESPONDING_MSG && (
+            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.5rem', marginBottom: 0 }}>
+              {isLocalhost
+                ? 'No terminal, na pasta do projeto: npm run dev'
+                : 'Veja no README a seção "Deploy no Amplify".'}
+            </p>
           )}
         </div>
-        <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-          Configure os links em <Link to="/config">Configurações</Link> (planos com URL).
-        </p>
-      </section>
+      )}
 
-      <section className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Importar imóvel por link</h2>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          Cole o link do anúncio (ZAP, Viva Real, etc.). O sistema puxa as informações pelo webhook de captação. Se o cliente (imobiliária) não existir, um novo será criado e o imóvel cadastrado nele.
+      {/* KPI cards */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '0.85rem',
+          marginBottom: '2rem',
+        }}
+      >
+        {KPI_DEFS.map(({ key, label, icon, desc }) => (
+          <div key={key} className="kpi-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span
+                style={{
+                  fontSize: '1.1rem',
+                  color: 'var(--gold)',
+                  opacity: 0.8,
+                  lineHeight: 1,
+                }}
+              >
+                {icon}
+              </span>
+            </div>
+            <div className="kpi-value">
+              {dashboard ? (kpis[key] ?? 0) : '—'}
+            </div>
+            <div className="kpi-label">{label}</div>
+          </div>
+        ))}
+        {/* MRR Estimado — calculado dos clientes ativos */}
+        <div className="kpi-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '1.1rem', color: 'var(--gold)', opacity: 0.8, lineHeight: 1 }}>
+              ◆
+            </span>
+          </div>
+          <div className="kpi-value">
+            {clients.length > 0
+              ? clients.filter((c) => c.status === 'active').length
+              : '—'}
+          </div>
+          <div className="kpi-label">MRR Est.</div>
+        </div>
+      </div>
+
+      {/* Ação Rápida — Importar imóvel */}
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          <h2 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--subtle)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Ação Rápida — Importar Imóvel
+          </h2>
+        </div>
+        <p style={{ color: 'var(--muted)', fontSize: '0.83rem', marginBottom: '0.85rem', marginTop: 0, lineHeight: 1.55 }}>
+          Cole o link do anúncio (ZAP, Viva Real, etc.). O sistema importa as informações e cria o cliente se necessário.
         </p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="import-box">
           <input
             type="url"
+            className="import-input"
             value={importUrl}
             onChange={(e) => setImportUrl(e.target.value)}
-            placeholder="https://..."
-            style={{ flex: 1, minWidth: 220, padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
+            placeholder="https://www.zapimoveis.com.br/..."
             onKeyDown={(e) => e.key === 'Enter' && handleImportByLink()}
             aria-label="Link do imóvel"
           />
@@ -202,157 +298,147 @@ export default function Dashboard() {
           </button>
         </div>
         {importMsg && (
-          <p style={{ marginTop: '0.75rem', marginBottom: 0, color: importMsg.startsWith('Erro') ? 'var(--danger)' : 'var(--success)' }}>
+          <p
+            style={{
+              marginTop: '0.6rem',
+              marginBottom: 0,
+              fontSize: '0.85rem',
+              color: importMsg.startsWith('Erro') ? 'var(--danger)' : 'var(--success)',
+            }}
+          >
             {importMsg}
             {lastImportedClientId && (
-              <> <Link to={'/cliente/' + lastImportedClientId + '/area'}>Ver área do cliente →</Link></>
+              <>
+                {' '}
+                <Link to={'/cliente/' + lastImportedClientId + '/area'}>
+                  Ver área do cliente →
+                </Link>
+              </>
             )}
           </p>
         )}
-      </section>
+      </div>
 
-      <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--muted)' }}>Clientes cadastrados</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <input
-              type="search"
-              placeholder="Buscar por nome ou contato..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ minWidth: 220, padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
-              aria-label="Buscar clientes"
-            />
-            <Link to="/cliente/novo" className="btn btn-primary">Novo cliente</Link>
-          </div>
+      {/* Clientes Recentes */}
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--subtle)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Clientes Recentes
+          </h2>
+          {clients.length > 6 && (
+            <Link to="/clientes" style={{ fontSize: '0.82rem', color: 'var(--gold)' }}>
+              Ver todos ({clients.length}) →
+            </Link>
+          )}
         </div>
-        {apiError && (
-          <div className="card" style={{ borderColor: 'var(--danger)', marginBottom: '1rem' }}>
-            <p style={{ color: 'var(--danger)', margin: 0 }}>{apiError}</p>
-            {apiError === API_NOT_RESPONDING_MSG && (
-              <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                {isLocalhost ? 'No terminal, na pasta do projeto: npm run dev' : 'Veja no README a seção "Deploy no Amplify".'}
-              </p>
-            )}
-          </div>
-        )}
-        {clients.length === 0 && (
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <p className="muted" style={{ marginBottom: '0.5rem' }}>Nenhum cliente no banco. Abaixo: cliente fictício para você ver o layout.</p>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <Link to="/cliente/novo" className="btn btn-primary">Cadastrar cliente</Link>
-              <button type="button" className="btn" onClick={loadExampleClient} disabled={loadingSeed || !!apiError}>
-                {loadingSeed ? 'Carregando...' : 'Carregar cliente de exemplo no banco'}
+
+        {clients.length === 0 ? (
+          <div
+            className="card"
+            style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}
+          >
+            <p style={{ color: 'var(--muted)', margin: '0 0 1rem', fontSize: '0.9rem' }}>
+              Nenhum cliente no banco ainda.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/cliente/novo" className="btn btn-primary">
+                Cadastrar cliente
+              </Link>
+              <button
+                type="button"
+                className="btn"
+                onClick={loadExampleClient}
+                disabled={loadingSeed || !!apiError}
+              >
+                {loadingSeed ? 'Carregando...' : 'Carregar exemplo'}
               </button>
             </div>
           </div>
-        )}
-
-        {searchLower && filtered.length === 0 && clients.length > 0 && (
-          <p className="muted" style={{ marginBottom: '1rem' }}>Nenhum resultado para &quot;{search}&quot;.</p>
-        )}
-
-        {filtered.length > 0 && (
-          <>
-            {leads.length > 0 && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Leads</h3>
-                <div className="client-grid">
-                  {leads.map((c) => (
-                    <div
-                      key={c.id}
-                      role="button"
-                      tabIndex={0}
-                      className="client-card"
-                      onClick={() => navigate('/cliente/' + c.id + '/area')}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/' + c.id + '/area'); } }}
-                    >
-                      <div className="client-card-logo">
-                        {c.logo_url ? (
-                          <img src={proxyImageUrl(c.logo_url)} alt="" />
-                        ) : (
-                          <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <span className="client-card-name">{c.name || 'Sem nome'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {clientes.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Clientes</h3>
-                <div className="client-grid">
-                  {clientes.map((c) => (
-                    <div
-                      key={c.id}
-                      role="button"
-                      tabIndex={0}
-                      className="client-card"
-                      onClick={() => navigate('/cliente/' + c.id + '/area')}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/' + c.id + '/area'); } }}
-                    >
-                      <div className="client-card-logo">
-                        {c.logo_url ? (
-                          <img src={proxyImageUrl(c.logo_url)} alt="" />
-                        ) : (
-                          <span className="client-card-initial">{(c.name || '?').charAt(0).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <span className="client-card-name">{c.name || 'Sem nome'}</span>
-                      {(c.status === 'negotiation') && <span className="badge" style={{ marginTop: 4 }}>negociação</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {clients.length === 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Exemplo</h3>
-                <div className="client-grid">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className="client-card"
-                    onClick={() => navigate('/cliente/demo/area')}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/demo/area'); } }}
-                  >
-                    <div className="client-card-logo">
-                      <img src={proxyImageUrl(MOCK_CLIENT.logo_url)} alt="" />
-                    </div>
-                    <span className="client-card-name">{MOCK_CLIENT.name}</span>
-                    <span className="badge" style={{ marginTop: 4 }}>exemplo</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {clients.length === 0 && filtered.length === 0 && (
-          <div style={{ marginTop: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>Exemplo</h3>
-            <div className="client-grid">
-              <div
-                role="button"
-                tabIndex={0}
-                className="client-card"
-                onClick={() => navigate('/cliente/demo/area')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/cliente/demo/area'); } }}
-              >
-                <div className="client-card-logo">
-                  <img src={proxyImageUrl(MOCK_CLIENT.logo_url)} alt="" />
-                </div>
-                <span className="client-card-name">{MOCK_CLIENT.name}</span>
-                <span className="badge" style={{ marginTop: 4 }}>exemplo</span>
-              </div>
+        ) : (
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="td-logo" aria-label="Logo"></th>
+                    <th>Nome</th>
+                    <th>Status</th>
+                    <th>Plano</th>
+                    <th>Cadastro</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentClients.map((c) => {
+                    const statusClass =
+                      STATUS_CLASS[c.status] || 'status-lead';
+                    const statusLabel =
+                      STATUS_LABELS[c.status] || STATUS_LABELS['lead'];
+                    return (
+                      <tr key={c.id}>
+                        <td className="td-logo">
+                          <ClientLogo client={c} size={36} />
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: 'var(--text)',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => navigate('/cliente/' + c.id + '/hub')}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                navigate('/cliente/' + c.id + '/hub');
+                              }
+                            }}
+                          >
+                            {c.name || 'Sem nome'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={'badge ' + statusClass}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td>
+                          {c.plan ? (
+                            <span className="badge">{c.plan}</span>
+                          ) : (
+                            <span style={{ color: 'var(--muted)' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>
+                          {formatDate(c.created_at) || '—'}
+                        </td>
+                        <td>
+                          <Link
+                            to={'/cliente/' + c.id + '/hub'}
+                            className="btn"
+                            style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}
+                          >
+                            Hub →
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
-      </section>
-    </>
+      </div>
+    </div>
   );
 }

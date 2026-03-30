@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import ClienteForm from './pages/ClienteForm';
@@ -9,20 +9,21 @@ import Producao from './pages/Producao';
 import Materiais from './pages/Materiais';
 import PosterVideo from './pages/PosterVideo';
 import SimulacaoLayouts from './pages/SimulacaoLayouts';
+import AppLayout from './components/AppLayout';
+
 const ClienteProfile = lazy(() => import('./pages/ClienteProfile'));
 const ClienteHub = lazy(() => import('./pages/ClienteHub'));
+const Clientes = lazy(() => import('./pages/Clientes'));
 
 export default function App() {
   return (
     <BrowserRouter>
-      <nav style={{ borderBottom: '1px solid var(--border)', padding: '1rem 1.5rem', marginBottom: '1rem' }}>
-        <Link to="/" style={{ marginRight: '1.5rem', fontWeight: 600 }}>Divulga Imob</Link>
-        <Link to="/config">Configurações</Link>
-      </nav>
-      <div className="container">
-        <Suspense fallback={<p style={{ padding: '2rem' }}>Carregando...</p>}>
-          <Routes>
+      <Suspense fallback={<p style={{ padding: '2rem', color: 'var(--muted)' }}>Carregando...</p>}>
+        <Routes>
+          {/* Layout routes — with sidebar */}
+          <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/clientes" element={<Clientes />} />
             <Route path="/config" element={<Config />} />
             <Route path="/cliente/novo" element={<ClienteForm />} />
             <Route path="/cliente/:id/area" element={<ClienteArea />} />
@@ -32,13 +33,14 @@ export default function App() {
             <Route path="/cliente/:id" element={<ClienteForm />} />
             <Route path="/cliente/:clientId/produto/:id" element={<Producao />} />
             <Route path="/cliente/:clientId/produto/:id/materiais" element={<Materiais />} />
-            <Route path="/cliente/:clientId/produto/:id/poster-video" element={<PosterVideo />} />
-            <Route path="/poster-video/:id" element={<PosterVideo />} />
-            <Route path="/simulacao-layouts" element={<SimulacaoLayouts />} />
             <Route path="/producao/:id" element={<Producao />} />
-          </Routes>
-        </Suspense>
-      </div>
+          </Route>
+          {/* No layout — full-screen pages */}
+          <Route path="/cliente/:clientId/produto/:id/poster-video" element={<PosterVideo />} />
+          <Route path="/poster-video/:id" element={<PosterVideo />} />
+          <Route path="/simulacao-layouts" element={<SimulacaoLayouts />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
