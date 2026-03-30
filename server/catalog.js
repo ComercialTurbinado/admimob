@@ -618,7 +618,7 @@ function youtubeEmbedUrl(url) {
   } catch { return null; }
 }
 
-export function renderProfilePage(client, baseUrl, apiBase) {
+export function renderProfilePage(client, baseUrl, apiBase, corretores = []) {
   const { primary, btnBg, btnText, heroBg: accentBg, pageBg, btnRadius } = buildCssVars(client.design_config);
 
   const pc = parseProfileConfig(client.profile_config);
@@ -836,6 +836,38 @@ body { background:${esc(pageBg)}; color:#e5e2e1; min-height:max(884px,100dvh); }
     return sectionsOrder.map((k) => sectionHtml[k] || '').join('\n');
   })()}
 
+  ${(() => {
+    const ativos = (corretores || []).filter(c => c.active);
+    if (!ativos.length) return '';
+    return `<!-- Nossa Equipe -->
+  <section id="equipe" class="space-y-6 pt-8">
+    <h2 class="font-headline text-2xl font-bold border-l-2 pl-4" style="border-color:${esc(accentBg)}">Nossa Equipe</h2>
+    <div class="grid gap-4" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+      ${ativos.map(c => {
+        const wp = (c.whatsapp || c.phone || '').replace(/\D/g,'');
+        const wpHref = wp ? `https://wa.me/55${wp}?text=${encodeURIComponent('Olá ' + c.name + ', gostaria de mais informações sobre imóveis.')}` : null;
+        const photoUrl = c.photo_url ? (c.photo_url.startsWith('data:') ? c.photo_url : proxyImg(c.photo_url, apiBase)) : null;
+        return `<div class="flex flex-col items-center text-center gap-3 p-5 rounded-lg" style="background:#1c1b1b;border:1px solid rgba(77,70,53,0.25)">
+          ${photoUrl
+            ? `<img src="${esc(photoUrl)}" alt="${esc(c.name)}" loading="lazy" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid ${esc(accentBg)}">`
+            : `<div style="width:80px;height:80px;border-radius:50%;background:#2a2828;border:2px solid ${esc(accentBg)};display:flex;align-items:center;justify-content:center;font-family:'Noto Serif',serif;font-size:1.8rem;font-weight:900;color:${esc(primary)}">${esc((c.name||'?').charAt(0).toUpperCase())}</div>`
+          }
+          <div>
+            <div class="font-headline font-bold text-on-surface" style="font-size:0.95rem">${esc(c.name)}</div>
+            ${c.specialty ? `<div style="color:${esc(primary)};font-size:0.75rem;font-weight:600;margin-top:2px">${esc(c.specialty)}</div>` : ''}
+            ${c.creci ? `<div class="text-on-surface-variant opacity-60" style="font-size:0.68rem;margin-top:2px">CRECI ${esc(c.creci)}</div>` : ''}
+          </div>
+          ${c.bio ? `<p class="text-on-surface-variant opacity-70 text-xs leading-relaxed">${esc(c.bio)}</p>` : ''}
+          ${wpHref ? `<a href="${esc(wpHref)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;background:#25d366;color:#fff;border-radius:${esc(btnR)};padding:7px 14px;font-size:0.78rem;font-weight:700;text-decoration:none;transition:filter .15s" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            Falar com ${esc(c.name.split(' ')[0])}
+          </a>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </section>`;
+  })()}
+
 </main>
 
 <!-- Footer -->
@@ -861,6 +893,11 @@ body { background:${esc(pageBg)}; color:#e5e2e1; min-height:max(884px,100dvh); }
   <a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-50" href="#about">
     <span class="material-symbols-outlined">article</span>
     <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Sobre</span>
+  </a>` : ''}
+  ${(corretores||[]).filter(c=>c.active).length ? `
+  <a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-50" href="#equipe">
+    <span class="material-symbols-outlined">group</span>
+    <span class="font-label text-[10px] uppercase tracking-tighter mt-1">Equipe</span>
   </a>` : ''}
 </nav>
 

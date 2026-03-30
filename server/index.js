@@ -1229,7 +1229,8 @@ app.get('/:slug([a-z0-9-]{2,60})', async (req, res, next) => {
   try {
     const client = await resolveClientForCatalog(req, req.params.slug);
     if (!client) return next();
-    const html = renderProfilePage(client, getCatalogBase(req), getApiBase(req));
+    const corretores = await db.prepare('SELECT * FROM corretores WHERE client_id = ? AND active = 1 ORDER BY sort_order ASC, name ASC').all(client.id);
+    const html = renderProfilePage(client, getCatalogBase(req), getApiBase(req), corretores);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     res.send(html);
@@ -1308,7 +1309,8 @@ app.get('/', async (req, res, next) => {
       `SELECT ${CLIENT_COLUMNS.join(', ')} FROM clients WHERE LOWER(custom_domain) = ?`
     ).get(host);
     if (!client) return next();
-    const html = renderProfilePage(client, `https://${host}`, getApiBase(req));
+    const corretores = await db.prepare('SELECT * FROM corretores WHERE client_id = ? AND active = 1 ORDER BY sort_order ASC, name ASC').all(client.id);
+    const html = renderProfilePage(client, `https://${host}`, getApiBase(req), corretores);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     res.send(html);
