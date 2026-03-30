@@ -1103,6 +1103,7 @@ export default function ClienteHub() {
           const pBtnBg      = colors['--btn-bg']        || pPrimary;
           const pBtnText    = colors['--btn-text']      || '#1a1200';
           const pHeroBg     = colors['--contact-bg']    || darkenHexP(pPrimary, 0.35);
+          const pHeroText   = colors['--contact-text']  || '#ffffff';
           const pPageBg     = colors['--page-bg']       || '#131313';
           const pBadge      = colors['--bg-poster']     || '#f5e67a';
           const pBtnR       = btnRounded ? '50px' : '2px';
@@ -1292,7 +1293,7 @@ export default function ClienteHub() {
                         : <div style={{ width: '100%', height: '100%', background: '#2a2a2a', borderRadius: logoStyle==='circle'?'50%':'6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: pPrimary, fontWeight: 900, fontSize: 18 }}>{pPreviewName.charAt(0)}</div>
                       }
                     </div>
-                    <div style={{ color: '#e5e2e1', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em' }}>{pPreviewName.toUpperCase()}</div>
+                    <div style={{ color: pHeroText, fontWeight: 700, fontSize: 12, letterSpacing: '0.05em' }}>{pPreviewName.toUpperCase()}</div>
                     {client?.creci && <div style={{ color: pPrimary, fontSize: 9, marginTop: 2 }}>CRECI {client.creci}</div>}
                   </div>
                   {/* cta */}
@@ -1314,10 +1315,10 @@ export default function ClienteHub() {
               {previewTab === 'catalog' && (
                 <div style={{ background: pPageBg, borderRadius: 8, overflow: 'hidden', fontFamily: 'Manrope, sans-serif', boxShadow: '0 4px 32px rgba(0,0,0,0.5)', border: `1px solid ${T.outlineVariant}` }}>
                   {/* hero */}
-                  <div style={{ background: heroBgImage ? `linear-gradient(135deg,${pHeroBg}cc,${pPrimary}cc), url('${heroBgImage}') center/cover` : `linear-gradient(135deg,${pHeroBg},${pPrimary})`, padding: '16px', textAlign: 'center' }}>
+                  <div style={{ background: heroBgImage ? `linear-gradient(160deg,${pHeroBg}cc,${pPageBg}f0), url('${heroBgImage}') center/cover` : `linear-gradient(160deg,${pHeroBg},${pPageBg})`, padding: '16px', textAlign: 'center' }}>
                     {logoUrl && <img src={logoUrl} alt="logo" style={{ height: 30, width: 'auto', maxWidth: 100, objectFit: 'contain', margin: '0 auto 6px', background: 'rgba(0,0,0,0.2)', padding: 4, borderRadius: 4 }} />}
-                    <div style={{ color: '#ffffff', fontWeight: 700, fontSize: 11 }}>{pPreviewName}</div>
-                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 8, marginTop: 2 }}>Imóveis selecionados para você</div>
+                    <div style={{ color: pHeroText, fontWeight: 700, fontSize: 11 }}>{pPreviewName}</div>
+                    <div style={{ color: pHeroText, opacity: 0.7, fontSize: 8, marginTop: 2 }}>Imóveis selecionados para você</div>
                   </div>
                   {/* filters */}
                   <div style={{ background: `${pPageBg}ee`, borderBottom: `1px solid rgba(77,70,53,0.2)`, padding: '6px 10px', display: 'flex', gap: 5 }}>
