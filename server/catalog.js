@@ -49,14 +49,16 @@ function parseDesignConfig(raw) {
 /** Extrai cores do design_config e devolve variáveis CSS */
 function buildCssVars(designConfig) {
   const d = parseDesignConfig(designConfig);
-  const primary  = d['--primary']      || '#f2ca50';
-  const btnBg    = d['--btn-bg']       || primary;
-  const btnText  = d['--btn-text']     || '#1a1200';
-  const heroBg   = d['--contact-bg']   || darkenHex(primary, 0.35);
-  const heroText = d['--contact-text'] || '#ffffff';
-  const badge    = d['--bg-poster']    || lightenHex(primary, 0.15);
-  const badgeText = d['--primary']     || primary;
-  return { primary, btnBg, btnText, heroBg, heroText, badge, badgeText };
+  const primary   = d['--primary']      || '#f2ca50';
+  const btnBg     = d['--btn-bg']       || primary;
+  const btnText   = d['--btn-text']     || '#1a1200';
+  const heroBg    = d['--contact-bg']   || darkenHex(primary, 0.35);
+  const heroText  = d['--contact-text'] || '#ffffff';
+  const badge     = d['--bg-poster']    || lightenHex(primary, 0.15);
+  const badgeText = d['--primary']      || primary;
+  const pageBg    = d['--page-bg']      || '#131313';
+  const btnRadius = d['--btn-radius']   || '2px';
+  return { primary, btnBg, btnText, heroBg, heroText, badge, badgeText, pageBg, btnRadius };
 }
 
 /** Escurece uma cor hex pelo fator dado (0-1) */
@@ -141,12 +143,13 @@ export function parseListing(row) {
 
 // ─── CSS inline (compartilhado) ───────────────────────────────────────────────
 
-function buildCss({ primary, btnBg, btnText, heroBg, heroText, badge, badgeText }) {
+function buildCss({ primary, btnBg, btnText, heroBg, heroText, badge, badgeText, pageBg, btnRadius }) {
+  const r = btnRadius || '2px';
   return `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&family=Manrope:wght@300;400;500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'Manrope',sans-serif;background:#131313;color:#e5e2e1;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{font-family:'Manrope',sans-serif;background:${pageBg || '#131313'};color:#e5e2e1;line-height:1.55;-webkit-font-smoothing:antialiased}
 a{color:${primary};text-decoration:none}
 a:hover{opacity:.85;text-decoration:none}
 img{display:block;max-width:100%}
@@ -192,7 +195,7 @@ img{display:block;max-width:100%}
 .feat{display:flex;align-items:center;gap:0.25rem;font-size:0.75rem;color:#9ca3af}
 .feat svg{width:13px;height:13px;opacity:.55;flex-shrink:0}
 .card-footer{padding:0 1rem 1rem}
-.btn-ver{display:block;text-align:center;padding:0.65rem;border-radius:2px;background:${btnBg};color:${btnText};font-family:'Noto Serif',serif;font-size:0.85rem;font-weight:700;letter-spacing:0.04em;transition:filter .15s}
+.btn-ver{display:block;text-align:center;padding:0.65rem;border-radius:${r};background:${btnBg};color:${btnText};font-family:'Noto Serif',serif;font-size:0.85rem;font-weight:700;letter-spacing:0.04em;transition:filter .15s}
 .btn-ver:hover{filter:brightness(1.1)}
 
 /* Página de imóvel */
@@ -230,10 +233,10 @@ img{display:block;max-width:100%}
 .cta-box{background:#1c1b1b;border-radius:4px;padding:1.5rem;border:1px solid rgba(77,70,53,0.2);position:sticky;top:80px}
 .cta-box h3{font-family:'Noto Serif',serif;font-size:1rem;font-weight:700;margin-bottom:0.25rem;color:#e5e2e1}
 .cta-box p{font-size:0.82rem;color:#9ca3af;margin-bottom:1.25rem}
-.btn-whatsapp{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.85rem;background:#25d366;color:#fff;border-radius:2px;font-size:0.9rem;font-weight:700;transition:filter .15s;margin-bottom:0.75rem}
+.btn-whatsapp{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.85rem;background:#25d366;color:#fff;border-radius:${r};font-size:0.9rem;font-weight:700;transition:filter .15s;margin-bottom:0.75rem}
 .btn-whatsapp:hover{filter:brightness(1.08)}
 .btn-whatsapp svg{width:20px;height:20px}
-.btn-catalog{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.75rem;background:${btnBg};color:${btnText};border-radius:2px;font-family:'Noto Serif',serif;font-size:0.85rem;font-weight:700;transition:filter .15s}
+.btn-catalog{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.75rem;background:${btnBg};color:${btnText};border-radius:${r};font-family:'Noto Serif',serif;font-size:0.85rem;font-weight:700;transition:filter .15s}
 .btn-catalog:hover{filter:brightness(1.1)}
 
 /* Footer */
@@ -616,11 +619,7 @@ function youtubeEmbedUrl(url) {
 }
 
 export function renderProfilePage(client, baseUrl, apiBase) {
-  const d = parseDesignConfig(client.design_config);
-  const primary    = d['--primary'] || '#f2ca50';
-  const btnBg      = d['--btn-bg'] || primary;
-  const btnText    = d['--btn-text'] || '#1a1200';
-  const accentBg   = d['--contact-bg'] || darkenHex(primary, 0.2);
+  const { primary, btnBg, btnText, heroBg: accentBg, pageBg, btnRadius } = buildCssVars(client.design_config);
 
   const pc = parseProfileConfig(client.profile_config);
 
@@ -628,6 +627,8 @@ export function renderProfilePage(client, baseUrl, apiBase) {
   const catalogUrl  = `${baseUrl}/${client.slug}/catalogo`;
 
   const logoUrl = client.logo_url ? proxyImg(client.logo_url, apiBase) : null;
+  const heroBgImage = pc.hero_bg_image ? (pc.hero_bg_image.startsWith('data:') ? pc.hero_bg_image : proxyImg(pc.hero_bg_image, apiBase)) : null;
+  const btnR = btnRadius || '2px';
   const specialty = pc.specialty || client.contact_name || '';
   const aboutText = (pc.about_enabled !== false) ? (pc.about_bio || client.notes || '') : '';
   const aboutVideo = (pc.about_enabled !== false) ? (pc.about_video || '') : '';
@@ -762,13 +763,16 @@ tailwind = { config: {
   70%  { transform: scale(1.02); box-shadow: 0 0 0 10px color-mix(in srgb, var(--cb)  0%, transparent); }
   100% { transform: scale(1);    box-shadow: 0 0 0  0px color-mix(in srgb, var(--cb) 40%, transparent); }
 }
-body { background:#131313; color:#e5e2e1; min-height:max(884px,100dvh); }
+body { background:${esc(pageBg)}; color:#e5e2e1; min-height:max(884px,100dvh); }
 </style>
 </head>
 <body class="bg-background text-on-surface font-body selection:bg-primary/30">
 
 <!-- Header / Profile -->
-<header class="relative pt-16 pb-8 px-6 flex flex-col items-center text-center" style="background:linear-gradient(160deg,${esc(accentBg)} 0%,#131313 100%);position:relative;overflow:hidden">
+<header class="relative pt-16 pb-8 px-6 flex flex-col items-center text-center" style="${heroBgImage
+  ? `background:linear-gradient(160deg,${esc(accentBg)}cc 0%,${esc(pageBg)}f0 100%), url('${esc(heroBgImage)}') center/cover no-repeat`
+  : `background:linear-gradient(160deg,${esc(accentBg)} 0%,${esc(pageBg)} 100%)`
+};position:relative;overflow:hidden">
   <div style="position:absolute;inset:0;background:url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');pointer-events:none;z-index:0"></div>
   <div class="relative mb-6" style="z-index:1">
     ${logoUrl
@@ -799,7 +803,7 @@ body { background:#131313; color:#e5e2e1; min-height:max(884px,100dvh); }
       cta: `<!-- Links (primary CTA) -->
   <section class="flex flex-col gap-4">
     ${profileLinks.filter((l) => l.isPrimary).map((l) => `
-    <a class="pulsing-aura py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--cb);color:var(--cbt)">
+    <a class="pulsing-aura py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--cb);color:var(--cbt);border-radius:${esc(btnR)}">
       <span class="material-symbols-outlined text-2xl">${esc(l.icon)}</span>
       <span class="font-headline font-bold text-lg tracking-wide">${esc(l.label)}</span>
     </a>`).join('')}

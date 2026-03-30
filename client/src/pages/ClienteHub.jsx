@@ -20,18 +20,27 @@ const T = {
 };
 
 // ─── Color fields ──────────────────────────────────────────────────────────────
+// group: which section each field belongs to (for the grouped UI)
 const COLOR_FIELDS = [
-  { key: '--primary',       label: 'Cor Principal',       hint: 'Botões, preços, destaques' },
-  { key: '--btn-bg',        label: 'Botão CTA — Fundo',   hint: 'Fundo do botão principal no perfil (padrão: cor principal)' },
-  { key: '--btn-text',      label: 'Botão CTA — Texto',   hint: 'Texto dentro do botão principal' },
-  { key: '--contact-bg',    label: 'Fundo das Páginas',   hint: 'Cor do cabeçalho do perfil, catálogo e vídeo poster — use a cor principal da marca' },
-  { key: '--contact-text',  label: 'Texto do Cabeçalho',  hint: 'Cor do texto no cabeçalho — use branco (#ffffff) se o fundo for escuro' },
-  { key: '--bg-poster',     label: 'Badges',              hint: 'Chips e pills no catálogo e poster' },
-  { key: '--text-poster',   label: 'Texto Geral',         hint: 'Preço, localização, site no rodapé' },
-  { key: '--detail-poster', label: 'Texto Secundário',    hint: 'Referências, textos menores' },
-  { key: '--line-poster',   label: 'Linhas e Bordas',     hint: 'Separadores no poster' },
-  { key: '--amen-bg',       label: 'Lazer — Fundo',       hint: 'Background dos cards de amenidades' },
-  { key: '--amen-bd',       label: 'Lazer — Borda',       hint: 'Borda dos cards de amenidades' },
+  { key: '--page-bg',       label: 'Cor de Fundo do Site', hint: 'Fundo de todas as páginas — padrão: #131313 (preto)', group: 'site' },
+  { key: '--contact-bg',    label: 'Cor do Cabeçalho',     hint: 'Gradiente do header do perfil, catálogo e vídeo', group: 'header' },
+  { key: '--contact-text',  label: 'Texto do Cabeçalho',   hint: 'Cor do texto no header — use #ffffff se o fundo for escuro', group: 'header' },
+  { key: '--primary',       label: 'Cor Principal',         hint: 'Preços, ícones, destaques e links', group: 'brand' },
+  { key: '--btn-bg',        label: 'Botão CTA — Fundo',    hint: 'Fundo do botão principal (padrão: cor principal)', group: 'brand' },
+  { key: '--btn-text',      label: 'Botão CTA — Texto',    hint: 'Texto dentro do botão principal', group: 'brand' },
+  { key: '--bg-poster',     label: 'Badges / Chips',        hint: 'Tipo do imóvel, pills no catálogo e vídeo', group: 'poster' },
+  { key: '--text-poster',   label: 'Texto Geral (Vídeo)',   hint: 'Preço, endereço no poster de vídeo', group: 'poster' },
+  { key: '--detail-poster', label: 'Texto Secundário (Vídeo)', hint: 'Referências, textos menores no vídeo', group: 'poster' },
+  { key: '--line-poster',   label: 'Linhas (Vídeo)',        hint: 'Separadores no poster de vídeo', group: 'poster' },
+  { key: '--amen-bg',       label: 'Lazer — Fundo (Vídeo)', hint: 'Background dos cards de amenidades no vídeo', group: 'poster' },
+  { key: '--amen-bd',       label: 'Lazer — Borda (Vídeo)', hint: 'Borda dos cards de amenidades no vídeo', group: 'poster' },
+];
+
+const COLOR_GROUPS = [
+  { key: 'site',   label: '🖥  Site — Body', hint: 'Fundo de todas as páginas públicas' },
+  { key: 'header', label: '◼  Cabeçalho (Header)', hint: 'Área colorida no topo do perfil, catálogo e poster' },
+  { key: 'brand',  label: '✦  Marca — Botões & Destaques', hint: 'Cor principal, botão CTA e texto do botão' },
+  { key: 'poster', label: '🎬  Vídeo Poster', hint: 'Cores exclusivas do poster de vídeo gerado' },
 ];
 
 const SECTION_LABELS = {
@@ -196,6 +205,37 @@ export default function ClienteHub() {
   const [colors, setColors] = useState({});
   const [extractingFromLogo, setExtractingFromLogo] = useState(false);
   const [colorMsg, setColorMsg] = useState(null);
+  const [btnRounded, setBtnRounded] = useState(false);
+  const [heroBgImage, setHeroBgImage] = useState('');
+  const [heroBgMsg, setHeroBgMsg] = useState(null);
+  const [previewTab, setPreviewTab] = useState('profile');
+  const heroBgFileRef = useRef(null);
+
+  function handleHeroBgFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1500 * 1024) {
+      setHeroBgMsg('⚠ Imagem muito grande. Use menos de 1.5 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setHeroBgImage(ev.target.result);
+      setHeroBgMsg(`✓ "${file.name}" carregado como fundo`);
+    };
+    reader.onerror = () => setHeroBgMsg('Erro ao ler arquivo.');
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  // Mini-preview color helpers (mirrors server darkenHex)
+  function darkenHexP(hex, f) {
+    try {
+      const r2 = parseInt(hex.slice(1,3),16), g2=parseInt(hex.slice(3,5),16), b2=parseInt(hex.slice(5,7),16);
+      const d2 = c => Math.max(0,Math.round(c*(1-f))).toString(16).padStart(2,'0');
+      return '#'+d2(r2)+d2(g2)+d2(b2);
+    } catch { return '#0f2b5b'; }
+  }
 
   // Layout
   const [sectionsOrder, setSectionsOrder] = useState(['cta', 'links', 'about']);
@@ -233,6 +273,7 @@ export default function ClienteHub() {
         const pc = parseJson(c.profile_config);
         setSpecialty(pc.specialty || '');
         setLogoStyle(pc.logo_style || 'contain');
+        setHeroBgImage(pc.hero_bg_image || '');
         setAboutEnabled(pc.about_enabled !== false);
         setAboutBio(pc.about_bio || '');
         setAboutVideo(pc.about_video || '');
@@ -254,6 +295,7 @@ export default function ClienteHub() {
           colorObj[key] = dc[key] ?? DEFAULT_PALETTE[key] ?? '';
         });
         setColors(colorObj);
+        setBtnRounded((dc['--btn-radius'] || '2px') !== '2px');
       })
       .catch((e) => setError('Erro ao carregar: ' + e.message))
       .finally(() => setLoading(false));
@@ -268,6 +310,7 @@ export default function ClienteHub() {
       const profile_config = {
         specialty,
         logo_style: logoStyle,
+        hero_bg_image: heroBgImage || null,
         links: links.filter((l) => l.label || l.url),
         about_enabled: aboutEnabled,
         about_bio: aboutBio,
@@ -282,6 +325,7 @@ export default function ClienteHub() {
         const v = colors[key];
         if (v && String(v).trim()) design_config[key] = String(v).trim();
       });
+      design_config['--btn-radius'] = btnRounded ? '50px' : '2px';
 
       const body = {
         name,
@@ -969,134 +1013,259 @@ export default function ClienteHub() {
         )}
 
         {/* ══ Tab 4: Visual ══ */}
-        {activeTab === 'visual' && (
-          <div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h2 style={sectionTitleStyle}>Paleta de Cores</h2>
-              <p style={sectionSubtitleStyle}>
-                Essas cores são aplicadas no catálogo, perfil público e no poster de vídeo do cliente.
-              </p>
-            </div>
+        {activeTab === 'visual' && (() => {
+          // Computed preview values
+          const pPrimary    = colors['--primary']      || '#f2ca50';
+          const pBtnBg      = colors['--btn-bg']        || pPrimary;
+          const pBtnText    = colors['--btn-text']      || '#1a1200';
+          const pHeroBg     = colors['--contact-bg']    || darkenHexP(pPrimary, 0.35);
+          const pPageBg     = colors['--page-bg']       || '#131313';
+          const pBadge      = colors['--bg-poster']     || '#f5e67a';
+          const pBtnR       = btnRounded ? '50px' : '2px';
+          const pPreviewName = name || 'Sua Empresa';
 
-            {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-              <button
-                type="button"
-                onClick={handleGenerateFromPrimary}
-                style={{
-                  background: 'transparent',
-                  color: T.primary,
-                  border: `1px solid ${T.outlineVariant}`,
-                  borderRadius: 3,
-                  padding: '0.5rem 1rem',
-                  fontFamily: 'Manrope, sans-serif',
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
-                }}
-              >
-                ✦ Gerar paleta automática
-              </button>
-              {logoUrl && (
-                <button
-                  type="button"
-                  onClick={handleExtractFromLogo}
-                  disabled={extractingFromLogo}
-                  style={{
-                    background: 'transparent',
-                    color: T.onSurfaceVariant,
-                    border: `1px solid ${T.outlineVariant}`,
-                    borderRadius: 3,
-                    padding: '0.5rem 1rem',
-                    fontFamily: 'Manrope, sans-serif',
-                    fontSize: '0.82rem',
-                    cursor: extractingFromLogo ? 'not-allowed' : 'pointer',
-                    opacity: extractingFromLogo ? 0.6 : 1,
-                  }}
-                >
-                  {extractingFromLogo ? 'Detectando...' : 'Detectar da logo'}
-                </button>
-              )}
-            </div>
-
-            {colorMsg && (
+          // Color field row render helper
+          function ColorRow({ field }) {
+            const val = colors[field.key] || '';
+            const safeHex = val.startsWith('#') && val.length >= 4 ? val : '#000000';
+            return (
               <div style={{
-                background: colorMsg.startsWith('Erro') || colorMsg.startsWith('Não') ? `${T.danger}18` : `${T.success}18`,
-                border: `1px solid ${colorMsg.startsWith('Erro') || colorMsg.startsWith('Não') ? T.danger + '44' : T.success + '44'}`,
-                borderRadius: 4,
-                padding: '0.65rem 0.85rem',
-                fontSize: '0.82rem',
-                color: colorMsg.startsWith('Erro') || colorMsg.startsWith('Não') ? T.danger : T.success,
-                marginBottom: '1rem',
-                fontFamily: 'Manrope, sans-serif',
+                background: T.surface,
+                border: `1px solid ${T.outlineVariant}`,
+                borderRadius: 6,
+                padding: '0.75rem 1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
               }}>
-                {colorMsg}
+                <div style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', background: val || '#444', cursor: 'pointer', flexShrink: 0, border: `2px solid ${T.outlineVariant}` }}>
+                  <input type="color" value={safeHex} onChange={(e) => handleColorChange(field.key, e.target.value)}
+                    style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', borderRadius: '50%' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 1 }}>{field.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{field.hint}</div>
+                </div>
+                <input type="text" value={val} onChange={(e) => handleColorChange(field.key, e.target.value)} placeholder="#hex"
+                  style={{ width: 82, background: T.surfaceHighest, border: 'none', borderRadius: 3, color: T.onSurface, padding: '4px 8px', fontSize: '0.75rem', fontFamily: 'monospace', flexShrink: 0, outline: 'none' }} />
               </div>
-            )}
+            );
+          }
 
-            {/* Color grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '0.65rem',
-            }}>
-              {COLOR_FIELDS.map((field) => (
-                <div key={field.key} style={{
-                  background: T.surface,
-                  border: `1px solid ${T.outlineVariant}`,
-                  borderRadius: 8,
-                  padding: '0.85rem 1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                }}>
-                  {/* Color swatch */}
-                  <div style={{
-                    position: 'relative',
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: colors[field.key] || '#444',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    border: `2px solid ${T.outlineVariant}`,
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                  }}>
-                    <input
-                      type="color"
-                      value={(colors[field.key] && colors[field.key].startsWith('#') && colors[field.key].length >= 4) ? colors[field.key] : '#000000'}
-                      onChange={(e) => handleColorChange(field.key, e.target.value)}
-                      style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', borderRadius: '50%' }}
-                    />
+          return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(260px,320px)', gap: '1.5rem', alignItems: 'start' }}>
+
+            {/* LEFT — editor */}
+            <div>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h2 style={sectionTitleStyle}>Visual & Identidade</h2>
+                <p style={sectionSubtitleStyle}>Todas as cores, imagem do cabeçalho e estilo dos botões são aplicados em tempo real no perfil, catálogo e poster de vídeo.</p>
+              </div>
+
+              {/* Action row */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                <button type="button" onClick={handleGenerateFromPrimary}
+                  style={{ background: 'transparent', color: T.primary, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.45rem 0.85rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  ✦ Gerar paleta automática
+                </button>
+                {logoUrl && (
+                  <button type="button" onClick={handleExtractFromLogo} disabled={extractingFromLogo}
+                    style={{ background: 'transparent', color: T.onSurfaceVariant, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.45rem 0.85rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.8rem', cursor: extractingFromLogo ? 'not-allowed' : 'pointer', opacity: extractingFromLogo ? 0.6 : 1 }}>
+                    {extractingFromLogo ? 'Detectando...' : 'Detectar da logo'}
+                  </button>
+                )}
+              </div>
+
+              {colorMsg && (
+                <div style={{ background: colorMsg.startsWith('Erro')||colorMsg.startsWith('Não')||colorMsg.startsWith('⚠') ? `${T.danger}18` : `${T.success}18`, border: `1px solid ${(colorMsg.startsWith('Erro')||colorMsg.startsWith('Não')||colorMsg.startsWith('⚠')) ? T.danger+'44' : T.success+'44'}`, borderRadius: 4, padding: '0.6rem 0.85rem', fontSize: '0.82rem', color: (colorMsg.startsWith('Erro')||colorMsg.startsWith('Não')||colorMsg.startsWith('⚠')) ? T.danger : T.success, marginBottom: '1rem', fontFamily: 'Manrope, sans-serif' }}>
+                  {colorMsg}
+                </div>
+              )}
+
+              {/* ── Grupo: Site Body */}
+              {COLOR_GROUPS.map((group) => (
+                <div key={group.key} style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', paddingBottom: '0.4rem', borderBottom: `1px solid ${T.outlineVariant}` }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: T.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{group.label}</span>
+                    <span style={{ fontSize: '0.7rem', color: T.outlineVariant }}>{group.hint}</span>
                   </div>
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 2 }}>{field.label}</div>
-                    <div style={{ fontSize: '0.72rem', color: T.onSurfaceVariant, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{field.hint}</div>
+
+                  {/* Hero bg image upload — only on 'header' group */}
+                  {group.key === 'header' && (
+                    <div style={{ marginBottom: '0.65rem', background: T.surface, border: `1px solid ${T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: '0.4rem' }}>Imagem de Fundo do Cabeçalho</div>
+                      <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, marginBottom: '0.6rem' }}>Fica atrás do gradiente de cor — efeito "foto de capa"</div>
+                      {/* Preview strip */}
+                      <div style={{ height: 48, borderRadius: 4, marginBottom: '0.6rem', overflow: 'hidden', background: heroBgImage ? `linear-gradient(160deg,${pHeroBg}cc,${pPageBg}f0), url('${heroBgImage}') center/cover` : `linear-gradient(160deg,${pHeroBg},${pPageBg})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#fff', opacity: 0.7 }}>{heroBgImage ? '✓ imagem ativa' : 'sem imagem (só cor)'}</span>
+                      </div>
+                      <input ref={heroBgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleHeroBgFileChange} />
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => heroBgFileRef.current?.click()}
+                          style={{ flex: 1, padding: '0.45rem 0.75rem', background: `${T.primaryCt}22`, border: `1px solid ${T.primaryCt}`, borderRadius: 3, color: T.primary, fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                          ↑ Upload de imagem
+                        </button>
+                        {heroBgImage && (
+                          <button type="button" onClick={() => { setHeroBgImage(''); setHeroBgMsg(null); }}
+                            style={{ padding: '0.45rem 0.75rem', background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, color: T.danger, fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', cursor: 'pointer' }}>
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                      {heroBgMsg && <p style={{ fontSize: '0.72rem', color: T.success, marginTop: '0.3rem' }}>{heroBgMsg}</p>}
+                      <input type="url" value={heroBgImage.startsWith('data:') ? '' : heroBgImage} onChange={(e) => { setHeroBgImage(e.target.value); setHeroBgMsg(null); }}
+                        placeholder="ou cole URL da imagem…" style={{ ...inputStyle, marginTop: '0.5rem', fontSize: '0.78rem' }} />
+                    </div>
+                  )}
+
+                  {/* Button style — only on 'brand' group */}
+                  {group.key === 'brand' && (
+                    <div style={{ marginBottom: '0.65rem', background: T.surface, border: `1px solid ${T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 2 }}>Botões arredondados</div>
+                        <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant }}>
+                          Preview:{' '}
+                          <span style={{ display: 'inline-block', padding: '2px 10px', background: pBtnBg, color: pBtnText, borderRadius: pBtnR, fontSize: '0.7rem', fontWeight: 700 }}>Ver imóvel</span>
+                        </div>
+                      </div>
+                      <Toggle checked={btnRounded} onChange={setBtnRounded} />
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.5rem' }}>
+                    {COLOR_FIELDS.filter((f) => f.group === group.key).map((field) => (
+                      <ColorRow key={field.key} field={field} />
+                    ))}
                   </div>
-                  {/* Hex input */}
-                  <input
-                    type="text"
-                    value={colors[field.key] || ''}
-                    onChange={(e) => handleColorChange(field.key, e.target.value)}
-                    placeholder="#hex"
-                    style={{
-                      width: 82,
-                      background: T.surfaceHighest,
-                      border: 'none',
-                      borderRadius: 3,
-                      color: T.onSurface,
-                      padding: '4px 8px',
-                      fontSize: '0.75rem',
-                      fontFamily: 'monospace',
-                      flexShrink: 0,
-                      outline: 'none',
-                    }}
-                  />
                 </div>
               ))}
             </div>
+
+            {/* RIGHT — preview panel */}
+            <div style={{ position: 'sticky', top: 80 }}>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: T.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Prévia em tempo real</span>
+              </div>
+              {/* Preview tabs */}
+              <div style={{ display: 'flex', gap: 0, marginBottom: '0.75rem', background: T.surfaceHigh, borderRadius: 6, padding: 3 }}>
+                {[['profile','Perfil'],['catalog','Catálogo'],['video','Vídeo']].map(([k,lbl]) => (
+                  <button key={k} type="button" onClick={() => setPreviewTab(k)}
+                    style={{ flex: 1, padding: '0.35rem', borderRadius: 4, border: 'none', fontFamily: 'Manrope, sans-serif', fontSize: '0.75rem', fontWeight: previewTab===k ? 700 : 400, background: previewTab===k ? T.surfaceHighest : 'transparent', color: previewTab===k ? T.primary : T.onSurfaceVariant, cursor: 'pointer' }}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Preview: Perfil ── */}
+              {previewTab === 'profile' && (
+                <div style={{ background: pPageBg, borderRadius: 8, overflow: 'hidden', fontFamily: 'Manrope, sans-serif', boxShadow: '0 4px 32px rgba(0,0,0,0.5)', border: `1px solid ${T.outlineVariant}` }}>
+                  {/* header */}
+                  <div style={{ background: heroBgImage ? `linear-gradient(160deg,${pHeroBg}cc,${pPageBg}f0), url('${heroBgImage}') center/cover` : `linear-gradient(160deg,${pHeroBg},${pPageBg})`, padding: '20px 16px 14px', textAlign: 'center' }}>
+                    <div style={{ width: 44, height: 44, borderRadius: logoStyle==='circle'?'50%':'8px', background: `linear-gradient(135deg,${pBtnBg},${pPrimary})`, margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2 }}>
+                      {logoUrl
+                        ? <img src={logoUrl} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: logoStyle==='circle'?'50%':'6px', background: '#1c1b1b' }} />
+                        : <div style={{ width: '100%', height: '100%', background: '#2a2a2a', borderRadius: logoStyle==='circle'?'50%':'6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: pPrimary, fontWeight: 900, fontSize: 18 }}>{pPreviewName.charAt(0)}</div>
+                      }
+                    </div>
+                    <div style={{ color: '#e5e2e1', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em' }}>{pPreviewName.toUpperCase()}</div>
+                    {client?.creci && <div style={{ color: pPrimary, fontSize: 9, marginTop: 2 }}>CRECI {client.creci}</div>}
+                  </div>
+                  {/* cta */}
+                  <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ background: pBtnBg, color: pBtnText, borderRadius: pBtnR, padding: '8px', textAlign: 'center', fontSize: 10, fontWeight: 700 }}>🏢 Ver Catálogo de Imóveis</div>
+                    <div style={{ border: `1px solid rgba(77,70,53,0.4)`, borderRadius: 3, padding: '6px 10px', display: 'flex', justifyContent: 'space-between', color: '#e5e2e1', fontSize: 9 }}>
+                      <span>📱 Falar no WhatsApp</span><span style={{ opacity: 0.4 }}>›</span>
+                    </div>
+                    <div style={{ border: `1px solid rgba(77,70,53,0.4)`, borderRadius: 3, padding: '6px 10px', display: 'flex', justifyContent: 'space-between', color: '#e5e2e1', fontSize: 9 }}>
+                      <span>📸 Meu Instagram</span><span style={{ opacity: 0.4 }}>›</span>
+                    </div>
+                  </div>
+                  {/* footer */}
+                  <div style={{ background: '#0e0e0e', padding: '8px', textAlign: 'center', fontSize: 8, color: '#9ca3af' }}>© {pPreviewName.toUpperCase()}</div>
+                </div>
+              )}
+
+              {/* ── Preview: Catálogo ── */}
+              {previewTab === 'catalog' && (
+                <div style={{ background: pPageBg, borderRadius: 8, overflow: 'hidden', fontFamily: 'Manrope, sans-serif', boxShadow: '0 4px 32px rgba(0,0,0,0.5)', border: `1px solid ${T.outlineVariant}` }}>
+                  {/* hero */}
+                  <div style={{ background: heroBgImage ? `linear-gradient(135deg,${pHeroBg}cc,${pPrimary}cc), url('${heroBgImage}') center/cover` : `linear-gradient(135deg,${pHeroBg},${pPrimary})`, padding: '16px', textAlign: 'center' }}>
+                    {logoUrl && <img src={logoUrl} alt="logo" style={{ height: 30, width: 'auto', maxWidth: 100, objectFit: 'contain', margin: '0 auto 6px', background: 'rgba(0,0,0,0.2)', padding: 4, borderRadius: 4 }} />}
+                    <div style={{ color: '#ffffff', fontWeight: 700, fontSize: 11 }}>{pPreviewName}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 8, marginTop: 2 }}>Imóveis selecionados para você</div>
+                  </div>
+                  {/* filters */}
+                  <div style={{ background: `${pPageBg}ee`, borderBottom: `1px solid rgba(77,70,53,0.2)`, padding: '6px 10px', display: 'flex', gap: 5 }}>
+                    <span style={{ background: pPrimary, color: pBtnText, borderRadius: 50, padding: '2px 8px', fontSize: 8, fontWeight: 700 }}>Todos</span>
+                    <span style={{ border: '1px solid rgba(77,70,53,0.4)', borderRadius: 50, padding: '2px 8px', fontSize: 8, color: '#d0c5af' }}>Venda</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 8, color: '#9ca3af' }}>2 imóveis</span>
+                  </div>
+                  {/* cards */}
+                  <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    {[['R$ 1.999.000','Casa 4 quartos'],['R$ 400.000','Apto 2 quartos']].map(([price,title],i) => (
+                      <div key={i} style={{ background: '#1c1b1b', borderRadius: Math.max(4,parseInt(pBtnR)||2), overflow: 'hidden', border: '1px solid rgba(77,70,53,0.2)' }}>
+                        <div style={{ height: 45, background: '#201f1f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 16, opacity: 0.2 }}>🏠</span>
+                        </div>
+                        <div style={{ padding: '5px 6px' }}>
+                          <div style={{ fontSize: 7, color: '#d0c5af', marginBottom: 2 }}>{title}</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: pPrimary, marginBottom: 4 }}>{price}</div>
+                          <div style={{ background: pBtnBg, color: pBtnText, borderRadius: pBtnR, textAlign: 'center', padding: '3px', fontSize: 7, fontWeight: 700 }}>Ver detalhes →</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* footer */}
+                  <div style={{ background: '#0e0e0e', padding: '6px', textAlign: 'center', fontSize: 7, color: '#9ca3af' }}>© {pPreviewName.toUpperCase()}</div>
+                </div>
+              )}
+
+              {/* ── Preview: Vídeo ── */}
+              {previewTab === 'video' && (
+                <div style={{ background: colors['--contact-bg'] || darkenHexP(pPrimary,0.35), borderRadius: 8, overflow: 'hidden', fontFamily: 'Manrope, sans-serif', boxShadow: '0 4px 32px rgba(0,0,0,0.5)', border: `1px solid ${T.outlineVariant}`, maxWidth: 220, margin: '0 auto' }}>
+                  {/* photo area */}
+                  <div style={{ height: 80, background: '#201f1f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <span style={{ fontSize: 28, opacity: 0.15 }}>🏠</span>
+                    {logoUrl && (
+                      <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: '2px 4px' }}>
+                        <img src={logoUrl} alt="logo" style={{ height: 18, width: 'auto', maxWidth: 60, objectFit: 'contain', display: 'block' }} />
+                      </div>
+                    )}
+                    <div style={{ position: 'absolute', bottom: 4, left: 4, background: pBadge, color: pPrimary, fontSize: 7, fontWeight: 700, padding: '1px 5px', borderRadius: 50 }}>VENDA</div>
+                  </div>
+                  {/* price */}
+                  <div style={{ padding: '8px 10px', borderBottom: `1px solid ${colors['--line-poster']||'rgba(255,255,255,0.1)'}` }}>
+                    <div style={{ color: colors['--text-poster']||'#ffffff', fontSize: 14, fontWeight: 800 }}>R$ 1.999.000</div>
+                    <div style={{ color: colors['--detail-poster']||'rgba(255,255,255,0.6)', fontSize: 7, marginTop: 1 }}>Casa · Nova Peruíbe · Peruíbe/SP</div>
+                  </div>
+                  {/* feats */}
+                  <div style={{ padding: '6px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                    {[['🛏','4 quartos'],['🚿','6 banheiros'],['🚗','4 vagas'],['📐','230 m²']].map(([ic,lbl]) => (
+                      <div key={lbl} style={{ background: colors['--amen-bg']||'rgba(0,0,0,0.2)', border: `1px solid ${colors['--amen-bd']||'rgba(255,255,255,0.1)'}`, borderRadius: 3, padding: '3px 5px', fontSize: 7, color: colors['--text-poster']||'#fff', display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <span>{ic}</span>{lbl}
+                      </div>
+                    ))}
+                  </div>
+                  {/* amenities */}
+                  <div style={{ padding: '0 10px 8px' }}>
+                    <div style={{ fontSize: 7, color: colors['--detail-poster']||'rgba(255,255,255,0.5)', marginBottom: 3 }}>Lazer e comodidades</div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {['Piscina','Grill','Academia'].map(a => (
+                        <span key={a} style={{ background: colors['--amen-bg']||'rgba(0,0,0,0.2)', border: `1px solid ${colors['--amen-bd']||'rgba(255,255,255,0.1)'}`, borderRadius: 3, padding: '2px 5px', fontSize: 7, color: colors['--text-poster']||'#fff' }}>{a}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p style={{ fontSize: '0.68rem', color: T.outlineVariant, textAlign: 'center', marginTop: '0.6rem' }}>
+                ↑ prévia aproximada — salve e acesse o link real para ver completo
+              </p>
+            </div>
           </div>
-        )}
+          );
+        })()}
+
 
         {/* ══ Tab 5: Layout ══ */}
         {activeTab === 'layout' && (
