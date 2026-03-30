@@ -169,6 +169,17 @@ function RemotionRenderPanel({ listingId, listing }) {
         setStatus({ error: errMsg });
         return;
       }
+
+      // Se retornou JSON (webhook configurado) → exibe confirmação
+      if (ct.includes('application/json')) {
+        const j = await res.json();
+        if (j?.queued) {
+          setStatus({ success: true, queued: true, message: `✓ Vídeo "${j.filename || 'remotion.mp4'}" enviado para o n8n. Ele será salvo na pasta de vídeos do imóvel.` });
+          return;
+        }
+      }
+
+      // Fallback: download direto (sem webhook)
       const blob = await res.blob();
       const code = listing?.advertiserCode || listingId;
       const a = document.createElement('a');
@@ -248,11 +259,23 @@ function RemotionRenderPanel({ listingId, listing }) {
           />
         )}
       </div>
-      <button type="button" className="btn" onClick={handleRender} disabled={status?.loading}>
-        {status?.loading ? 'Renderizando… (pode demorar)' : 'Gerar e baixar MP4'}
+      <button type="button" className="btn btn-primary" onClick={handleRender} disabled={status?.loading}
+        style={{ fontSize: '0.88rem' }}>
+        {status?.loading ? '⏳ Renderizando… aguarde sem fechar' : '▶ Gerar vídeo Remotion'}
       </button>
-      {status?.error && <p style={{ color: 'var(--danger)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{status.error}</p>}
-      {status?.success && <p style={{ color: 'var(--success)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{status.message}</p>}
+      {status?.loading && (
+        <p style={{ color: 'var(--muted)', marginTop: '0.5rem', fontSize: '0.82rem' }}>
+          O render pode levar de 2 a 10 minutos dependendo da animação. Não feche essa aba.
+        </p>
+      )}
+      {status?.error && (
+        <p style={{ color: 'var(--danger)', marginTop: '0.5rem', fontSize: '0.88rem' }}>{status.error}</p>
+      )}
+      {status?.success && (
+        <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(39,103,73,0.08)', border: '1px solid rgba(39,103,73,0.3)', borderRadius: 6, fontSize: '0.88rem', color: 'var(--success)' }}>
+          {status.message}
+        </div>
+      )}
     </div>
   );
 }

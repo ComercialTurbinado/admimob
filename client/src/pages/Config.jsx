@@ -13,6 +13,7 @@ const DEFAULT_DATA = {
   browserless_ws_url: '',
   webhook_montar_mp4: '',
   webhook_logo: '',
+  webhook_remotion: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -41,6 +42,7 @@ export default function Config() {
           browserless_ws_url: d.browserless_ws_url ?? '',
           webhook_montar_mp4: d.webhook_montar_mp4 ?? '',
           webhook_logo: d.webhook_logo ?? '',
+          webhook_remotion: d.webhook_remotion ?? '',
           plans,
         });
       })
@@ -91,6 +93,7 @@ export default function Config() {
           browserless_ws_url: data.browserless_ws_url,
           webhook_montar_mp4: data.webhook_montar_mp4,
           webhook_logo: data.webhook_logo,
+          webhook_remotion: data.webhook_remotion,
           plans: data.plans,
         }),
       });
@@ -262,7 +265,20 @@ export default function Config() {
             placeholder="https://n8n.../webhook/logo"
           />
           <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Chamado em <strong>Área do cliente → Enviar logo</strong>. Envia <code>client_id</code>, <code>client_name</code>, <code>logo_url</code> (URL do logo cadastrado no cliente).
+            Chamado em <strong>Área do cliente → Enviar logo</strong>. Envia <code>client_id</code>, <code>client_name</code>, <code>logo_url</code>.
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[Remotion]</span> Salvar vídeo Remotion</label>
+          <input
+            name="webhook_remotion"
+            type="url"
+            value={data.webhook_remotion ?? ''}
+            onChange={(e) => update('webhook_remotion', null, e.target.value)}
+            placeholder="https://n8n.../webhook/remotion-save"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Após o render, envia o MP4 em base64 para esse webhook n8n. Payload: <code>video_base64</code>, <code>imobiliaria</code> (<code>imobName-imovelRef</code>), <code>imobName</code>, <code>imovelRef</code>, <code>animation</code>, <code>listing_id</code>, <code>filename</code>. Se não configurado, o vídeo é baixado direto no browser.
           </p>
         </div>
       </section>

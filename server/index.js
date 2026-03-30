@@ -51,13 +51,14 @@ app.get('/api/dashboard', async (req, res) => {
     const browserless_ws_url = (await getSetting('browserless_ws_url', '')) || '';
     const webhook_montar_mp4 = (await getSetting('webhook_montar_mp4', '')) || '';
     const webhook_logo = (await getSetting('webhook_logo', '')) || '';
+    const webhook_remotion = (await getSetting('webhook_remotion', '')) || '';
     let plans = await getSetting('plans', [
       { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
       { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
       { id: '997', label: 'R$ 997', price: 997, credit_label: 'Vídeos com narração', credit_count: 10, payment_url: '' },
     ]);
     plans = plans.map((p) => ({ ...p, payment_url: p.payment_url ?? '' }));
-    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, webhook_logo, plans });
+    res.json({ kpis, payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, webhook_logo, webhook_remotion, plans });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -65,7 +66,7 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.put('/api/dashboard', async (req, res) => {
   try {
-    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, webhook_logo, plans } = req.body;
+    const { payment_links, webhook_captacao, webhook_producao, webhook_materiais, webhook_frames_save, webhook_frames_done, browserless_ws_url, webhook_montar_mp4, webhook_logo, webhook_remotion, plans } = req.body;
     if (payment_links !== undefined) await setSetting('payment_links', payment_links);
     if (webhook_captacao !== undefined) await setSetting('webhook_captacao', webhook_captacao);
     if (webhook_producao !== undefined) await setSetting('webhook_producao', webhook_producao);
@@ -75,6 +76,7 @@ app.put('/api/dashboard', async (req, res) => {
     if (browserless_ws_url !== undefined) await setSetting('browserless_ws_url', browserless_ws_url);
     if (webhook_montar_mp4 !== undefined) await setSetting('webhook_montar_mp4', webhook_montar_mp4);
     if (webhook_logo !== undefined) await setSetting('webhook_logo', webhook_logo);
+    if (webhook_remotion !== undefined) await setSetting('webhook_remotion', webhook_remotion);
     if (plans !== undefined) await setSetting('plans', plans);
     res.json({ ok: true });
   } catch (e) {
@@ -683,21 +685,59 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
       return res.status(response.ok ? 502 : response.status).json({ error: msg || 'Erro no render Remotion' });
     }
 
+    // Bufferiza o vídeo completo (stream ou arrayBuffer)
+    let buf;
     if (!response.body) {
-      const buf = Buffer.from(await response.arrayBuffer());
-      res.setHeader('Content-Type', 'video/mp4');
-      res.setHeader('Content-Disposition', `attachment; filename="remotion-${listingId}-${animation}.mp4"`);
-      return res.send(buf);
+      buf = Buffer.from(await response.arrayBuffer());
+    } else {
+      const chunks = [];
+      const nodeStream = Readable.fromWeb(response.body);
+      await new Promise((resolve, reject) => {
+        nodeStream.on('data', (chunk) => chunks.push(chunk));
+        nodeStream.on('end', resolve);
+        nodeStream.on('error', reject);
+      });
+      buf = Buffer.concat(chunks);
     }
 
+    const filename = `remotion-${animation}.mp4`;
+    const remotionWebhookUrl = ((await getSetting('webhook_remotion', '')) || '').trim();
+
+    if (remotionWebhookUrl) {
+      // Envia para n8n como base64 e retorna JSON (sem download no browser)
+      const videoBase64 = buf.toString('base64');
+      try {
+        await fetch(remotionWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            video_base64: videoBase64,
+            imobiliaria: `${imobname}-${advertiserCode}`,
+            imobName: imobname,
+            imovelRef: advertiserCode,
+            animation,
+            listing_id: listingId,
+            filename,
+          }),
+        });
+      } catch (webhookErr) {
+        console.error('[remotion-render] webhook error:', webhookErr.message);
+      }
+      return res.json({
+        ok: true,
+        queued: true,
+        message: 'Vídeo Remotion enviado para o n8n',
+        imobName: imobname,
+        imovelRef: advertiserCode,
+        animation,
+        filename,
+      });
+    }
+
+    // Sem webhook configurado: download direto (fallback)
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="remotion-${listingId}-${animation}.mp4"`);
-    const nodeStream = Readable.fromWeb(response.body);
-    nodeStream.on('error', (err) => {
-      if (!res.headersSent) res.status(500).json({ error: err.message });
-      else res.destroy(err);
-    });
-    nodeStream.pipe(res);
+    return res.send(buf);
   } catch (e) {
     const msg = e.name === 'AbortError' ? 'Tempo esgotado aguardando o render (aumente REMOTION_RENDER_TIMEOUT_MS ou tente de novo).' : e.message;
     res.status(500).json({ error: msg });
