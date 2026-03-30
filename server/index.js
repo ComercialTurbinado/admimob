@@ -338,6 +338,68 @@ app.delete('/api/clients/:id', async (req, res) => {
   }
 });
 
+// --- Corretores ---
+const CORRETOR_COLS = ['id', 'client_id', 'name', 'photo_url', 'creci', 'phone', 'whatsapp', 'email', 'specialty', 'bio', 'active', 'sort_order', 'created_at', 'updated_at'];
+
+app.get('/api/clients/:id/corretores', async (req, res) => {
+  try {
+    const rows = await db.prepare(
+      `SELECT ${CORRETOR_COLS.join(', ')} FROM corretores WHERE client_id = ? ORDER BY sort_order ASC, name ASC`
+    ).all(Number(req.params.id));
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clients/:id/corretores', async (req, res) => {
+  try {
+    const client_id = Number(req.params.id);
+    const { name, photo_url, creci, phone, whatsapp, email, specialty, bio, active, sort_order } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
+    const result = await db.prepare(
+      `INSERT INTO corretores (client_id, name, photo_url, creci, phone, whatsapp, email, specialty, bio, active, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(client_id, name.trim(), photo_url||null, creci||null, phone||null, whatsapp||null, email||null, specialty||null, bio||null, active??1, sort_order??0);
+    res.status(201).json({ id: result.lastInsertRowid });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/corretores/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const fields = ['name', 'photo_url', 'creci', 'phone', 'whatsapp', 'email', 'specialty', 'bio', 'active', 'sort_order'];
+    const updates = [];
+    const values = [];
+    for (const f of fields) {
+      if (req.body[f] !== undefined) {
+        updates.push(`${f} = ?`);
+        values.push(req.body[f] === '' ? null : req.body[f]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'Nada para atualizar' });
+    updates.push("updated_at = datetime('now')");
+    values.push(id);
+    const result = await db.prepare(`UPDATE corretores SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    if (result.changes === 0) return res.status(404).json({ error: 'Não encontrado' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/corretores/:id', async (req, res) => {
+  try {
+    const result = await db.prepare('DELETE FROM corretores WHERE id = ?').run(Number(req.params.id));
+    if (result.changes === 0) return res.status(404).json({ error: 'Não encontrado' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // --- Listings ---
 app.get('/api/listings', async (req, res) => {
   try {

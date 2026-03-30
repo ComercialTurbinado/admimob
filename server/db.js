@@ -126,6 +126,25 @@ async function init() {
     )
   `);
 
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS corretores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      photo_url TEXT,
+      creci TEXT,
+      phone TEXT,
+      whatsapp TEXT,
+      email TEXT,
+      specialty TEXT,
+      bio TEXT,
+      active INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
   try {
     const listInfo = await db.prepare('PRAGMA table_info(listings)').all();
     const listCols = (listInfo || []).map((c) => c.name);

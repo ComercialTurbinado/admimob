@@ -220,6 +220,14 @@ export default function ClienteHub() {
   const [openColorField, setOpenColorField] = useState(null);
   const heroBgFileRef = useRef(null);
 
+  // Corretores
+  const [corretores, setCorretores] = useState([]);
+  const [loadingCorretores, setLoadingCorretores] = useState(false);
+  const [corretorMsg, setCorretorMsg] = useState(null);
+  const [editingCorretor, setEditingCorretor] = useState(null); // null = nenhum, 'new' = novo, {id,...} = editando
+  const [corretorForm, setCorretorForm] = useState({ name:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
+  const corretorPhotoRef = useRef(null);
+
   function handleHeroBgFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -506,6 +514,82 @@ export default function ClienteHub() {
     }
   }
 
+  // ── Corretores helpers ────────────────────────────────────────────────────────
+  function fetchCorretores() {
+    setLoadingCorretores(true);
+    fetch(`${API}/clients/${id}/corretores`)
+      .then(r => r.json())
+      .then(d => setCorretores(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingCorretores(false));
+  }
+
+  function openNewCorretor() {
+    setCorretorForm({ name:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
+    setEditingCorretor('new');
+    setCorretorMsg(null);
+  }
+
+  function openEditCorretor(c) {
+    setCorretorForm({ name: c.name||'', photo_url: c.photo_url||'', creci: c.creci||'', phone: c.phone||'', whatsapp: c.whatsapp||'', email: c.email||'', specialty: c.specialty||'', bio: c.bio||'' });
+    setEditingCorretor(c);
+    setCorretorMsg(null);
+  }
+
+  function handleCorretorPhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 800 * 1024) { setCorretorMsg('⚠ Foto muito grande. Use menos de 800 KB.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => setCorretorForm(p => ({ ...p, photo_url: ev.target.result }));
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  async function handleSaveCorretor() {
+    if (!corretorForm.name.trim()) { setCorretorMsg('⚠ Nome é obrigatório.'); return; }
+    setCorretorMsg(null);
+    try {
+      if (editingCorretor === 'new') {
+        const res = await fetch(`${API}/clients/${id}/corretores`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...corretorForm, active: 1 }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setCorretorMsg('✓ Corretor adicionado.');
+      } else {
+        const res = await fetch(`${API}/corretores/${editingCorretor.id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(corretorForm),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setCorretorMsg('✓ Corretor atualizado.');
+      }
+      setEditingCorretor(null);
+      fetchCorretores();
+    } catch (e) { setCorretorMsg('Erro: ' + e.message); }
+  }
+
+  async function handleToggleCorretorActive(c) {
+    try {
+      await fetch(`${API}/corretores/${c.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: c.active ? 0 : 1 }),
+      });
+      fetchCorretores();
+    } catch {}
+  }
+
+  async function handleDeleteCorretor(c) {
+    if (!confirm(`Excluir ${c.name}? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await fetch(`${API}/corretores/${c.id}`, { method: 'DELETE' });
+      fetchCorretores();
+    } catch (e) { setCorretorMsg('Erro ao excluir: ' + e.message); }
+  }
+
   const catalogUrl = client ? buildCatalogUrl(client) : null;
 
   // ── Loading / error states ────────────────────────────────────────────────────
@@ -527,12 +611,13 @@ export default function ClienteHub() {
 
   // ── Tabs config ───────────────────────────────────────────────────────────────
   const TABS = [
-    { id: 'identity', icon: 'badge',    label: 'Identidade' },
-    { id: 'links',    icon: 'link',     label: 'Links' },
-    { id: 'about',    icon: 'article',  label: 'Quem Somos' },
-    { id: 'visual',   icon: 'palette',  label: 'Visual' },
-    { id: 'layout',   icon: 'reorder',  label: 'Layout' },
-    { id: 'imoveis',  icon: 'home',     label: 'Imóveis' },
+    { id: 'identity',   icon: 'badge',    label: 'Identidade' },
+    { id: 'links',      icon: 'link',     label: 'Links' },
+    { id: 'about',      icon: 'article',  label: 'Quem Somos' },
+    { id: 'visual',     icon: 'palette',  label: 'Visual' },
+    { id: 'layout',     icon: 'reorder',  label: 'Layout' },
+    { id: 'corretores', icon: 'group',    label: 'Corretores' },
+    { id: 'imoveis',    icon: 'home',     label: 'Imóveis' },
   ];
 
   // ── Save button shared component ──────────────────────────────────────────────
@@ -641,7 +726,7 @@ export default function ClienteHub() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); if (tab.id === 'corretores' && corretores.length === 0) fetchCorretores(); }}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -1508,7 +1593,160 @@ export default function ClienteHub() {
         <SaveButton compact />
       </div>
 
-        {/* ══ Tab 6: Imóveis ══ */}
+        {/* ══ Tab 6: Corretores ══ */}
+        {activeTab === 'corretores' && (
+          <div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={sectionTitleStyle}>Corretores / Vendedores</h2>
+              <p style={sectionSubtitleStyle}>Gerencie os corretores vinculados a esta imobiliária.</p>
+            </div>
+
+            {/* Mensagem de status */}
+            {corretorMsg && (
+              <div style={{ background: corretorMsg.startsWith('Erro')||corretorMsg.startsWith('⚠') ? `${T.danger}18` : `${T.success}18`, border: `1px solid ${corretorMsg.startsWith('Erro')||corretorMsg.startsWith('⚠') ? T.danger+'44' : T.success+'44'}`, borderRadius: 4, padding: '0.6rem 0.85rem', fontSize: '0.82rem', color: corretorMsg.startsWith('Erro')||corretorMsg.startsWith('⚠') ? T.danger : T.success, marginBottom: '1rem', fontFamily: 'Manrope, sans-serif' }}>
+                {corretorMsg}
+              </div>
+            )}
+
+            {/* Formulário de adição/edição */}
+            {editingCorretor && (
+              <div style={{ ...cardStyle, border: `1.5px solid ${T.primaryCt}44`, marginBottom: '1.5rem' }}>
+                <h3 style={{ ...sectionTitleStyle, fontSize: '0.95rem', marginBottom: '1rem' }}>
+                  {editingCorretor === 'new' ? '+ Novo Corretor' : `Editar — ${editingCorretor.name}`}
+                </h3>
+
+                {/* Foto */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.surfaceHigh, border: `1px solid ${T.outlineVariant}`, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {corretorForm.photo_url
+                      ? <img src={corretorForm.photo_url} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span className="material-symbols-outlined" style={{ fontSize: '2rem', color: T.onSurfaceVariant, fontVariationSettings: "'FILL' 0" }}>person</span>
+                    }
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <input ref={corretorPhotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCorretorPhotoChange} />
+                    <button type="button" onClick={() => corretorPhotoRef.current?.click()}
+                      style={{ background: 'transparent', color: T.primary, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.4rem 0.75rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', cursor: 'pointer', display: 'block', marginBottom: '0.35rem' }}>
+                      ↑ Upload da foto
+                    </button>
+                    <input type="url" value={corretorForm.photo_url.startsWith('data:') ? '' : corretorForm.photo_url}
+                      onChange={e => setCorretorForm(p => ({ ...p, photo_url: e.target.value }))}
+                      placeholder="ou cole URL da foto…"
+                      style={{ ...inputStyle, fontSize: '0.78rem' }} />
+                  </div>
+                </div>
+
+                {/* Campos em grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <label style={labelStyle}>Nome *</label>
+                    <input type="text" value={corretorForm.name} onChange={e => setCorretorForm(p => ({ ...p, name: e.target.value }))} placeholder="Nome completo" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Especialidade</label>
+                    <input type="text" value={corretorForm.specialty} onChange={e => setCorretorForm(p => ({ ...p, specialty: e.target.value }))} placeholder="Ex: Vendas · Alto Padrão" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>CRECI</label>
+                    <input type="text" value={corretorForm.creci} onChange={e => setCorretorForm(p => ({ ...p, creci: e.target.value }))} placeholder="Ex: 123456-F" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>WhatsApp</label>
+                    <input type="text" value={corretorForm.whatsapp} onChange={e => setCorretorForm(p => ({ ...p, whatsapp: e.target.value }))} placeholder="(11) 99999-9999" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Telefone</label>
+                    <input type="text" value={corretorForm.phone} onChange={e => setCorretorForm(p => ({ ...p, phone: e.target.value }))} placeholder="(11) 3333-3333" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>E-mail</label>
+                    <input type="email" value={corretorForm.email} onChange={e => setCorretorForm(p => ({ ...p, email: e.target.value }))} placeholder="corretor@email.com" style={inputStyle} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={labelStyle}>Bio / Apresentação</label>
+                  <textarea value={corretorForm.bio} onChange={e => setCorretorForm(p => ({ ...p, bio: e.target.value }))} rows={3} placeholder="Breve apresentação do corretor…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
+                </div>
+
+                {/* Botões */}
+                <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={handleSaveCorretor}
+                    style={{ background: T.primaryCt, color: '#3c2f00', border: 'none', borderRadius: 3, padding: '0.6rem 1.4rem', fontFamily: 'Manrope, sans-serif', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                    Salvar
+                  </button>
+                  <button type="button" onClick={() => { setEditingCorretor(null); setCorretorMsg(null); }}
+                    style={{ background: 'transparent', color: T.onSurfaceVariant, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.6rem 1rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de corretores */}
+            {loadingCorretores ? (
+              <p style={{ color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif', fontSize: '0.88rem' }}>Carregando...</p>
+            ) : corretores.length === 0 && !editingCorretor ? (
+              <div style={{ ...cardStyle, textAlign: 'center', padding: '2.5rem 1rem', color: T.onSurfaceVariant }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.5rem', opacity: 0.3, fontVariationSettings: "'FILL' 0" }}>group</span>
+                <p style={{ fontSize: '0.9rem', marginBottom: '1rem', fontFamily: 'Manrope, sans-serif' }}>Nenhum corretor cadastrado ainda.</p>
+                <button type="button" onClick={openNewCorretor}
+                  style={{ background: T.primaryCt, color: '#3c2f00', border: 'none', borderRadius: 3, padding: '0.6rem 1.4rem', fontFamily: 'Manrope, sans-serif', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                  + Adicionar primeiro corretor
+                </button>
+              </div>
+            ) : (
+              <div>
+                {corretores.map((c) => (
+                  <div key={c.id} style={{ ...cardStyle, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', opacity: c.active ? 1 : 0.5, marginBottom: '0.75rem' }}>
+                    {/* Foto */}
+                    <div style={{ width: 52, height: 52, borderRadius: '50%', background: T.surfaceHigh, border: `1px solid ${T.outlineVariant}`, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {c.photo_url
+                        ? <img src={c.photo_url} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <span className="material-symbols-outlined" style={{ fontSize: '1.6rem', color: T.onSurfaceVariant, fontVariationSettings: "'FILL' 0" }}>person</span>
+                      }
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.onSurface, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.name}
+                        {!c.active && <span style={{ marginLeft: 8, fontSize: '0.68rem', background: T.surfaceHigh, color: T.onSurfaceVariant, borderRadius: 3, padding: '1px 6px', fontFamily: 'Manrope, sans-serif', fontWeight: 600 }}>Inativo</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: 2 }}>
+                        {c.specialty && <span style={{ fontSize: '0.75rem', color: T.primary, fontFamily: 'Manrope, sans-serif' }}>{c.specialty}</span>}
+                        {c.creci && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>CRECI {c.creci}</span>}
+                        {c.whatsapp && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>📱 {c.whatsapp}</span>}
+                      </div>
+                    </div>
+                    {/* Ações */}
+                    <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                      <button type="button" onClick={() => handleToggleCorretorActive(c)} title={c.active ? 'Desativar' : 'Ativar'}
+                        style={{ background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.35rem 0.55rem', cursor: 'pointer', color: c.active ? T.success : T.onSurfaceVariant, fontSize: '0.75rem', fontFamily: 'Manrope, sans-serif' }}>
+                        {c.active ? '✓ Ativo' : '○ Inativo'}
+                      </button>
+                      <button type="button" onClick={() => openEditCorretor(c)} title="Editar"
+                        style={{ background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.35rem 0.55rem', cursor: 'pointer', color: T.primary }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem', display: 'block', fontVariationSettings: "'FILL' 0" }}>edit</span>
+                      </button>
+                      <button type="button" onClick={() => handleDeleteCorretor(c)} title="Excluir"
+                        style={{ background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.35rem 0.55rem', cursor: 'pointer', color: T.danger }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem', display: 'block', fontVariationSettings: "'FILL' 0" }}>delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {!editingCorretor && (
+                  <button type="button" onClick={openNewCorretor}
+                    style={{ background: 'transparent', color: T.primary, border: `1.5px dashed ${T.primaryCt}66`, borderRadius: 6, padding: '0.75rem', fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', width: '100%', textAlign: 'center' }}>
+                    + Adicionar corretor
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ Tab 7: Imóveis ══ */}
         {activeTab === 'imoveis' && (
           <div>
             <div style={{ marginBottom: '1.5rem' }}>
