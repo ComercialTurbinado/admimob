@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API, proxyImageUrl } from '../api';
 import { DEFAULT_PALETTE, getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
@@ -163,6 +163,25 @@ export default function ClienteHub() {
   const [creci, setCreci] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [logoStyle, setLogoStyle] = useState('contain');
+  const [logoUploadMsg, setLogoUploadMsg] = useState(null);
+  const logoFileRef = useRef(null);
+
+  function handleLogoFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 800 * 1024) {
+      setLogoUploadMsg('⚠ Imagem muito grande. Use menos de 800 KB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setLogoUrl(ev.target.result);
+      setLogoUploadMsg(`✓ "${file.name}" carregado`);
+    };
+    reader.onerror = () => setLogoUploadMsg('Erro ao ler arquivo.');
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
 
   // Links
   const [links, setLinks] = useState([]);
@@ -340,7 +359,7 @@ export default function ClienteHub() {
     setExtractingFromLogo(true);
     setColorMsg(null);
     try {
-      const url = proxyImageUrl(logoUrl);
+      const url = logoUrl.startsWith('data:') ? logoUrl : proxyImageUrl(logoUrl);
       const result = await getDominantColorFromImageUrl(url);
       if (result?.dominant) {
         const palette = getPaletteFromPrimary(result.dominant, result.darkest ?? null, result.lightest ?? null);
@@ -612,14 +631,63 @@ export default function ClienteHub() {
               {/* Right: inputs */}
               <div style={cardStyle}>
                 <div style={formGroupStyle}>
-                  <label style={labelStyle}>Logo URL</label>
+                  <label style={labelStyle}>Logo</label>
+                  {/* Upload de arquivo */}
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleLogoFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => logoFileRef.current?.click()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      marginBottom: '0.5rem',
+                      background: `${T.primaryCt}22`,
+                      border: `1px solid ${T.primaryCt}`,
+                      borderRadius: 3,
+                      color: T.primary,
+                      fontFamily: 'Manrope, sans-serif',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>↑</span> Fazer upload da imagem
+                  </button>
+                  {logoUploadMsg && (
+                    <p style={{ fontSize: '0.78rem', color: T.success, margin: '0 0 0.4rem' }}>
+                      {logoUploadMsg}
+                    </p>
+                  )}
+                  {/* Ou colar URL */}
+                  <p style={{ fontSize: '0.72rem', color: T.onSurfaceVariant, margin: '0 0 0.35rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    ou cole uma URL
+                  </p>
                   <input
                     type="url"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
+                    value={logoUrl.startsWith('data:') ? '' : logoUrl}
+                    onChange={(e) => { setLogoUrl(e.target.value); setLogoUploadMsg(null); }}
                     placeholder="https://..."
                     style={inputStyle}
                   />
+                  {logoUrl.startsWith('data:') && (
+                    <p style={{ fontSize: '0.78rem', color: T.onSurfaceVariant, marginTop: '0.3rem' }}>
+                      Imagem local carregada · <button
+                        type="button"
+                        onClick={() => { setLogoUrl(''); setLogoUploadMsg(null); }}
+                        style={{ background: 'none', border: 'none', color: T.danger, cursor: 'pointer', fontSize: '0.78rem', padding: 0 }}
+                      >remover</button>
+                    </p>
+                  )}
                 </div>
 
                 <div style={formGroupStyle}>
