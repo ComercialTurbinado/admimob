@@ -768,8 +768,9 @@ body { background:#131313; color:#e5e2e1; min-height:max(884px,100dvh); }
 <body class="bg-background text-on-surface font-body selection:bg-primary/30">
 
 <!-- Header / Profile -->
-<header class="relative pt-16 pb-8 px-6 flex flex-col items-center text-center">
-  <div class="relative mb-6">
+<header class="relative pt-16 pb-8 px-6 flex flex-col items-center text-center" style="background:linear-gradient(160deg,${esc(accentBg)} 0%,#131313 100%);position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');pointer-events:none;z-index:0"></div>
+  <div class="relative mb-6" style="z-index:1">
     ${logoUrl
       ? (pc.logo_style === 'circle'
           ? `<div style="padding:3px;border-radius:50%;background:linear-gradient(135deg,${esc(btnBg)},${esc(primary)});display:inline-flex">
@@ -785,9 +786,9 @@ body { background:#131313; color:#e5e2e1; min-height:max(884px,100dvh); }
          </div>`
     }
   </div>
-  <h1 class="font-headline text-3xl font-bold tracking-tight text-on-surface mb-1 uppercase">${esc(client.name)}</h1>
-  ${client.creci ? `<p class="font-label text-xs tracking-[0.2em] mb-3" style="color:var(--cp)">CRECI ${esc(client.creci)}</p>` : ''}
-  ${specialty ? `<p class="font-headline italic text-lg text-on-surface-variant opacity-80">${esc(specialty)}</p>` : ''}
+  <h1 class="font-headline text-3xl font-bold tracking-tight text-on-surface mb-1 uppercase" style="position:relative;z-index:1">${esc(client.name)}</h1>
+  ${client.creci ? `<p class="font-label text-xs tracking-[0.2em] mb-3" style="color:var(--cp);position:relative;z-index:1">CRECI ${esc(client.creci)}</p>` : ''}
+  ${specialty ? `<p class="font-headline italic text-lg text-on-surface-variant opacity-80" style="position:relative;z-index:1">${esc(specialty)}</p>` : ''}
 </header>
 
 <!-- Main -->
@@ -798,7 +799,7 @@ body { background:#131313; color:#e5e2e1; min-height:max(884px,100dvh); }
       cta: `<!-- Links (primary CTA) -->
   <section class="flex flex-col gap-4">
     ${profileLinks.filter((l) => l.isPrimary).map((l) => `
-    <a class="pulsing-aura py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--client-btn-bg);color:var(--client-btn-text)">
+    <a class="pulsing-aura py-5 px-8 flex items-center justify-center gap-3 group transition-all duration-300 hover:brightness-110" href="${esc(l.href)}" style="background-color:var(--cb);color:var(--cbt)">
       <span class="material-symbols-outlined text-2xl">${esc(l.icon)}</span>
       <span class="font-headline font-bold text-lg tracking-wide">${esc(l.label)}</span>
     </a>`).join('')}
