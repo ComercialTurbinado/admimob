@@ -3,20 +3,20 @@ import { useParams, Link } from 'react-router-dom';
 import { API, proxyImageUrl } from '../api';
 import { DEFAULT_PALETTE, getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
 
-// ─── Dark Luxury theme tokens ──────────────────────────────────────────────────
+// ─── Admin Light theme tokens ──────────────────────────────────────────────────
 const T = {
-  bg: '#131313',
-  surfaceLow: '#1c1b1b',
-  surface: '#201f1f',
-  surfaceHigh: '#2a2a2a',
-  surfaceHighest: '#353534',
-  primary: '#f2ca50',
-  primaryCt: '#d4af37',
-  onSurface: '#e5e2e1',
-  onSurfaceVariant: '#d0c5af',
-  outlineVariant: '#4d4635',
-  danger: '#ffb4ab',
-  success: '#b5ccb8',
+  bg: '#f5f4f0',
+  surfaceLow: '#ffffff',
+  surface: '#f0efe9',
+  surfaceHigh: '#eceae2',
+  surfaceHighest: '#e3e0d5',
+  primary: '#c9a227',
+  primaryCt: '#a8861a',
+  onSurface: '#1a1916',
+  onSurfaceVariant: '#5c5750',
+  outlineVariant: '#dedad0',
+  danger: '#c0392b',
+  success: '#276749',
 };
 
 // ─── Color fields ──────────────────────────────────────────────────────────────
@@ -240,6 +240,79 @@ export default function ClienteHub() {
   // Layout
   const [sectionsOrder, setSectionsOrder] = useState(['cta', 'links', 'about']);
 
+  // Imóveis
+  const [listings, setListings] = useState([]);
+  const [loadingListings, setLoadingListings] = useState(false);
+  const [listingUrl, setListingUrl] = useState('');
+  const [listingJson, setListingJson] = useState('');
+  const [importingLinkL, setImportingLinkL] = useState(false);
+  const [importingJsonL, setImportingJsonL] = useState(false);
+  const [listingMsg, setListingMsg] = useState(null);
+
+  function fetchListings() {
+    setLoadingListings(true);
+    fetch(`${API}/listings?client_id=${id}`)
+      .then(r => r.json())
+      .then(d => setListings(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingListings(false));
+  }
+
+  async function handleImportListingUrl() {
+    if (!listingUrl.trim()) return;
+    setImportingLinkL(true); setListingMsg(null);
+    try {
+      const res = await fetch(`${API}/listings/import-from-url`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: listingUrl.trim(), client_id: Number(id) }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setListingMsg('✓ ' + (data.message || 'Imóvel importado.'));
+      setListingUrl('');
+      fetchListings();
+    } catch (e) { setListingMsg('Erro: ' + e.message); }
+    finally { setImportingLinkL(false); }
+  }
+
+  async function handleImportListingJson() {
+    if (!listingJson.trim()) return;
+    setImportingJsonL(true); setListingMsg(null);
+    try {
+      const items = (() => { const d = JSON.parse(listingJson); return Array.isArray(d) ? d : [d]; })();
+      if (!items.length) throw new Error('Nenhum item no JSON.');
+      const client_id = Number(id);
+      if (items.length === 1) {
+        const res = await fetch(`${API}/listings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_data: items[0], client_id }) });
+        const body = await res.json(); if (body.error) throw new Error(body.error);
+        setListingMsg('✓ 1 imóvel cadastrado.');
+      } else {
+        const res = await fetch(`${API}/listings/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, client_id }) });
+        const body = await res.json(); if (body.error) throw new Error(body.error);
+        setListingMsg(`✓ ${body.imported} imóveis cadastrados.`);
+      }
+      setListingJson(''); fetchListings();
+    } catch (e) { setListingMsg('Erro: ' + (e.message || 'JSON inválido.')); }
+    finally { setImportingJsonL(false); }
+  }
+
+  async function handleRemoveListing(listingId) {
+    if (!confirm('Excluir este imóvel? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await fetch(`${API}/listings/${listingId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      fetchListings();
+    } catch (e) { setListingMsg('Erro ao excluir: ' + e.message); }
+  }
+
+  function listingTitle(l) {
+    if (l.title && String(l.title).trim()) return l.title;
+    if (l.description && String(l.description).trim()) return l.description.trim().substring(0, 80);
+    if (l.salePrice) return l.salePrice;
+    return '(Sem título)';
+  }
+
   // Load Google Fonts
   useEffect(() => {
     const id_ = 'hub-google-fonts';
@@ -262,6 +335,7 @@ export default function ClienteHub() {
 
   // Load client data
   useEffect(() => {
+    fetchListings();
     fetch(`${API}/clients/${id}`)
       .then((r) => r.json())
       .then((c) => {
@@ -449,6 +523,7 @@ export default function ClienteHub() {
     { id: 'about',    icon: 'article',  label: 'Quem Somos' },
     { id: 'visual',   icon: 'palette',  label: 'Visual' },
     { id: 'layout',   icon: 'reorder',  label: 'Layout' },
+    { id: 'imoveis',  icon: 'home',     label: 'Imóveis' },
   ];
 
   // ── Save button shared component ──────────────────────────────────────────────
@@ -1370,6 +1445,88 @@ export default function ClienteHub() {
         </div>
         <SaveButton compact />
       </div>
+
+        {/* ══ Tab 6: Imóveis ══ */}
+        {activeTab === 'imoveis' && (
+          <div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={sectionTitleStyle}>Imóveis</h2>
+              <p style={sectionSubtitleStyle}>Gerencie os imóveis deste cliente — edite, gere vídeos ou importe novos.</p>
+            </div>
+
+            {/* Import */}
+            <div style={{ ...cardStyle, marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Adicionar imóvel</div>
+              <div style={formGroupStyle}>
+                <label style={labelStyle}>Por link (ZAP, Viva Real…)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input type="url" value={listingUrl} onChange={e => setListingUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleImportListingUrl()}
+                    placeholder="https://..." style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
+                  <button type="button" disabled={importingLinkL || !listingUrl.trim()} onClick={handleImportListingUrl}
+                    style={{ padding: '0.6rem 1.1rem', background: T.primary, color: '#fff', border: 'none', borderRadius: 3, fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: 700, cursor: importingLinkL ? 'not-allowed' : 'pointer', opacity: importingLinkL ? 0.6 : 1 }}>
+                    {importingLinkL ? 'Importando…' : 'Importar'}
+                  </button>
+                </div>
+              </div>
+              <div style={formGroupStyle}>
+                <label style={labelStyle}>Por JSON (cole o objeto ou array)</label>
+                <textarea value={listingJson} onChange={e => setListingJson(e.target.value)}
+                  placeholder={'{"title":"Casa 3 quartos","carousel_images":[...]}'}
+                  style={{ ...inputStyle, minHeight: 90, resize: 'vertical', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: 1.5 }} />
+                <button type="button" disabled={importingJsonL || !listingJson.trim()} onClick={handleImportListingJson}
+                  style={{ marginTop: '0.4rem', padding: '0.5rem 1rem', background: T.surfaceHigh, color: T.onSurface, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, fontFamily: 'Manrope, sans-serif', fontSize: '0.82rem', cursor: importingJsonL ? 'not-allowed' : 'pointer' }}>
+                  {importingJsonL ? 'Importando…' : 'Importar JSON'}
+                </button>
+              </div>
+              {listingMsg && (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: listingMsg.startsWith('Erro') ? T.danger : T.success }}>{listingMsg}</p>
+              )}
+            </div>
+
+            {/* Listings list */}
+            {loadingListings ? (
+              <p style={{ color: T.onSurfaceVariant, fontSize: '0.88rem' }}>Carregando imóveis…</p>
+            ) : listings.length === 0 ? (
+              <div style={{ ...cardStyle, textAlign: 'center', padding: '2.5rem 1rem', color: T.onSurfaceVariant }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.3 }}>🏠</div>
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>Nenhum imóvel cadastrado. Importe um acima.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {listings.map(l => {
+                  const img = (l.carousel_images && l.carousel_images[0]) || (l.images && l.images[0]);
+                  return (
+                    <div key={l.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap', padding: '0.85rem 1rem' }}>
+                      {img && (
+                        <img src={proxyImageUrl(img)} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0, background: T.surfaceHigh }} />
+                      )}
+                      {!img && (
+                        <div style={{ width: 56, height: 56, borderRadius: 4, background: T.surfaceHigh, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', opacity: 0.3, flexShrink: 0 }}>🏠</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: T.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{listingTitle(l)}</div>
+                        {l.salePrice && <div style={{ fontSize: '0.78rem', color: T.primary, fontWeight: 700, marginTop: 2 }}>{l.salePrice}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                        <a href={`/cliente/${id}/produto/${l.id}`} style={{ padding: '0.45rem 0.85rem', background: T.primary, color: '#fff', borderRadius: 3, fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          ✏ Editar / Vídeo
+                        </a>
+                        <a href={`/cliente/${id}/produto/${l.id}/materiais`} style={{ padding: '0.45rem 0.85rem', background: T.surfaceHigh, color: T.onSurface, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                          Materiais
+                        </a>
+                        <button type="button" onClick={() => handleRemoveListing(l.id)}
+                          style={{ padding: '0.45rem 0.75rem', background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, fontSize: '0.78rem', color: T.danger, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Inline style to hide desktop save button on mobile and vice versa */}
       <style>{`
