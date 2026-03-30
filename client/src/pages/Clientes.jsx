@@ -149,14 +149,14 @@ export default function Clientes() {
 
   if (loading) {
     return (
-      <div className="page-wrap">
+      <>
         <p style={{ color: 'var(--muted)', paddingTop: '2rem' }}>Carregando clientes...</p>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="page-wrap">
+    <>
       {/* Header */}
       <div className="page-header">
         <div>
@@ -428,6 +428,6 @@ export default function Clientes() {
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }

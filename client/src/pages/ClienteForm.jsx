@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { API, parseJsonResponse, apiFriendlyMessage } from '../api';
+import PageHeader from '../components/PageHeader';
 
 const FIELDS = [
   { key: 'name',            label: 'Nome (imobiliária ou corretor)', required: true },
@@ -185,10 +186,15 @@ export default function ClienteForm() {
 
   return (
     <>
-      <div style={{ marginBottom: '1rem' }}>
-        <Link to="/">← Dashboard</Link>
-      </div>
-      <h1>{isEdit ? 'Editar cliente' : 'Novo cliente'}</h1>
+      <PageHeader
+        title={isEdit ? 'Editar cliente' : 'Novo cliente'}
+        subtitle={isEdit ? 'Atualize os dados cadastrais' : 'Preencha os dados para criar o perfil público'}
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/' },
+          { label: 'Clientes', to: '/clientes' },
+          { label: isEdit ? 'Editar' : 'Novo cliente' },
+        ]}
+      />
 
       <form onSubmit={submit}>
         {SECTIONS.map((sec) => (

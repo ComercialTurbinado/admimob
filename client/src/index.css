@@ -59,9 +59,23 @@ input, textarea {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1.25rem;
-  margin-bottom: 1rem;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.card-title {
+  font-family: 'Noto Serif', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.3rem;
+}
+
+.card-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
 }
 
 .btn {
@@ -215,11 +229,18 @@ input, textarea {
 .sidebar-link.active { background: rgba(201,162,39,0.12); color: var(--gold-dk); font-weight: 700; }
 .sidebar-section { padding: 0.5rem 0.75rem 0.2rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(77,70,53,0.7); }
 .sidebar-bottom { padding: 0.5rem; border-top: 1px solid var(--border); }
-.main-content { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
-.page-wrap { max-width: 1280px; padding: 2rem 1.75rem; }
-.page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
+.main-content { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; background: var(--bg); }
+.page-wrap { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
 .page-title { font-family: 'Noto Serif', serif; font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0; letter-spacing: -0.02em; }
-.page-subtitle { font-size: 0.85rem; color: var(--muted); margin: 0.2rem 0 0; }
+.page-subtitle { font-size: 0.85rem; color: var(--muted); margin: 0.25rem 0 0; }
+.breadcrumb { display: flex; align-items: center; gap: 0.15rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.78rem; }
+.breadcrumb-link { color: var(--gold-dk); font-weight: 500; text-decoration: none; }
+.breadcrumb-link:hover { text-decoration: underline; }
+.breadcrumb-sep { color: var(--border); margin: 0 0.1rem; font-size: 0.85rem; }
+.breadcrumb-current { color: var(--muted); font-weight: 400; }
+.section-title { font-family: 'Noto Serif', serif; font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 0.25rem; }
+.section-subtitle { font-size: 0.82rem; color: var(--muted); margin: 0 0 1rem; }
 
 /* Kanban */
 .kanban-board { display: flex; gap: 0.85rem; overflow-x: auto; padding-bottom: 1rem; }

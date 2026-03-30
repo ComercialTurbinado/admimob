@@ -61,7 +61,9 @@ export default function AppLayout() {
 
       {/* Main */}
       <main className="main-content">
-        <Outlet />
+        <div className="page-wrap">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

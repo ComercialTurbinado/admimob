@@ -187,14 +187,14 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="page-wrap">
+      <>
         <p style={{ color: 'var(--muted)', paddingTop: '2rem' }}>Carregando...</p>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="page-wrap">
+    <>
       {/* Page header */}
       <div className="page-header">
         <div>
@@ -439,6 +439,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

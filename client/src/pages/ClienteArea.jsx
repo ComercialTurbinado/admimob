@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
 import { API, proxyImageUrl } from '../api';
+import PageHeader from '../components/PageHeader';
 
 function buildCatalogUrl(client) {
   if (!client?.slug) return null;
@@ -206,15 +207,25 @@ export default function ClienteArea() {
 
   return (
     <>
-      <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-        <Link to="/">Dashboard</Link>
-        <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-        <span>{client.name}</span>
-      </div>
+      <PageHeader
+        title={client.name}
+        subtitle={client.contact_name || (client.plan ? `Plano ${client.plan}` : 'Área do cliente')}
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/' },
+          { label: 'Clientes', to: '/clientes' },
+          { label: client.name },
+        ]}
+      >
+        {!isDemo && (
+          <Link to={'/cliente/' + id + '/hub'} className="btn btn-primary" style={{ fontSize: '0.82rem' }}>
+            Abrir Hub
+          </Link>
+        )}
+      </PageHeader>
 
       {isDemo && (
-        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--accent)', background: 'rgba(88, 166, 255, 0.08)' }}>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Dados fictícios</strong> — layout de exemplo. Cadastre um cliente ou carregue o exemplo no Dashboard para usar dados reais.</p>
+        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--gold)', background: 'rgba(201,162,39,0.06)' }}>
+          <p style={{ margin: 0, fontSize: '0.88rem' }}><strong>Dados fictícios</strong> — layout de exemplo.</p>
         </div>
       )}
 
@@ -228,7 +239,7 @@ export default function ClienteArea() {
             )}
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.5rem' }}>{client.name}</h1>
+            <div style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, fontFamily: 'Noto Serif, serif', color: 'var(--text)' }}>{client.name}</div>
             {client.contact_name && <p style={{ margin: '0.25rem 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>{client.contact_name}</p>}
           </div>
           {!isDemo && (

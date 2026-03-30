@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API } from '../api';
 import AnimacaoCaracteristicas from '../components/AnimacaoCaracteristicas';
+import PageHeader from '../components/PageHeader';
 
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
 
@@ -513,31 +514,22 @@ export default function Materiais() {
   const advertiserCode = listing?.advertiserCode;
   const fallbackBaseUrl = advertiserCode ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/` : '';
 
+  const breadcrumbs = [
+    { label: 'Dashboard', to: '/' },
+    ...(clientId ? [{ label: 'Cliente', to: '/cliente/' + clientId + '/hub' }] : []),
+    ...(clientId && id ? [{ label: 'Produção', to: '/cliente/' + clientId + '/produto/' + id }] : []),
+    { label: 'Materiais gerados' },
+  ];
+
   if (loading) {
     return (
       <>
-        <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-          <Link to="/">Dashboard</Link>
-          <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-          {clientId && <Link to={'/cliente/' + clientId + '/area'}>Cliente</Link>}
-          {clientId && <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>}
-          <span>Materiais</span>
-        </div>
-        <div className="card" style={{ padding: '2rem', textAlign: 'center', maxWidth: 420, margin: '2rem auto' }}>
-          <div
-            className="loading-spinner"
-            style={{
-              width: 40,
-              height: 40,
-              border: '3px solid var(--border)',
-              borderTopColor: 'var(--accent)',
-              borderRadius: '50%',
-              margin: '0 auto 1rem',
-            }}
-          />
+        <PageHeader title="Materiais gerados" breadcrumbs={breadcrumbs} />
+        <div className="card" style={{ padding: '2rem', textAlign: 'center', maxWidth: 420 }}>
+          <div className="loading-spinner" style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--gold)', borderRadius: '50%', margin: '0 auto 1rem' }} />
           <p className="muted" style={{ margin: 0 }}>Carregando materiais…</p>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
-            Na primeira vez o webhook pode ser consultado; depois os dados ficam em cache até você clicar em &quot;Atualizar listagem&quot;.
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
+            Na primeira vez o webhook pode ser consultado; depois os dados ficam em cache.
           </p>
         </div>
       </>
@@ -547,12 +539,10 @@ export default function Materiais() {
   if (error || !listing) {
     return (
       <>
-        <div style={{ marginBottom: '1rem' }}>
-          <Link to="/">Dashboard</Link>
-          <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-          <span>Materiais</span>
+        <PageHeader title="Materiais gerados" breadcrumbs={breadcrumbs} />
+        <div className="card" style={{ borderColor: 'var(--danger)', padding: '1.25rem' }}>
+          <p style={{ color: 'var(--danger)', margin: 0, fontSize: '0.9rem' }}>{error || 'Anúncio não encontrado.'}</p>
         </div>
-        <p style={{ color: 'var(--danger)' }}>{error || 'Anúncio não encontrado.'}</p>
       </>
     );
   }
@@ -564,21 +554,11 @@ export default function Materiais() {
 
   return (
     <>
-      <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-        <Link to="/">Dashboard</Link>
-        <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-        {clientId && (
-          <>
-            <Link to={'/cliente/' + clientId + '/area'}>Cliente</Link>
-            <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-            <Link to={'/cliente/' + clientId + '/produto/' + id}>Produto</Link>
-            <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-          </>
-        )}
-        <span>Materiais</span>
-      </div>
-
-      <h1 style={{ marginBottom: '1.5rem' }}>Materiais gerados</h1>
+      <PageHeader
+        title="Materiais gerados"
+        subtitle={listing?.title ? listing.title.slice(0, 70) + (listing.title.length > 70 ? '…' : '') : undefined}
+        breadcrumbs={breadcrumbs}
+      />
 
       <div
         style={{

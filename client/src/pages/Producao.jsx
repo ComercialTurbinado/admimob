@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
 import { API, proxyImageUrl } from '../api';
+import PageHeader from '../components/PageHeader';
 
 const OMIT_KEYS = ['id', 'client_id', 'source_url', 'selected_images', 'webhook_payload', 'created_at', 'updated_at'];
 
@@ -283,18 +284,21 @@ export default function Producao() {
   const images = listing.carousel_images || [];
   const textKeys = payloadKeys.filter((k) => k !== 'carousel_images');
 
+  const clientId = clientIdParam || (listing?.client_id);
+
+  const breadcrumbs = [
+    { label: 'Dashboard', to: '/' },
+    ...(clientId ? [{ label: 'Cliente', to: '/cliente/' + clientId + '/hub' }] : []),
+    { label: 'Central de Produção' },
+  ];
+
   // Loading: dados ainda não carregaram / campos não preenchidos
   if (loadingData) {
     return (
       <>
-        <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-          <Link to="/">Dashboard</Link>
-          <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-          <span>Central de Produção</span>
-        </div>
-        <h1>Central de Produção</h1>
+        <PageHeader title="Central de Produção" breadcrumbs={breadcrumbs} />
         <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto 1rem' }} className="loading-spinner" />
+          <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--gold)', borderRadius: '50%', margin: '0 auto 1rem' }} className="loading-spinner" />
           <p className="muted" style={{ margin: 0 }}>Carregando dados do anúncio...</p>
         </div>
       </>
@@ -303,36 +307,32 @@ export default function Producao() {
 
   return (
     <>
-      <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-        <Link to="/">Dashboard</Link>
-        <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-        {(clientIdParam || listing.client_id) && (
-          <>
-            <Link to={'/cliente/' + (clientIdParam || listing.client_id) + '/area'}>Cliente</Link>
-            <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>→</span>
-          </>
+      <PageHeader
+        title={listing?.title ? listing.title.slice(0, 60) + (listing.title.length > 60 ? '…' : '') : 'Central de Produção'}
+        subtitle={listing?.salePrice ? `Valor: ${listing.salePrice}` : 'Edite os campos e envie ao webhook'}
+        breadcrumbs={breadcrumbs}
+      >
+        {clientId && (
+          <Link
+            to={`/cliente/${clientId}/produto/${id}/materiais`}
+            className="btn"
+            style={{ fontSize: '0.82rem' }}
+          >
+            Ver Materiais
+          </Link>
         )}
-        <span>Produto</span>
-        {(clientIdParam || listing.client_id) && (
-          <>
-            <span style={{ margin: '0 0.5rem', color: 'var(--muted)' }}>|</span>
-            <Link to={'/cliente/' + (clientIdParam || listing.client_id) + '/produto/' + id + '/materiais'}>Materiais</Link>
-          </>
-        )}
-      </div>
-      {isDemo && (
-        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--accent)', background: 'rgba(88, 166, 255, 0.08)' }}>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Dados fictícios</strong> — layout de exemplo. Salvar e enviar webhook estão desativados.</p>
-        </div>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>Central de Produção</h1>
         {!isDemo && (
-          <button type="button" className="btn btn-danger" onClick={removeListing} title="Excluir imóvel">
+          <button type="button" className="btn btn-danger" onClick={removeListing} style={{ fontSize: '0.82rem' }}>
             Excluir imóvel
           </button>
         )}
-      </div>
+      </PageHeader>
+
+      {isDemo && (
+        <div className="card" style={{ marginBottom: '1.25rem', borderColor: 'var(--gold)', background: 'rgba(201,162,39,0.06)' }}>
+          <p style={{ margin: 0, fontSize: '0.88rem' }}><strong>Dados fictícios</strong> — layout de exemplo. Salvar e enviar webhook estão desativados.</p>
+        </div>
+      )}
 
       {/* Campos do anúncio: cada um com checkbox "Incluir no webhook" e valor editável */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>

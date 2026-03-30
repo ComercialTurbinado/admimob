@@ -43,6 +43,14 @@ const COLOR_GROUPS = [
   { key: 'poster', label: '🎬  Vídeo Poster', hint: 'Cores exclusivas do poster de vídeo gerado' },
 ];
 
+const PRESET_COLORS = [
+  '#f2ca50','#c9a227','#a8861a','#f5e67a',
+  '#131313','#1c1b1b','#2a2828','#4a4540',
+  '#ffffff','#f5f4f0','#e5e2e1','#9ca3af',
+  '#2563eb','#0ea5e9','#22c55e','#c0392b',
+  '#8b5cf6','#f97316','#ec4899','#14b8a6',
+];
+
 const SECTION_LABELS = {
   cta:   { icon: 'apartment', label: 'Botão Catálogo',      hint: 'CTA principal para ver imóveis' },
   links: { icon: 'link',      label: 'Links Estratégicos',  hint: 'WhatsApp, Instagram, site, etc.' },
@@ -209,6 +217,7 @@ export default function ClienteHub() {
   const [heroBgImage, setHeroBgImage] = useState('');
   const [heroBgMsg, setHeroBgMsg] = useState(null);
   const [previewTab, setPreviewTab] = useState('profile');
+  const [openColorField, setOpenColorField] = useState(null);
   const heroBgFileRef = useRef(null);
 
   function handleHeroBgFileChange(e) {
@@ -1099,36 +1108,77 @@ export default function ClienteHub() {
           const pBtnR       = btnRounded ? '50px' : '2px';
           const pPreviewName = name || 'Sua Empresa';
 
-          // Color field row render helper
+          // Color field row render helper — custom popover (no OS native picker closing bug)
           function ColorRow({ field }) {
             const val = colors[field.key] || '';
-            const safeHex = val.startsWith('#') && val.length >= 4 ? val : '#000000';
+            const safeHex = val.startsWith('#') && val.length === 7 ? val : '#000000';
+            const isOpen = openColorField === field.key;
             return (
-              <div style={{
-                background: T.surface,
-                border: `1px solid ${T.outlineVariant}`,
-                borderRadius: 6,
-                padding: '0.75rem 1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-              }}>
-                <div style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', background: val || '#444', cursor: 'pointer', flexShrink: 0, border: `2px solid ${T.outlineVariant}` }}>
-                  <input type="color" value={safeHex} onChange={(e) => handleColorChange(field.key, e.target.value)}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', borderRadius: '50%' }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  background: T.surface,
+                  border: `1px solid ${isOpen ? T.primary : T.outlineVariant}`,
+                  borderRadius: 6,
+                  padding: '0.75rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  transition: 'border-color 0.15s',
+                }}>
+                  {/* Swatch circle — click to open popover */}
+                  <div
+                    onClick={(e) => { e.stopPropagation(); setOpenColorField(isOpen ? null : field.key); }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', background: val || '#444', cursor: 'pointer', flexShrink: 0, border: `2px solid ${T.outlineVariant}`, boxShadow: isOpen ? `0 0 0 3px ${T.primary}55` : 'none', transition: 'box-shadow 0.15s' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 1 }}>{field.label}</div>
+                    <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{field.hint}</div>
+                  </div>
+                  <input type="text" value={val} onChange={(e) => handleColorChange(field.key, e.target.value)} placeholder="#hex"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: 82, background: T.surfaceHighest, border: 'none', borderRadius: 3, color: T.onSurface, padding: '4px 8px', fontSize: '0.75rem', fontFamily: 'monospace', flexShrink: 0, outline: 'none' }} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 1 }}>{field.label}</div>
-                  <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{field.hint}</div>
-                </div>
-                <input type="text" value={val} onChange={(e) => handleColorChange(field.key, e.target.value)} placeholder="#hex"
-                  style={{ width: 82, background: T.surfaceHighest, border: 'none', borderRadius: 3, color: T.onSurface, padding: '4px 8px', fontSize: '0.75rem', fontFamily: 'monospace', flexShrink: 0, outline: 'none' }} />
+
+                {/* Custom color popover — stays open until click outside */}
+                {isOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 300, background: T.surfaceLow, border: `1px solid ${T.outlineVariant}`, borderRadius: 8, padding: '0.85rem', boxShadow: '0 8px 28px rgba(0,0,0,0.13)', minWidth: 240, width: '100%' }}
+                  >
+                    <div style={{ fontSize: '0.65rem', fontWeight: 700, color: T.onSurfaceVariant, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                      Cores Rápidas
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.85rem' }}>
+                      {PRESET_COLORS.map(c => (
+                        <div
+                          key={c}
+                          title={c}
+                          onClick={() => handleColorChange(field.key, c)}
+                          style={{ width: 26, height: 26, borderRadius: 5, background: c, cursor: 'pointer', border: val === c ? `2px solid ${T.onSurface}` : `1px solid ${T.outlineVariant}`, flexShrink: 0 }}
+                        />
+                      ))}
+                    </div>
+                    <div style={{ borderTop: `1px solid ${T.outlineVariant}`, paddingTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: T.onSurfaceVariant, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>
+                        Personalizada
+                      </div>
+                      <div style={{ position: 'relative', width: 34, height: 28, flexShrink: 0 }}>
+                        <div style={{ width: 34, height: 28, borderRadius: 4, background: val || '#000', border: `1px solid ${T.outlineVariant}` }} />
+                        <input type="color" value={safeHex} onChange={(e) => handleColorChange(field.key, e.target.value)}
+                          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
+                      </div>
+                      <input type="text" value={val} onChange={(e) => handleColorChange(field.key, e.target.value)}
+                        placeholder="#rrggbb"
+                        style={{ flex: 1, background: T.surfaceHighest, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, color: T.onSurface, padding: '4px 8px', fontSize: '0.75rem', fontFamily: 'monospace', outline: 'none' }} />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           }
 
           return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(260px,320px)', gap: '1.5rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(260px,320px)', gap: '1.5rem', alignItems: 'start' }} onClick={() => setOpenColorField(null)}>
 
             {/* LEFT — editor */}
             <div>
@@ -1278,7 +1328,7 @@ export default function ClienteHub() {
                   {/* cards */}
                   <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                     {[['R$ 1.999.000','Casa 4 quartos'],['R$ 400.000','Apto 2 quartos']].map(([price,title],i) => (
-                      <div key={i} style={{ background: '#1c1b1b', borderRadius: Math.max(4,parseInt(pBtnR)||2), overflow: 'hidden', border: '1px solid rgba(77,70,53,0.2)' }}>
+                      <div key={i} style={{ background: '#1c1b1b', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(77,70,53,0.2)' }}>
                         <div style={{ height: 45, background: '#201f1f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <span style={{ fontSize: 16, opacity: 0.2 }}>🏠</span>
                         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { API, parseJsonResponse, apiFriendlyMessage } from '../api';
+import PageHeader from '../components/PageHeader';
 
 const DEFAULT_DATA = {
   payment_links: { plan_65: '', plan_297: '', plan_497: '' },
@@ -106,18 +107,12 @@ export default function Config() {
 
   return (
     <>
-      <div style={{ marginBottom: '1rem' }}>
-        <Link to="/">← Dashboard</Link>
-      </div>
-
-      {loading && <p className="muted" style={{ marginBottom: '1rem' }}>Carregando dados do servidor...</p>}
-
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ marginBottom: '0.25rem' }}>Configurações</h1>
-        <p style={{ color: 'var(--muted)', margin: 0 }}>
-          Gerencie indicadores do dashboard, planos, links de pagamento e webhooks (n8n) em um só lugar.
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        subtitle="Planos, links de pagamento, webhooks e indicadores do dashboard"
+        breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Configurações' }]}
+      />
+      {loading && <p className="muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>Carregando dados do servidor...</p>}
 
       {/* 1. Planos + créditos + link de pagamento */}
       <section className="card config-section">
