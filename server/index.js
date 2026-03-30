@@ -4,7 +4,7 @@ import cors from 'cors';
 import db, { init } from './db.js';
 import { Readable } from 'node:stream';
 import { buildRemotionRenderPayload, mergeRemotionPayload } from './remotionListing.js';
-import { slugify, renderProfilePage, renderCatalogPage, renderListingPage, renderSitemap } from './catalog.js';
+import { slugify, renderProfilePage, renderCatalogPage, renderListingPage, renderSitemap, renderCorretorPage } from './catalog.js';
 
 const app = express();
 app.use(cors());
@@ -357,11 +357,21 @@ app.post('/api/clients/:id/corretores', async (req, res) => {
     const client_id = Number(req.params.id);
     const { name, photo_url, creci, phone, whatsapp, email, specialty, bio, active, sort_order } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
+    // Gera slug único por cliente
+    const RESERVED = ['catalogo', 'sitemap.xml', 'robots.txt'];
+    let baseSlug = slugify(name.trim());
+    if (!baseSlug || RESERVED.includes(baseSlug)) baseSlug = 'corretor';
+    let finalSlug = baseSlug; let attempt = 0;
+    while (true) {
+      const ex = await db.prepare('SELECT id FROM corretores WHERE client_id = ? AND slug = ?').get(client_id, finalSlug);
+      if (!ex) break;
+      attempt++; finalSlug = `${baseSlug}-${attempt}`;
+    }
     const result = await db.prepare(
-      `INSERT INTO corretores (client_id, name, photo_url, creci, phone, whatsapp, email, specialty, bio, active, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(client_id, name.trim(), photo_url||null, creci||null, phone||null, whatsapp||null, email||null, specialty||null, bio||null, active??1, sort_order??0);
-    res.status(201).json({ id: result.lastInsertRowid });
+      `INSERT INTO corretores (client_id, name, slug, photo_url, creci, phone, whatsapp, email, specialty, bio, active, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(client_id, name.trim(), finalSlug, photo_url||null, creci||null, phone||null, whatsapp||null, email||null, specialty||null, bio||null, active??1, sort_order??0);
+    res.status(201).json({ id: result.lastInsertRowid, slug: finalSlug });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -370,7 +380,7 @@ app.post('/api/clients/:id/corretores', async (req, res) => {
 app.put('/api/corretores/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const fields = ['name', 'photo_url', 'creci', 'phone', 'whatsapp', 'email', 'specialty', 'bio', 'active', 'sort_order'];
+    const fields = ['name', 'slug', 'photo_url', 'creci', 'phone', 'whatsapp', 'email', 'specialty', 'bio', 'active', 'sort_order'];
     const updates = [];
     const values = [];
     for (const f of fields) {
@@ -1298,6 +1308,25 @@ app.get('/:slug([a-z0-9-]{2,60})/sitemap.xml', async (req, res) => {
 app.get('/:slug([a-z0-9-]{2,60})/robots.txt', (req, res) => {
   res.set('Content-Type', 'text/plain');
   res.send('User-agent: *\nAllow: /\n');
+});
+
+// Perfil público do corretor
+app.get('/:slug([a-z0-9-]{2,60})/:corretorSlug([a-z0-9-]{2,60})', async (req, res, next) => {
+  try {
+    const client = await resolveClientForCatalog(req, req.params.slug);
+    if (!client) return next();
+    const corretor = await db.prepare(
+      'SELECT * FROM corretores WHERE client_id = ? AND slug = ? AND active = 1'
+    ).get(client.id, req.params.corretorSlug);
+    if (!corretor) return next();
+    const html = renderCorretorPage(client, corretor, getCatalogBase(req), getApiBase(req));
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+    res.send(html);
+  } catch (e) {
+    console.error('[corretor]', e);
+    next();
+  }
 });
 
 // Domínio próprio: raiz → perfil do cliente pelo custom_domain

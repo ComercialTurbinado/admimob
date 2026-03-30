@@ -75,6 +75,14 @@ function buildCatalogUrl(client) {
   return `${apiBase}/${client.slug}/catalogo`;
 }
 
+function buildCorretorUrl(client, corretorSlug) {
+  if (!client?.slug || !corretorSlug) return null;
+  const base = (import.meta.env.VITE_CATALOG_URL || '').replace(/\/$/, '');
+  if (base) return `${base}/${client.slug}/${corretorSlug}`;
+  const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/api$/, '').replace(/\/$/, '');
+  return `${apiBase}/${client.slug}/${corretorSlug}`;
+}
+
 // ─── Shared style primitives ───────────────────────────────────────────────────
 const inputStyle = {
   width: '100%',
@@ -225,7 +233,7 @@ export default function ClienteHub() {
   const [loadingCorretores, setLoadingCorretores] = useState(false);
   const [corretorMsg, setCorretorMsg] = useState(null);
   const [editingCorretor, setEditingCorretor] = useState(null); // null = nenhum, 'new' = novo, {id,...} = editando
-  const [corretorForm, setCorretorForm] = useState({ name:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
+  const [corretorForm, setCorretorForm] = useState({ name:'', slug:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
   const corretorPhotoRef = useRef(null);
 
   function handleHeroBgFileChange(e) {
@@ -525,13 +533,13 @@ export default function ClienteHub() {
   }
 
   function openNewCorretor() {
-    setCorretorForm({ name:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
+    setCorretorForm({ name:'', slug:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
     setEditingCorretor('new');
     setCorretorMsg(null);
   }
 
   function openEditCorretor(c) {
-    setCorretorForm({ name: c.name||'', photo_url: c.photo_url||'', creci: c.creci||'', phone: c.phone||'', whatsapp: c.whatsapp||'', email: c.email||'', specialty: c.specialty||'', bio: c.bio||'' });
+    setCorretorForm({ name: c.name||'', slug: c.slug||'', photo_url: c.photo_url||'', creci: c.creci||'', phone: c.phone||'', whatsapp: c.whatsapp||'', email: c.email||'', specialty: c.specialty||'', bio: c.bio||'' });
     setEditingCorretor(c);
     setCorretorMsg(null);
   }
@@ -568,7 +576,7 @@ export default function ClienteHub() {
         setCorretorMsg('✓ Corretor atualizado.');
       }
       setEditingCorretor(null);
-      fetchCorretores();
+      fetchCorretores(); // recarrega para pegar slug gerado pelo servidor
     } catch (e) { setCorretorMsg('Erro: ' + e.message); }
   }
 
@@ -1663,6 +1671,24 @@ export default function ClienteHub() {
                     <input type="email" value={corretorForm.email} onChange={e => setCorretorForm(p => ({ ...p, email: e.target.value }))} placeholder="corretor@email.com" style={inputStyle} />
                   </div>
                 </div>
+                {/* Slug — URL pública */}
+                {editingCorretor !== 'new' && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={labelStyle}>Link público (slug)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, whiteSpace: 'nowrap' }}>…/{client?.slug}/</span>
+                      <input type="text" value={corretorForm.slug} onChange={e => setCorretorForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'') }))}
+                        placeholder="nome-do-corretor" style={{ ...inputStyle, flex: 1 }} />
+                      {corretorForm.slug && client?.slug && (
+                        <a href={buildCorretorUrl(client, corretorForm.slug)} target="_blank" rel="noopener"
+                          style={{ padding: '0.5rem', color: T.primary, background: `${T.primaryCt}22`, border: `1px solid ${T.primaryCt}44`, borderRadius: 3, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                          title="Ver página pública">
+                          <span className="material-symbols-outlined" style={{ fontSize: '1rem', display: 'block', fontVariationSettings: "'FILL' 0" }}>open_in_new</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={labelStyle}>Bio / Apresentação</label>
                   <textarea value={corretorForm.bio} onChange={e => setCorretorForm(p => ({ ...p, bio: e.target.value }))} rows={3} placeholder="Breve apresentação do corretor…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
@@ -1707,14 +1733,23 @@ export default function ClienteHub() {
                     </div>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.onSurface, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.name}
-                        {!c.active && <span style={{ marginLeft: 8, fontSize: '0.68rem', background: T.surfaceHigh, color: T.onSurfaceVariant, borderRadius: 3, padding: '1px 6px', fontFamily: 'Manrope, sans-serif', fontWeight: 600 }}>Inativo</span>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {c.slug && client?.slug
+                          ? <a href={buildCorretorUrl(client, c.slug)} target="_blank" rel="noopener"
+                              style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.primary, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                              title={buildCorretorUrl(client, c.slug)}>
+                              {c.name}
+                              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem', verticalAlign: 'middle', marginLeft: 4, opacity: 0.6, fontVariationSettings: "'FILL' 0" }}>open_in_new</span>
+                            </a>
+                          : <span style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.onSurface, fontSize: '0.95rem' }}>{c.name}</span>
+                        }
+                        {!c.active && <span style={{ fontSize: '0.68rem', background: T.surfaceHigh, color: T.onSurfaceVariant, borderRadius: 3, padding: '1px 6px', fontFamily: 'Manrope, sans-serif', fontWeight: 600 }}>Inativo</span>}
                       </div>
                       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: 2 }}>
                         {c.specialty && <span style={{ fontSize: '0.75rem', color: T.primary, fontFamily: 'Manrope, sans-serif' }}>{c.specialty}</span>}
                         {c.creci && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>CRECI {c.creci}</span>}
                         {c.whatsapp && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>📱 {c.whatsapp}</span>}
+                        {c.slug && client?.slug && <span style={{ fontSize: '0.7rem', color: T.outlineVariant, fontFamily: 'monospace' }}>/{client.slug}/{c.slug}</span>}
                       </div>
                     </div>
                     {/* Ações */}

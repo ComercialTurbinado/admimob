@@ -131,6 +131,7 @@ async function init() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       client_id INTEGER NOT NULL,
       name TEXT NOT NULL,
+      slug TEXT,
       photo_url TEXT,
       creci TEXT,
       phone TEXT,
@@ -144,6 +145,14 @@ async function init() {
       updated_at TEXT DEFAULT (datetime('now'))
     )
   `);
+
+  // Migração: adiciona slug se a tabela já existia sem ela
+  try {
+    const ci = await db.prepare('PRAGMA table_info(corretores)').all();
+    if (!(ci || []).map(c => c.name).includes('slug')) {
+      await db.exec('ALTER TABLE corretores ADD COLUMN slug TEXT');
+    }
+  } catch (_) {}
 
   try {
     const listInfo = await db.prepare('PRAGMA table_info(listings)').all();

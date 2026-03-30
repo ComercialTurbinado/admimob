@@ -907,6 +907,135 @@ body { background:${esc(pageBg)}; color:#e5e2e1; min-height:max(884px,100dvh); }
   return html;
 }
 
+// ─── Página pública do corretor ───────────────────────────────────────────────
+export function renderCorretorPage(client, corretor, baseUrl, apiBase) {
+  const { primary, btnBg, btnText, heroBg: accentBg, pageBg, btnRadius } = buildCssVars(client.design_config);
+  const btnR = btnRadius || '2px';
+
+  const profileUrl  = `${baseUrl}/${client.slug}`;
+  const catalogUrl  = `${baseUrl}/${client.slug}/catalogo`;
+  const corretorUrl = `${baseUrl}/${client.slug}/${corretor.slug}`;
+
+  const logoUrl    = client.logo_url ? proxyImg(client.logo_url, apiBase) : null;
+  const photoUrl   = corretor.photo_url ? (corretor.photo_url.startsWith('data:') ? corretor.photo_url : proxyImg(corretor.photo_url, apiBase)) : null;
+
+  const wp = (corretor.whatsapp || corretor.phone || '').replace(/\D/g, '');
+  const wpHref = wp ? `https://wa.me/55${wp}?text=${encodeURIComponent('Olá ' + corretor.name + ', gostaria de mais informações sobre imóveis.')}` : null;
+
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: corretor.name,
+    jobTitle: corretor.specialty || 'Corretor de Imóveis',
+    url: corretorUrl,
+    image: corretor.photo_url || undefined,
+    telephone: corretor.phone || corretor.whatsapp || undefined,
+    email: corretor.email || undefined,
+    worksFor: { '@type': 'Organization', name: client.name, url: profileUrl },
+  });
+
+  return `<!DOCTYPE html>
+<html class="dark" lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>${esc(corretor.name)} — ${esc(client.name)}</title>
+<meta name="description" content="${esc(corretor.name)}${corretor.specialty ? ' — ' + esc(corretor.specialty) : ''}, corretor da ${esc(client.name)}${corretor.bio ? '. ' + esc(corretor.bio.substring(0,120)) : ''}"/>
+<meta property="og:title" content="${esc(corretor.name)} — ${esc(client.name)}"/>
+<meta property="og:type" content="profile"/>
+<meta property="og:url" content="${esc(corretorUrl)}"/>
+${photoUrl ? `<meta property="og:image" content="${esc(photoUrl)}"/>` : ''}
+<link rel="canonical" href="${esc(corretorUrl)}"/>
+<script type="application/ld+json">${jsonLd}</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+:root { --cp:${esc(primary)};--cb:${esc(btnBg)};--cbt:${esc(btnText)};--ca:${esc(accentBg)}; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',sans-serif;background:${esc(pageBg)};color:#e5e2e1;min-height:100dvh;-webkit-font-smoothing:antialiased}
+a{color:${esc(primary)};text-decoration:none}
+</style>
+<script>
+tailwind={config:{darkMode:"class",theme:{extend:{colors:{"background":"${esc(pageBg)}","on-surface":"#e5e2e1","surface-container-low":"#1c1b1b","surface-container":"#201f1f","outline-variant":"#4d4635","on-surface-variant":"#d0c5af","primary":"${esc(primary)}"},fontFamily:{"headline":["Noto Serif"],"body":["Manrope"],"label":["Manrope"]},borderRadius:{"DEFAULT":"0.125rem"}}}};
+</script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+</head>
+<body class="bg-background text-on-surface font-body">
+
+<!-- Header — mesma identidade da imobiliária -->
+<header class="relative pt-12 pb-8 px-6 flex flex-col items-center text-center overflow-hidden" style="background:linear-gradient(160deg,${esc(accentBg)} 0%,${esc(pageBg)} 100%)">
+  <div style="position:absolute;inset:0;background:url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');pointer-events:none;z-index:0"></div>
+  <!-- Logo da imobiliária (pequeno, acima) -->
+  <a href="${esc(profileUrl)}" class="relative mb-6 opacity-80 hover:opacity-100 transition-opacity" style="z-index:1">
+    ${logoUrl
+      ? `<img src="${esc(logoUrl)}" alt="${esc(client.name)}" style="height:36px;width:auto;max-width:140px;object-fit:contain;background:rgba(0,0,0,0.2);padding:4px 8px;border-radius:6px;display:block"/>`
+      : `<span class="font-headline font-bold text-sm tracking-widest uppercase" style="color:var(--cp)">${esc(client.name)}</span>`
+    }
+  </a>
+  <!-- Foto do corretor -->
+  <div class="relative mb-4" style="z-index:1">
+    ${photoUrl
+      ? `<img src="${esc(photoUrl)}" alt="${esc(corretor.name)}" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid ${esc(accentBg)};box-shadow:0 0 0 3px ${esc(primary)}44"/>`
+      : `<div style="width:110px;height:110px;border-radius:50%;background:#2a2828;border:3px solid ${esc(accentBg)};box-shadow:0 0 0 3px ${esc(primary)}44;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif',serif;font-size:2.5rem;font-weight:900;color:${esc(primary)}">${esc((corretor.name||'?').charAt(0).toUpperCase())}</div>`
+    }
+  </div>
+  <h1 class="font-headline text-2xl font-bold tracking-tight text-on-surface mb-1" style="position:relative;z-index:1">${esc(corretor.name)}</h1>
+  ${corretor.specialty ? `<p class="font-label text-sm font-semibold mb-1" style="color:var(--cp);position:relative;z-index:1">${esc(corretor.specialty)}</p>` : ''}
+  ${corretor.creci ? `<p class="text-on-surface-variant opacity-60 text-xs tracking-widest" style="position:relative;z-index:1">CRECI ${esc(corretor.creci)}</p>` : ''}
+</header>
+
+<!-- Main -->
+<main class="max-w-lg mx-auto px-6 pb-24 space-y-8 pt-10">
+
+  <!-- Bio -->
+  ${corretor.bio ? `
+  <section>
+    <p class="text-on-surface-variant leading-relaxed text-center">${esc(corretor.bio)}</p>
+  </section>` : ''}
+
+  <!-- CTAs de contato -->
+  <section class="flex flex-col gap-4">
+    ${wpHref ? `
+    <a href="${esc(wpHref)}" target="_blank" rel="noopener" style="background:#25d366;color:#fff;border-radius:${esc(btnR)}" class="flex items-center justify-center gap-3 py-4 px-6 font-bold text-base transition-all hover:brightness-110">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+      Falar no WhatsApp
+    </a>` : ''}
+    ${corretor.phone && corretor.phone !== corretor.whatsapp ? `
+    <a href="tel:${esc(corretor.phone.replace(/\D/g,''))}" style="border:1px solid rgba(77,70,53,0.4);border-radius:${esc(btnR)}" class="flex items-center justify-center gap-3 py-4 px-6 font-semibold text-base text-on-surface transition-colors hover:bg-surface-container">
+      <span class="material-symbols-outlined" style="color:var(--cp)">call</span>
+      ${esc(corretor.phone)}
+    </a>` : ''}
+    ${corretor.email ? `
+    <a href="mailto:${esc(corretor.email)}" style="border:1px solid rgba(77,70,53,0.4);border-radius:${esc(btnR)}" class="flex items-center justify-center gap-3 py-4 px-6 font-semibold text-base text-on-surface transition-colors hover:bg-surface-container">
+      <span class="material-symbols-outlined" style="color:var(--cp)">mail</span>
+      ${esc(corretor.email)}
+    </a>` : ''}
+    <!-- Ver catálogo -->
+    <a href="${esc(catalogUrl)}" style="background:var(--cb);color:var(--cbt);border-radius:${esc(btnR)}" class="flex items-center justify-center gap-3 py-4 px-6 font-headline font-bold text-base transition-all hover:brightness-110">
+      <span class="material-symbols-outlined">apartment</span>
+      Ver Catálogo de Imóveis
+    </a>
+    <!-- Voltar ao perfil -->
+    <a href="${esc(profileUrl)}" style="border:1px solid rgba(77,70,53,0.3);border-radius:${esc(btnR)}" class="flex items-center justify-center gap-2 py-3 px-6 text-sm text-on-surface-variant opacity-70 hover:opacity-100 transition-opacity">
+      <span class="material-symbols-outlined text-base">arrow_back</span>
+      Voltar para ${esc(client.name)}
+    </a>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="py-8 px-6 flex flex-col items-center gap-2 bg-surface-container-lowest border-t border-outline-variant/10 text-center">
+  <span class="font-headline font-black text-base tracking-widest uppercase" style="color:var(--cp)">${esc(client.name)}</span>
+  ${client.creci ? `<p class="text-on-surface-variant/60 text-xs tracking-widest">CRECI ${esc(client.creci)}</p>` : ''}
+  <p class="text-on-surface-variant/40 text-[10px] tracking-widest">© ${new Date().getFullYear()} ${esc(client.name).toUpperCase()}. TODOS OS DIREITOS RESERVADOS.</p>
+</footer>
+
+</body>
+</html>`;
+}
+
 // ─── Sitemap XML ──────────────────────────────────────────────────────────────
 export function renderSitemap(client, listings, baseUrl) {
   const profileUrl = `${baseUrl}/${client.slug}`;
