@@ -1348,7 +1348,7 @@ export default function ClienteHub() {
 
               {/* ── Preview: Vídeo ── */}
               {previewTab === 'video' && (
-                <div style={{ background: colors['--contact-bg'] || darkenHexP(pPrimary,0.35), borderRadius: 8, overflow: 'hidden', fontFamily: 'Manrope, sans-serif', boxShadow: '0 4px 32px rgba(0,0,0,0.5)', border: `1px solid ${T.outlineVariant}`, maxWidth: 220, margin: '0 auto' }}>
+                <div style={{ background: pPageBg, borderRadius: 8, overflow: 'hidden', fontFamily: 'Manrope, sans-serif', boxShadow: '0 4px 32px rgba(0,0,0,0.5)', border: `1px solid ${T.outlineVariant}`, maxWidth: 220, margin: '0 auto' }}>
                   {/* photo area */}
                   <div style={{ height: 80, background: '#201f1f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                     <span style={{ fontSize: 28, opacity: 0.15 }}>🏠</span>
@@ -1373,12 +1373,23 @@ export default function ClienteHub() {
                     ))}
                   </div>
                   {/* amenities */}
-                  <div style={{ padding: '0 10px 8px' }}>
+                  <div style={{ padding: '0 10px 6px' }}>
                     <div style={{ fontSize: 7, color: colors['--detail-poster']||'rgba(255,255,255,0.5)', marginBottom: 3 }}>Lazer e comodidades</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {['Piscina','Grill','Academia'].map(a => (
                         <span key={a} style={{ background: colors['--amen-bg']||'rgba(0,0,0,0.2)', border: `1px solid ${colors['--amen-bd']||'rgba(255,255,255,0.1)'}`, borderRadius: 3, padding: '2px 5px', fontSize: 7, color: colors['--text-poster']||'#fff' }}>{a}</span>
                       ))}
+                    </div>
+                  </div>
+                  {/* contact bar — usa a cor do cabeçalho (igual ao header do perfil/catálogo) */}
+                  <div style={{ background: pHeroBg, padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {logoUrl
+                      ? <img src={logoUrl} alt="logo" style={{ height: 20, width: 'auto', maxWidth: 50, objectFit: 'contain', borderRadius: 3, background: 'rgba(0,0,0,0.2)', flexShrink: 0 }} />
+                      : <div style={{ width: 20, height: 20, borderRadius: 3, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: pPrimary, fontWeight: 900, fontSize: 10, flexShrink: 0 }}>{pPreviewName.charAt(0)}</div>
+                    }
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: pHeroText, fontSize: 7, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pPreviewName}</div>
+                      <div style={{ color: pHeroText, opacity: 0.7, fontSize: 6 }}>Ver mais imóveis</div>
                     </div>
                   </div>
                 </div>
