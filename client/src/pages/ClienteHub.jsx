@@ -75,12 +75,16 @@ function buildCatalogUrl(client) {
   return `${apiBase}/${client.slug}/catalogo`;
 }
 
-function buildCorretorUrl(client, corretorSlug) {
-  if (!client?.slug || !corretorSlug) return null;
+function clientSlugify(name = '') {
+  return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'corretor';
+}
+
+function buildCorretorUrl(client, corretorSlugOrName) {
+  if (!client?.slug || !corretorSlugOrName) return null;
   const base = (import.meta.env.VITE_CATALOG_URL || '').replace(/\/$/, '');
-  if (base) return `${base}/${client.slug}/${corretorSlug}`;
+  if (base) return `${base}/${client.slug}/${corretorSlugOrName}`;
   const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/api$/, '').replace(/\/$/, '');
-  return `${apiBase}/${client.slug}/${corretorSlug}`;
+  return `${apiBase}/${client.slug}/${corretorSlugOrName}`;
 }
 
 // ─── Shared style primitives ───────────────────────────────────────────────────
@@ -1734,30 +1738,32 @@ export default function ClienteHub() {
                     </div>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {c.slug && client?.slug
-                          ? <a href={buildCorretorUrl(client, c.slug)} target="_blank" rel="noopener"
-                              style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.primary, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}
-                              title={buildCorretorUrl(client, c.slug)}>
-                              {c.name}
-                              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem', verticalAlign: 'middle', marginLeft: 4, opacity: 0.6, fontVariationSettings: "'FILL' 0" }}>open_in_new</span>
-                            </a>
-                          : <span style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.onSurface, fontSize: '0.95rem' }}>{c.name}</span>
-                        }
-                        {!c.active && <span style={{ fontSize: '0.68rem', background: T.surfaceHigh, color: T.onSurfaceVariant, borderRadius: 3, padding: '1px 6px', fontFamily: 'Manrope, sans-serif', fontWeight: 600 }}>Inativo</span>}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: 2 }}>
-                        {c.specialty && <span style={{ fontSize: '0.75rem', color: T.primary, fontFamily: 'Manrope, sans-serif' }}>{c.specialty}</span>}
-                        {c.creci && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>CRECI {c.creci}</span>}
-                        {c.whatsapp && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>📱 {c.whatsapp}</span>}
-                        {c.slug && client?.slug && <span style={{ fontSize: '0.7rem', color: T.outlineVariant, fontFamily: 'monospace' }}>/{client.slug}/{c.slug}</span>}
-                      </div>
+                      {(() => {
+                        const cSlug = c.slug || clientSlugify(c.name);
+                        const cUrl  = buildCorretorUrl(client, cSlug);
+                        return (<>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: 'Noto Serif, serif', fontWeight: 700, color: T.onSurface, fontSize: '0.95rem' }}>{c.name}</span>
+                            {!c.active && <span style={{ fontSize: '0.68rem', background: T.surfaceHigh, color: T.onSurfaceVariant, borderRadius: 3, padding: '1px 6px', fontFamily: 'Manrope, sans-serif', fontWeight: 600 }}>Inativo</span>}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: 2 }}>
+                            {c.specialty && <span style={{ fontSize: '0.75rem', color: T.primary, fontFamily: 'Manrope, sans-serif' }}>{c.specialty}</span>}
+                            {c.creci && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>CRECI {c.creci}</span>}
+                            {c.whatsapp && <span style={{ fontSize: '0.75rem', color: T.onSurfaceVariant, fontFamily: 'Manrope, sans-serif' }}>📱 {c.whatsapp}</span>}
+                            {cUrl && <span style={{ fontSize: '0.7rem', color: T.outlineVariant, fontFamily: 'monospace' }}>/{client.slug}/{cSlug}</span>}
+                          </div>
+                        </>);
+                      })()}
                     </div>
                     {/* Ações */}
+                    {(() => {
+                      const cSlug = c.slug || clientSlugify(c.name);
+                      const cUrl  = buildCorretorUrl(client, cSlug);
+                      return (
                     <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {/* Ver perfil público */}
-                      {c.slug && client?.slug && (
-                        <a href={buildCorretorUrl(client, c.slug)} target="_blank" rel="noopener"
+                      {cUrl && (
+                        <a href={cUrl} target="_blank" rel="noopener"
                           title="Ver perfil público"
                           style={{ background: `${T.primaryCt}22`, border: `1px solid ${T.primaryCt}66`, borderRadius: 3, padding: '0.35rem 0.65rem', cursor: 'pointer', color: T.primary, display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontFamily: 'Manrope, sans-serif', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                           <span className="material-symbols-outlined" style={{ fontSize: '0.95rem', fontVariationSettings: "'FILL' 0" }}>open_in_new</span>
@@ -1765,12 +1771,11 @@ export default function ClienteHub() {
                         </a>
                       )}
                       {/* Copiar link */}
-                      {c.slug && client?.slug && (
+                      {cUrl && (
                         <button type="button"
                           title="Copiar link do perfil"
                           onClick={() => {
-                            const url = buildCorretorUrl(client, c.slug);
-                            navigator.clipboard.writeText(url).then(() => {
+                            navigator.clipboard.writeText(cUrl).then(() => {
                               setCopiedCorretorId(c.id);
                               setTimeout(() => setCopiedCorretorId(null), 2000);
                             });
@@ -1795,6 +1800,8 @@ export default function ClienteHub() {
                         <span className="material-symbols-outlined" style={{ fontSize: '1rem', display: 'block', fontVariationSettings: "'FILL' 0" }}>delete</span>
                       </button>
                     </div>
+                      );
+                    })()}
                   </div>
                 ))}
 
