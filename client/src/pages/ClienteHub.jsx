@@ -175,6 +175,79 @@ function Toggle({ checked, onChange, label }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
+// ─── Custom Color Picker ───────────────────────────────────────────────────────
+function hexToHsv(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max===r) h=((g-b)/d)%6;
+    else if (max===g) h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h = Math.round(h*60); if (h<0) h+=360;
+  }
+  return { h, s: max ? d/max : 0, v: max };
+}
+function hsvToHex(h, s, v) {
+  const f = n => { const k=(n+h/60)%6; return v - v*s*Math.max(0,Math.min(k,4-k,1)); };
+  return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');
+}
+
+function ColorSVSquare({ hue, sat, val, onChange }) {
+  const ref = useRef(null);
+  const dragging = useRef(false);
+  function pick(e) {
+    const rect = ref.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const s = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const v = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
+    onChange(s, v);
+  }
+  function onMouseDown(e) {
+    e.stopPropagation(); e.preventDefault();
+    dragging.current = true; pick(e);
+    const onMove = ev => { ev.preventDefault(); pick(ev); };
+    const onUp   = ev => { ev.stopPropagation(); dragging.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+  return (
+    <div ref={ref} onMouseDown={onMouseDown}
+      style={{ width:'100%', height:140, borderRadius:4, cursor:'crosshair', position:'relative', userSelect:'none',
+        background:`linear-gradient(to bottom,transparent,#000),linear-gradient(to right,#fff,hsl(${hue},100%,50%))` }}>
+      <div style={{ position:'absolute', left:`${sat*100}%`, top:`${(1-val)*100}%`, transform:'translate(-50%,-50%)',
+        width:13, height:13, borderRadius:'50%', border:'2px solid #fff', boxShadow:'0 0 0 1px rgba(0,0,0,0.5)', pointerEvents:'none' }} />
+    </div>
+  );
+}
+
+function ColorHueSlider({ hue, onChange }) {
+  const ref = useRef(null);
+  function pick(e) {
+    const rect = ref.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    onChange(Math.round(x * 360));
+  }
+  function onMouseDown(e) {
+    e.stopPropagation(); e.preventDefault();
+    pick(e);
+    const onMove = ev => { ev.preventDefault(); pick(ev); };
+    const onUp   = ev => { ev.stopPropagation(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+  return (
+    <div ref={ref} onMouseDown={onMouseDown}
+      style={{ height:14, borderRadius:7, cursor:'pointer', position:'relative', userSelect:'none',
+        background:'linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' }}>
+      <div style={{ position:'absolute', left:`${(hue/360)*100}%`, top:'50%', transform:'translate(-50%,-50%)',
+        width:18, height:18, borderRadius:'50%', border:'2px solid #fff', boxShadow:'0 0 0 1px rgba(0,0,0,0.4)',
+        background:`hsl(${hue},100%,50%)`, pointerEvents:'none' }} />
+    </div>
+  );
+}
+
 export default function ClienteHub() {
   const { id } = useParams();
 
@@ -1207,28 +1280,21 @@ export default function ClienteHub() {
           const pBtnR       = btnRounded ? '50px' : '2px';
           const pPreviewName = name || 'Sua Empresa';
 
-          // Color field row render helper — custom popover (no OS native picker closing bug)
+          // Color field row — custom picker (SV square + hue slider, sem input nativo do OS)
           function ColorRow({ field }) {
             const val = colors[field.key] || '';
             const safeHex = val.startsWith('#') && val.length === 7 ? val : '#000000';
             const isOpen = openColorField === field.key;
+            const hsv = hexToHsv(safeHex);
+
+            function onSVChange(s, v) { handleColorChange(field.key, hsvToHex(hsv.h, s, v)); }
+            function onHueChange(h)   { handleColorChange(field.key, hsvToHex(h, hsv.s, hsv.v)); }
+
             return (
               <div style={{ position: 'relative' }}>
-                <div style={{
-                  background: T.surface,
-                  border: `1px solid ${isOpen ? T.primary : T.outlineVariant}`,
-                  borderRadius: 6,
-                  padding: '0.75rem 1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  transition: 'border-color 0.15s',
-                }}>
-                  {/* Swatch circle — click to open popover */}
-                  <div
-                    onClick={(e) => { e.stopPropagation(); setOpenColorField(isOpen ? null : field.key); }}
-                    style={{ width: 32, height: 32, borderRadius: '50%', background: val || '#444', cursor: 'pointer', flexShrink: 0, border: `2px solid ${T.outlineVariant}`, boxShadow: isOpen ? `0 0 0 3px ${T.primary}55` : 'none', transition: 'box-shadow 0.15s' }}
-                  />
+                <div style={{ background: T.surface, border: `1px solid ${isOpen ? T.primary : T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', transition: 'border-color 0.15s' }}>
+                  <div onClick={(e) => { e.stopPropagation(); setOpenColorField(isOpen ? null : field.key); }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', background: val || '#444', cursor: 'pointer', flexShrink: 0, border: `2px solid ${T.outlineVariant}`, boxShadow: isOpen ? `0 0 0 3px ${T.primary}55` : 'none', transition: 'box-shadow 0.15s' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 1 }}>{field.label}</div>
                     <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{field.hint}</div>
@@ -1238,37 +1304,33 @@ export default function ClienteHub() {
                     style={{ width: 82, background: T.surfaceHighest, border: 'none', borderRadius: 3, color: T.onSurface, padding: '4px 8px', fontSize: '0.75rem', fontFamily: 'monospace', flexShrink: 0, outline: 'none' }} />
                 </div>
 
-                {/* Custom color popover — stays open until click outside */}
                 {isOpen && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 300, background: T.surfaceLow, border: `1px solid ${T.outlineVariant}`, borderRadius: 8, padding: '0.85rem', boxShadow: '0 8px 28px rgba(0,0,0,0.13)', minWidth: 240, width: '100%' }}
-                  >
-                    <div style={{ fontSize: '0.65rem', fontWeight: 700, color: T.onSurfaceVariant, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                      Cores Rápidas
+                  <div onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
+                    style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 300, background: T.surfaceLow, border: `1px solid ${T.outlineVariant}`, borderRadius: 8, padding: '0.85rem', boxShadow: '0 8px 28px rgba(0,0,0,0.18)', width: '100%', minWidth: 240 }}>
+
+                    {/* Gradiente SV */}
+                    <ColorSVSquare hue={hsv.h} sat={hsv.s} val={hsv.v} onChange={onSVChange} />
+
+                    {/* Slider de Hue */}
+                    <div style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
+                      <ColorHueSlider hue={hsv.h} onChange={onHueChange} />
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.85rem' }}>
-                      {PRESET_COLORS.map(c => (
-                        <div
-                          key={c}
-                          title={c}
-                          onClick={() => handleColorChange(field.key, c)}
-                          style={{ width: 26, height: 26, borderRadius: 5, background: c, cursor: 'pointer', border: val === c ? `2px solid ${T.onSurface}` : `1px solid ${T.outlineVariant}`, flexShrink: 0 }}
-                        />
-                      ))}
-                    </div>
-                    <div style={{ borderTop: `1px solid ${T.outlineVariant}`, paddingTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: T.onSurfaceVariant, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>
-                        Personalizada
-                      </div>
-                      <div style={{ position: 'relative', width: 34, height: 28, flexShrink: 0 }}>
-                        <div style={{ width: 34, height: 28, borderRadius: 4, background: val || '#000', border: `1px solid ${T.outlineVariant}` }} />
-                        <input type="color" value={safeHex} onChange={(e) => handleColorChange(field.key, e.target.value)}
-                          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
-                      </div>
+
+                    {/* Hex + preview */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 4, background: val || '#000', border: `1px solid ${T.outlineVariant}`, flexShrink: 0 }} />
                       <input type="text" value={val} onChange={(e) => handleColorChange(field.key, e.target.value)}
-                        placeholder="#rrggbb"
-                        style={{ flex: 1, background: T.surfaceHighest, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, color: T.onSurface, padding: '4px 8px', fontSize: '0.75rem', fontFamily: 'monospace', outline: 'none' }} />
+                        placeholder="#rrggbb" onMouseDown={e => e.stopPropagation()}
+                        style={{ flex: 1, background: T.surfaceHighest, border: `1px solid ${T.outlineVariant}`, borderRadius: 3, color: T.onSurface, padding: '6px 8px', fontSize: '0.8rem', fontFamily: 'monospace', outline: 'none' }} />
+                    </div>
+
+                    {/* Cores rápidas */}
+                    <div style={{ fontSize: '0.62rem', fontWeight: 700, color: T.onSurfaceVariant, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Cores rápidas</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {PRESET_COLORS.map(c => (
+                        <div key={c} title={c} onMouseDown={e => e.stopPropagation()} onClick={() => handleColorChange(field.key, c)}
+                          style={{ width: 24, height: 24, borderRadius: 4, background: c, cursor: 'pointer', border: val===c ? `2px solid ${T.onSurface}` : `1px solid ${T.outlineVariant}`, flexShrink: 0 }} />
+                      ))}
                     </div>
                   </div>
                 )}
