@@ -232,6 +232,7 @@ export default function ClienteHub() {
   const [corretores, setCorretores] = useState([]);
   const [loadingCorretores, setLoadingCorretores] = useState(false);
   const [corretorMsg, setCorretorMsg] = useState(null);
+  const [copiedCorretorId, setCopiedCorretorId] = useState(null);
   const [editingCorretor, setEditingCorretor] = useState(null); // null = nenhum, 'new' = novo, {id,...} = editando
   const [corretorForm, setCorretorForm] = useState({ name:'', slug:'', photo_url:'', creci:'', phone:'', whatsapp:'', email:'', specialty:'', bio:'' });
   const corretorPhotoRef = useRef(null);
@@ -1753,7 +1754,34 @@ export default function ClienteHub() {
                       </div>
                     </div>
                     {/* Ações */}
-                    <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {/* Ver perfil público */}
+                      {c.slug && client?.slug && (
+                        <a href={buildCorretorUrl(client, c.slug)} target="_blank" rel="noopener"
+                          title="Ver perfil público"
+                          style={{ background: `${T.primaryCt}22`, border: `1px solid ${T.primaryCt}66`, borderRadius: 3, padding: '0.35rem 0.65rem', cursor: 'pointer', color: T.primary, display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontFamily: 'Manrope, sans-serif', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.95rem', fontVariationSettings: "'FILL' 0" }}>open_in_new</span>
+                          Ver
+                        </a>
+                      )}
+                      {/* Copiar link */}
+                      {c.slug && client?.slug && (
+                        <button type="button"
+                          title="Copiar link do perfil"
+                          onClick={() => {
+                            const url = buildCorretorUrl(client, c.slug);
+                            navigator.clipboard.writeText(url).then(() => {
+                              setCopiedCorretorId(c.id);
+                              setTimeout(() => setCopiedCorretorId(null), 2000);
+                            });
+                          }}
+                          style={{ background: copiedCorretorId === c.id ? `${T.success}22` : 'transparent', border: `1px solid ${copiedCorretorId === c.id ? T.success : T.outlineVariant}`, borderRadius: 3, padding: '0.35rem 0.65rem', cursor: 'pointer', color: copiedCorretorId === c.id ? T.success : T.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontFamily: 'Manrope, sans-serif', fontWeight: 600, transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.95rem', fontVariationSettings: "'FILL' 0" }}>
+                            {copiedCorretorId === c.id ? 'check' : 'content_copy'}
+                          </span>
+                          {copiedCorretorId === c.id ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      )}
                       <button type="button" onClick={() => handleToggleCorretorActive(c)} title={c.active ? 'Desativar' : 'Ativar'}
                         style={{ background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, padding: '0.35rem 0.55rem', cursor: 'pointer', color: c.active ? T.success : T.onSurfaceVariant, fontSize: '0.75rem', fontFamily: 'Manrope, sans-serif' }}>
                         {c.active ? '✓ Ativo' : '○ Inativo'}
