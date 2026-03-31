@@ -1315,9 +1315,21 @@ app.get('/:slug([a-z0-9-]{2,60})/:corretorSlug([a-z0-9-]{2,60})', async (req, re
   try {
     const client = await resolveClientForCatalog(req, req.params.slug);
     if (!client) return next();
-    const corretor = await db.prepare(
+    const cSlug = req.params.corretorSlug;
+    // Busca por slug salvo; fallback: todos do cliente e compara nome slugificado
+    let corretor = await db.prepare(
       'SELECT * FROM corretores WHERE client_id = ? AND slug = ? AND active = 1'
-    ).get(client.id, req.params.corretorSlug);
+    ).get(client.id, cSlug);
+    if (!corretor) {
+      const todos = await db.prepare(
+        'SELECT * FROM corretores WHERE client_id = ? AND active = 1'
+      ).all(client.id);
+      corretor = todos.find(c => slugify(c.name || '') === cSlug) || null;
+      // Se achou pelo nome, persiste o slug para não repetir essa busca
+      if (corretor) {
+        db.prepare('UPDATE corretores SET slug = ? WHERE id = ?').run(cSlug, corretor.id).catch(() => {});
+      }
+    }
     if (!corretor) return next();
     const html = renderCorretorPage(client, corretor, getCatalogBase(req), getApiBase(req));
     res.set('Content-Type', 'text/html; charset=utf-8');
