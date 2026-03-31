@@ -339,7 +339,7 @@ app.delete('/api/clients/:id', async (req, res) => {
 });
 
 // --- Corretores ---
-const CORRETOR_COLS = ['id', 'client_id', 'name', 'photo_url', 'creci', 'phone', 'whatsapp', 'email', 'specialty', 'bio', 'active', 'sort_order', 'created_at', 'updated_at'];
+const CORRETOR_COLS = ['id', 'client_id', 'name', 'slug', 'photo_url', 'creci', 'phone', 'whatsapp', 'email', 'specialty', 'bio', 'active', 'sort_order', 'created_at', 'updated_at'];
 
 app.get('/api/clients/:id/corretores', async (req, res) => {
   try {
