@@ -1373,7 +1373,25 @@ app.get('/:listingId(\\d+)', async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 init()
-  .then(() => {
+  .then(async () => {
+    // Gera slugs para corretores que ainda não têm (cadastrados antes da feature)
+    try {
+      const semSlug = await db.prepare('SELECT id, client_id, name FROM corretores WHERE slug IS NULL OR slug = ""').all();
+      for (const c of semSlug) {
+        const RESERVED = ['catalogo', 'sitemap.xml', 'robots.txt'];
+        let base = slugify(c.name || '');
+        if (!base || RESERVED.includes(base)) base = 'corretor';
+        let final = base; let attempt = 0;
+        while (true) {
+          const ex = await db.prepare('SELECT id FROM corretores WHERE client_id = ? AND slug = ? AND id != ?').get(c.client_id, final, c.id);
+          if (!ex) break;
+          attempt++; final = `${base}-${attempt}`;
+        }
+        await db.prepare('UPDATE corretores SET slug = ? WHERE id = ?').run(final, c.id);
+        console.log(`[corretores] slug gerado: ${c.name} → ${final}`);
+      }
+    } catch (e) { console.warn('[corretores] erro ao gerar slugs:', e.message); }
+
     app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT} (Turso)`));
   })
   .catch((err) => {
