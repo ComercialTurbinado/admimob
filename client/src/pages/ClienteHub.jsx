@@ -22,31 +22,27 @@ const T = {
 // ─── Color fields ──────────────────────────────────────────────────────────────
 // group: which section each field belongs to (for the grouped UI)
 const COLOR_FIELDS = [
-  // ── Fundo geral ──
-  { key: '--page-bg',       label: 'Fundo das Páginas',    hint: 'Fundo de todas as páginas — padrão: #131313 (preto escuro)', group: 'site' },
-  // ── Cabeçalho — header web + tela de contato do vídeo ──
-  { key: '--contact-bg',    label: 'Cor de Marca (Cabeçalho)', hint: 'Fundo do cabeçalho em todas as páginas E tela final do vídeo — gerado escuro e rico automaticamente', group: 'header' },
-  { key: '--contact-text',  label: 'Texto sobre a Cor de Marca', hint: 'Texto e ícones sobre o cabeçalho/tela de contato — mantenha #ffffff para fundo escuro', group: 'header' },
-  // ── Destaque — preços, links, ícones ──
-  { key: '--primary',       label: 'Cor de Destaque',      hint: 'Preços, ícones, links e destaques em todas as páginas e no vídeo', group: 'brand' },
+  // ── Fundo geral (só layout0 dark usa) ──
+  { key: '--page-bg',    label: 'Fundo das Páginas',        hint: 'Fundo das páginas no layout escuro — padrão: #131313', group: 'site' },
+  // ── Cabeçalho — header web + tela final do vídeo ──
+  { key: '--contact-bg', label: 'Cor de Marca (Cabeçalho)', hint: 'Fundo do cabeçalho em todas as páginas e tela final do vídeo', group: 'header' },
+  // ── Destaque ──
+  { key: '--primary',    label: 'Cor de Destaque',           hint: 'Preços, ícones, links e destaques — auto-gerado do logo', group: 'brand' },
   // ── Botão CTA ──
-  { key: '--btn-bg',        label: 'Botão — Fundo',        hint: 'Fundo do botão de ação (gerado em cor split-complementar para contrastar com o cabeçalho)', group: 'brand' },
-  { key: '--btn-text',      label: 'Botão — Texto',        hint: 'Texto do botão — calculado automaticamente para contraste, mas pode ajustar', group: 'brand' },
-  // ── Badge / chip — catálogo e vídeo ──
-  { key: '--bg-poster',     label: 'Badge / Chip',         hint: 'Fundo dos chips "À VENDA" nos cards e no vídeo — gerado como versão escura da cor de destaque', group: 'brand' },
-  // ── Vídeo — vars exclusivas (geradas do logo) ──
-  { key: '--text-poster',   label: 'Texto Principal (Vídeo)',    hint: 'Preço e textos principais no poster de vídeo (fundo branco)', group: 'poster' },
-  { key: '--detail-poster', label: 'Texto Secundário (Vídeo)',   hint: 'Referências, rótulos de stats e textos menores no vídeo', group: 'poster' },
-  { key: '--line-poster',   label: 'Linhas / Bordas (Vídeo)',    hint: 'Separadores da seção de quartos/banheiros/vagas no vídeo', group: 'poster' },
-  { key: '--amen-bg',       label: 'Lazer — Fundo (Vídeo)',      hint: 'Fundo dos cards de amenidades no vídeo', group: 'poster' },
-  { key: '--amen-bd',       label: 'Lazer — Borda (Vídeo)',      hint: 'Borda dos cards de amenidades no vídeo', group: 'poster' },
+  { key: '--btn-bg',     label: 'Botão — Fundo',             hint: 'Fundo do botão CTA — gerado em cor split-complementar', group: 'brand' },
+  // ── Badge / chip ──
+  { key: '--bg-poster',  label: 'Badge / Chip',              hint: 'Fundo dos chips "À VENDA" nos cards e no vídeo', group: 'brand' },
+  // ── Vídeo — bordas/fundos (texto é auto-contrastado) ──
+  { key: '--line-poster', label: 'Linhas / Bordas (Vídeo)', hint: 'Separadores da seção de stats no poster de vídeo', group: 'poster' },
+  { key: '--amen-bg',     label: 'Lazer — Fundo (Vídeo)',   hint: 'Fundo dos cards de amenidades no vídeo', group: 'poster' },
+  { key: '--amen-bd',     label: 'Lazer — Borda (Vídeo)',   hint: 'Borda dos cards de amenidades no vídeo', group: 'poster' },
 ];
 
 const COLOR_GROUPS = [
-  { key: 'site',   label: 'Fundo das Páginas',      hint: 'Cor de fundo de todas as páginas públicas' },
-  { key: 'header', label: 'Cabeçalho & Cor de Marca', hint: 'Aparece no topo de todas as páginas e na tela final do vídeo' },
-  { key: 'brand',  label: 'Destaque, Botões & Badges', hint: 'Cor de destaque (preços/ícones), botão CTA e chips nos cards' },
-  { key: 'poster', label: 'Vídeo Poster (exclusivo)', hint: 'Cores do poster de vídeo gerado — fundo branco, derivadas do logo' },
+  { key: 'site',   label: 'Fundo das Páginas',        hint: 'Cor de fundo (layout escuro)' },
+  { key: 'header', label: 'Cor de Marca / Cabeçalho', hint: 'Topo de todas as páginas e tela final do vídeo' },
+  { key: 'brand',  label: 'Destaque, Botões & Badges', hint: 'Cor de destaque, CTA e chips — textos auto-contrastados' },
+  { key: 'poster', label: 'Vídeo Poster (exclusivo)',  hint: 'Fundos e bordas do vídeo — textos gerados automaticamente' },
 ];
 
 const PRESET_COLORS = [
@@ -320,6 +316,7 @@ export default function ClienteHub() {
   const [aboutImages, setAboutImages] = useState(['', '', '']);
 
   // Visual
+  const [layoutId, setLayoutId] = useState('layout0');
   const [colors, setColors] = useState({});
   const [extractingFromLogo, setExtractingFromLogo] = useState(false);
   const [colorMsg, setColorMsg] = useState(null);
@@ -489,6 +486,7 @@ export default function ClienteHub() {
         });
         setColors(colorObj);
         setBtnRounded((dc['--btn-radius'] || '2px') !== '2px');
+        setLayoutId(dc['--layout-id'] || 'layout0');
       })
       .catch((e) => setError('Erro ao carregar: ' + e.message))
       .finally(() => setLoading(false));
@@ -519,6 +517,7 @@ export default function ClienteHub() {
         if (v && String(v).trim()) design_config[key] = String(v).trim();
       });
       design_config['--btn-radius'] = btnRounded ? '50px' : '2px';
+      design_config['--layout-id'] = layoutId;
 
       const body = {
         name,
@@ -1363,6 +1362,34 @@ export default function ClienteHub() {
               <div style={{ marginBottom: '1.25rem' }}>
                 <h2 style={sectionTitleStyle}>Visual & Identidade</h2>
                 <p style={sectionSubtitleStyle}>Todas as cores, imagem do cabeçalho e estilo dos botões são aplicados em tempo real no perfil, catálogo e poster de vídeo.</p>
+              </div>
+
+              {/* ── Layout Picker ── */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: T.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: `1px solid ${T.outlineVariant}` }}>
+                  Layout das Páginas Públicas
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  {[
+                    { id: 'layout0', name: 'Clássico Dark', desc: 'Fundo escuro, tipografia serifada, minimalista.', icon: 'dark_mode' },
+                    { id: 'layout1', name: 'Azure Horizon', desc: 'Editorial claro, glassmorphism, premium.', icon: 'light_mode' },
+                  ].map(lay => (
+                    <button key={lay.id} type="button" onClick={() => setLayoutId(lay.id)}
+                      style={{
+                        background: layoutId === lay.id ? `${T.primaryCt}18` : T.surface,
+                        border: `2px solid ${layoutId === lay.id ? T.primaryCt : T.outlineVariant}`,
+                        borderRadius: 8, padding: '0.85rem', textAlign: 'left', cursor: 'pointer',
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: layoutId === lay.id ? T.primaryCt : T.onSurfaceVariant }}>{lay.icon}</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: layoutId === lay.id ? T.primary : T.onSurface }}>{lay.name}</span>
+                        {layoutId === lay.id && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', fontWeight: 700, color: T.primaryCt, background: `${T.primaryCt}22`, padding: '2px 6px', borderRadius: 10 }}>Ativo</span>}
+                      </div>
+                      <p style={{ fontSize: '0.72rem', color: T.onSurfaceVariant, margin: 0 }}>{lay.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Action row */}

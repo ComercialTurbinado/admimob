@@ -4,6 +4,10 @@
  * Gera HTML puro e otimizado para PageSpeed A e SEO.
  * Não usa frameworks no cliente — apenas HTML + CSS + JS mínimo inline.
  *
+ * Suporte a múltiplos layouts via design_config['--layout-id']:
+ *   'layout0' (padrão) → dark, minimalista (este arquivo)
+ *   'layout1'          → Azure Horizon, claro/editorial
+ *
  * Rotas:
  *   GET /:slug                   → página de perfil do cliente (home)
  *   GET /:slug/catalogo          → catálogo de imóveis
@@ -15,6 +19,17 @@
  *   Se o Host da requisição bater com o campo custom_domain do cliente,
  *   o slug é resolvido automaticamente e as rotas ficam em / e /:id.
  */
+
+import * as layout1Renderer from './layouts/layout1.js';
+
+// ─── Roteador de layout ────────────────────────────────────────────────────────
+/** Retorna 'layout0' | 'layout1' a partir do design_config do cliente. */
+function getLayoutId(designConfig) {
+  try {
+    const d = typeof designConfig === 'string' ? JSON.parse(designConfig) : (designConfig || {});
+    return d['--layout-id'] || 'layout0';
+  } catch { return 'layout0'; }
+}
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -403,6 +418,8 @@ ${body}
 
 // ─── Página do catálogo (lista de imóveis) ────────────────────────────────────
 export function renderCatalogPage(client, listings, baseUrl, apiBase) {
+  if (getLayoutId(client.design_config) === 'layout1')
+    return layout1Renderer.renderCatalogPage({ client, listings, baseUrl, apiBase, parseListing, proxyImg });
   const colors = buildCssVars(client.design_config);
   const css = buildCss(colors);
 
@@ -549,6 +566,8 @@ function filtrar(btn,tipo){
 
 // ─── Página individual do imóvel ──────────────────────────────────────────────
 export function renderListingPage(client, row, baseUrl, apiBase) {
+  if (getLayoutId(client.design_config) === 'layout1')
+    return layout1Renderer.renderListingPage({ client, row, baseUrl, apiBase, parseListing, proxyImg });
   const colors = buildCssVars(client.design_config);
   const css = buildCss(colors);
   const l = parseListing(row);
@@ -704,6 +723,8 @@ function youtubeEmbedUrl(url) {
 }
 
 export function renderProfilePage(client, baseUrl, apiBase, corretores = []) {
+  if (getLayoutId(client.design_config) === 'layout1')
+    return layout1Renderer.renderProfilePage({ client, baseUrl, apiBase, corretores, parseListing, proxyImg });
   const { primary, btnBg, btnText, heroBg: accentBg, pageBg, btnRadius } = buildCssVars(client.design_config);
 
   const pc = parseProfileConfig(client.profile_config);
@@ -994,6 +1015,8 @@ body { background:${esc(pageBg)}; color:#e5e2e1; min-height:max(884px,100dvh); }
 
 // ─── Página pública do corretor ───────────────────────────────────────────────
 export function renderCorretorPage(client, corretor, baseUrl, apiBase) {
+  if (getLayoutId(client.design_config) === 'layout1')
+    return layout1Renderer.renderCorretorPage({ client, corretor, baseUrl, apiBase, proxyImg });
   const { primary, btnBg, btnText, heroBg: accentBg, pageBg, btnRadius } = buildCssVars(client.design_config);
   const btnR = btnRadius || '2px';
 
