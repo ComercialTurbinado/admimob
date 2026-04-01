@@ -59,6 +59,16 @@ function isImageUrl(u) {
   return !/\.(mp4|webm|mov)(\?|$)/i.test(u.trim());
 }
 
+/** URLs absolutas via proxy da API (evita 403 em CDNs que bloqueiam servidor headless, ex.: resizedimgs.vivareal.com). */
+function toProxiedImageUrl(imageUrl, proxyBase) {
+  if (!proxyBase || !imageUrl || typeof imageUrl !== 'string') return imageUrl;
+  const u = imageUrl.trim();
+  if (!/^https?:\/\//i.test(u)) return imageUrl;
+  if (u.includes('/api/proxy-image?')) return imageUrl;
+  const base = String(proxyBase).replace(/\/$/, '');
+  return `${base}/api/proxy-image?url=${encodeURIComponent(u)}`;
+}
+
 function deepMerge(a, b) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) return a;
   const out = { ...a };
@@ -90,7 +100,7 @@ export function mergeRemotionPayload(base, patch) {
   return out;
 }
 
-export function buildRemotionRenderPayload({ listing, animation, subtitlesSrt, baseUrl }) {
+export function buildRemotionRenderPayload({ listing, animation, subtitlesSrt, baseUrl, imageProxyBase }) {
   const amenities = normalizeAmenities(listing);
   const charKeys = new Set(Object.keys(CHARACTERISTIC_ICONS));
 
@@ -147,6 +157,13 @@ export function buildRemotionRenderPayload({ listing, animation, subtitlesSrt, b
   };
   if (design_config && typeof design_config === 'object') {
     remotionListing.design_config = design_config;
+  }
+
+  if (imageProxyBase) {
+    remotionListing.carousel_images = remotionListing.carousel_images.map((src) => toProxiedImageUrl(src, imageProxyBase));
+    if (remotionListing.client?.logo_url) {
+      remotionListing.client.logo_url = toProxiedImageUrl(remotionListing.client.logo_url, imageProxyBase);
+    }
   }
 
   const body = {

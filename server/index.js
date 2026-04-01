@@ -687,6 +687,24 @@ const REMOTION_RENDER_TIMEOUT_MS = Math.min(
   60 * 60 * 1000
 );
 
+/** Base pública da API para proxy de imagens no payload do Remotion (Chromium remoto não pode acessar VR/403). */
+function remotionImageProxyBase(req) {
+  const fromEnv = (
+    process.env.REMOTION_IMAGE_PROXY_BASE ||
+    process.env.PUBLIC_APP_URL ||
+    process.env.CATALOG_BASE_URL ||
+    ''
+  )
+    .trim()
+    .replace(/\/$/, '');
+  if (fromEnv) return fromEnv;
+  const host = req.get('host') || '';
+  const hostFirst = host.split(':')[0];
+  if (!host || /^127\.0\.0\.1$|^localhost$/i.test(hostFirst)) return '';
+  const proto = (req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  return `${proto}://${host}`.replace(/\/$/, '');
+}
+
 app.post('/api/listings/:id/remotion-render', async (req, res) => {
   try {
     const listingId = Number(req.params.id);
@@ -725,6 +743,7 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
       animation: String(animation),
       subtitlesSrt: typeof subtitlesSrt === 'string' ? subtitlesSrt : '',
       baseUrl: materiaisBaseUrl || undefined,
+      imageProxyBase: remotionImageProxyBase(req) || undefined,
     });
     if (inputOverride && typeof inputOverride === 'object') {
       const { animation: _ignoredAnim, ...safeOverride } = inputOverride;
