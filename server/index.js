@@ -1240,7 +1240,8 @@ app.get('/:slug([a-z0-9-]{2,60})', async (req, res, next) => {
     const client = await resolveClientForCatalog(req, req.params.slug);
     if (!client) return next();
     const corretores = await db.prepare('SELECT * FROM corretores WHERE client_id = ? AND active = 1 ORDER BY sort_order ASC, name ASC').all(client.id);
-    const html = renderProfilePage(client, getCatalogBase(req), getApiBase(req), corretores);
+    const featuredListings = await db.prepare('SELECT id, raw_data, selected_images FROM listings WHERE client_id = ? ORDER BY updated_at DESC LIMIT 4').all(client.id);
+    const html = renderProfilePage(client, getCatalogBase(req), getApiBase(req), corretores, featuredListings);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     res.send(html);
@@ -1351,7 +1352,8 @@ app.get('/', async (req, res, next) => {
     ).get(host);
     if (!client) return next();
     const corretores = await db.prepare('SELECT * FROM corretores WHERE client_id = ? AND active = 1 ORDER BY sort_order ASC, name ASC').all(client.id);
-    const html = renderProfilePage(client, `https://${host}`, getApiBase(req), corretores);
+    const featuredListings = await db.prepare('SELECT id, raw_data, selected_images FROM listings WHERE client_id = ? ORDER BY updated_at DESC LIMIT 4').all(client.id);
+    const html = renderProfilePage(client, `https://${host}`, getApiBase(req), corretores, featuredListings);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     res.send(html);

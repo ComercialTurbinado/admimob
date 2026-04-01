@@ -244,7 +244,7 @@ function propertyCard(listing, detailUrl, proxyImg, apiBase, ICON, badge, badgeL
       <span class="material-symbols-outlined !text-xs mr-1">location_on</span>${esc(l.address)}
     </p>` : ''}
     ${featsHtml ? `<div class="flex items-center gap-5 border-t border-outline-variant/10 pt-3">${featsHtml}</div>` : ''}
-    <a href="${esc(detailUrl)}" class="mt-4 flex items-center justify-center gap-2 w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-bold text-sm py-3 rounded-lg transition-opacity hover:opacity-90">
+    <a href="${esc(detailUrl)}" class="mt-4 flex items-center justify-center gap-2 w-full bg-primary text-on-primary font-label font-bold text-sm py-3 rounded-lg hover:opacity-90 transition-opacity">
       Ver detalhes
       <span class="material-symbols-outlined !text-sm">arrow_forward</span>
     </a>
@@ -453,14 +453,14 @@ ${glassHeader(client, proxyImg, apiBase)}
 </main>
 
 <!-- CTA Fixed Bottom -->
-<div class="fixed bottom-0 left-0 w-full z-50 px-5 pb-8 pt-4 bg-gradient-to-t from-surface via-surface/95 to-transparent max-w-2xl mx-auto left-1/2 -translate-x-1/2">
+<div class="fixed bottom-0 left-0 w-full z-50 px-5 pb-8 pt-4 bg-surface/95 backdrop-blur-sm border-t border-outline-variant/10 max-w-2xl mx-auto left-1/2 -translate-x-1/2">
   <div class="flex gap-3">
     ${wpLink ? `<a href="${esc(wpLink)}" target="_blank" rel="noopener nofollow"
       class="flex-1 flex items-center justify-center gap-2 bg-[#25d366] text-white font-label font-bold text-sm py-4 rounded-xl shadow-lg">
       <span class="material-symbols-outlined !text-lg">chat</span>WhatsApp
     </a>` : ''}
     <a href="${esc(catalogUrl)}"
-      class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-bold text-sm py-4 rounded-xl shadow-lg">
+      class="flex-1 flex items-center justify-center gap-2 bg-primary text-on-primary font-label font-bold text-sm py-4 rounded-xl shadow-lg">
       <span class="material-symbols-outlined !text-lg">arrow_back</span>Ver mais
     </a>
   </div>
@@ -479,7 +479,7 @@ ${glassHeader(client, proxyImg, apiBase)}
 
 // ─── Perfil da imobiliária (home) ─────────────────────────────────────────────
 
-export function renderProfilePage({ client, baseUrl, apiBase, corretores, parseListing, proxyImg }) {
+export function renderProfilePage({ client, baseUrl, apiBase, corretores, listings, parseListing, proxyImg }) {
   const tokens     = buildTokens(client.design_config);
   const profileUrl = `${baseUrl}/${client.slug}`;
   const catalogUrl = `${profileUrl}/catalogo`;
@@ -520,8 +520,7 @@ ${glassHeader(client, proxyImg, apiBase)}
 <main class="pt-20 pb-24 max-w-2xl mx-auto">
 
   <!-- Hero Profile -->
-  <section class="relative px-5 pt-10 pb-8 text-center"
-    style="background:linear-gradient(180deg,${escCss(buildTokens(client.design_config)['primary'])} 0%,#f7f9fb 100%)">
+  <section class="bg-primary px-5 pt-10 pb-10 text-center">
     <div class="mb-5">
       ${client.logo_url
         ? `<div class="inline-flex p-1 rounded-2xl bg-surface-container-lowest shadow-md">
@@ -532,14 +531,14 @@ ${glassHeader(client, proxyImg, apiBase)}
       ${client.logo_url ? '</div>' : ''}
     </div>
     <h1 class="font-headline text-2xl font-extrabold text-on-primary tracking-tight mb-1">${esc(client.name)}</h1>
-    ${pc.specialty ? `<p class="font-label text-sm text-on-primary/80 mb-4">${esc(pc.specialty)}</p>` : '<div class="mb-4"></div>'}
+    ${pc.specialty ? `<p class="font-label text-sm text-on-primary/70 mb-6">${esc(pc.specialty)}</p>` : '<div class="mb-6"></div>'}
     <div class="flex gap-3 justify-center">
       ${wpLink ? `<a href="${esc(wpLink)}" target="_blank" rel="noopener nofollow"
-        class="flex items-center gap-2 bg-surface-container-lowest text-on-surface font-label font-bold text-sm px-5 py-3 rounded-xl shadow-sm border border-outline-variant/20">
+        class="flex items-center gap-2 bg-surface-container-lowest text-on-surface font-label font-bold text-sm px-5 py-3 rounded-xl shadow-sm">
         <span class="material-symbols-outlined !text-lg">chat</span>WhatsApp
       </a>` : ''}
       <a href="${esc(catalogUrl)}"
-        class="flex items-center gap-2 bg-gradient-to-r from-cta-btn to-primary text-on-cta-btn font-label font-bold text-sm px-5 py-3 rounded-xl shadow-md">
+        class="flex items-center gap-2 bg-cta-btn text-on-cta-btn font-label font-bold text-sm px-5 py-3 rounded-xl shadow-sm">
         <span class="material-symbols-outlined !text-lg">search</span>Ver Imóveis
       </a>
     </div>
@@ -569,10 +568,24 @@ ${glassHeader(client, proxyImg, apiBase)}
     <div class="grid grid-cols-3 gap-4">${corretoresHtml}</div>
   </section>` : ''}
 
+  <!-- Imóveis em destaque -->
+  ${Array.isArray(listings) && listings.length ? `<section class="mt-12">
+    <div class="flex items-center justify-between px-5 mb-6">
+      <h2 class="font-headline text-xl font-bold text-primary">Imóveis em Destaque</h2>
+      <a href="${esc(catalogUrl)}" class="font-label text-xs font-bold text-primary">Ver todos</a>
+    </div>
+    <div class="px-5 space-y-10">
+      ${listings.map(row => {
+        const l = parseListing(row);
+        return propertyCard(l, `${catalogUrl}/${l.id}`, proxyImg, apiBase, null);
+      }).join('')}
+    </div>
+  </section>` : ''}
+
   <!-- CTA catálogo -->
   <section class="px-5 mt-12">
     <a href="${esc(catalogUrl)}"
-      class="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-bold text-sm py-4 rounded-xl shadow-lg hover:opacity-95 transition-opacity">
+      class="flex items-center justify-center gap-2 w-full bg-primary text-on-primary font-label font-bold text-sm py-4 rounded-xl hover:opacity-90 transition-opacity">
       <span class="material-symbols-outlined">apartment</span>
       Ver Catálogo de Imóveis
     </a>
@@ -648,7 +661,7 @@ ${glassHeader(client, proxyImg, apiBase)}
         <span class="material-symbols-outlined">mail</span>${esc(corretor.email)}
       </a>` : ''}
       <a href="${esc(catalogUrl)}"
-        class="bg-gradient-to-r from-primary to-primary-container text-on-primary h-14 rounded-xl font-label font-bold flex items-center justify-center gap-2 shadow-lg w-full">
+        class="bg-primary text-on-primary h-14 rounded-xl font-label font-bold flex items-center justify-center gap-2 w-full hover:opacity-90 transition-opacity">
         <span class="material-symbols-outlined">search</span>Ver Imóveis
       </a>
     </div>

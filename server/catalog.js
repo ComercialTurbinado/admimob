@@ -722,9 +722,9 @@ function youtubeEmbedUrl(url) {
   } catch { return null; }
 }
 
-export function renderProfilePage(client, baseUrl, apiBase, corretores = []) {
+export function renderProfilePage(client, baseUrl, apiBase, corretores = [], listings = []) {
   if (getLayoutId(client.design_config) === 'layout1')
-    return layout1Renderer.renderProfilePage({ client, baseUrl, apiBase, corretores, parseListing, proxyImg });
+    return layout1Renderer.renderProfilePage({ client, baseUrl, apiBase, corretores, listings, parseListing, proxyImg });
   const { primary, btnBg, btnText, heroBg: accentBg, pageBg, btnRadius } = buildCssVars(client.design_config);
 
   const pc = parseProfileConfig(client.profile_config);
