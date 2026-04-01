@@ -195,47 +195,90 @@ export function getDominantColorFromImageUrl(url) {
 /** Contraste mínimo com branco para usar a cor mais clara em detalhes (WCAG AA para texto grande) */
 const MIN_CONTRAST_DETAIL_ON_WHITE = 3;
 
-/** Valores padrão das variáveis do poster (quando não há logo ou extração falha) */
+/** Valores padrão das variáveis (quando não há logo ou extração falha) */
 const DEFAULT_PALETTE = {
-  '--primary': '#1152d4',
-  '--text-poster': '#0b1220',
-  '--bg-poster': '#0b1220',
-  '--contact-bg': '#1152d4',
+  '--primary':      '#1152d4',
+  '--contact-bg':   '#0a1e4a',
   '--contact-text': '#ffffff',
+  '--btn-bg':       '#b84900',
+  '--btn-text':     '#ffffff',
+  '--bg-poster':    '#0a1e4a',
+  '--text-poster':  '#0b1220',
   '--muted-poster': '#64748b',
-  '--detail-poster': '#64748b',
-  '--line-poster': '#e6e8ee',
-  '--amen-bg': '#f1f5fb',
-  '--amen-bd': '#e7edf8',
-  '--btn-bg': '',
-  '--btn-text': '#1a1200',
+  '--detail-poster':'#64748b',
+  '--line-poster':  '#e6e8ee',
+  '--amen-bg':      '#f1f5fb',
+  '--amen-bd':      '#e7edf8',
 };
 
 /**
- * Gera objeto de variáveis CSS para o poster.
- * Se a cor predominante for clara (ex.: logo com fundo branco), usa fundo branco e texto escuro
- * na fase de contato para bom contraste. Se for escura, usa fundo escuro e texto branco.
- * @param {string} primaryHex - Cor predominante #rrggbb
- * @param {string | null} [darkestHex] - Cor mais escura do logo (texto em fundo claro)
- * @param {string | null} [lightestHex] - Cor mais clara do logo (detalhes, se contraste OK)
- * @returns {Record<string, string>} - Variáveis CSS
+ * Gera paleta completa de variáveis CSS a partir da cor dominante do logo.
+ *
+ * Estratégia triádica:
+ *  - --primary       : cor de destaque (preços, ícones, links) — tom vivo da cor dominante
+ *  - --contact-bg    : fundo de cabeçalhos e tela de contato do vídeo — versão escura e rica da mesma matiz
+ *  - --contact-text  : texto sobre cabeçalho/tela — sempre #ffffff (header sempre escuro)
+ *  - --btn-bg        : botão CTA — split-complementar (matiz +150°) para contraste harmonioso
+ *  - --btn-text      : texto do botão — calculado para contraste WCAG
+ *  - --bg-poster     : badge/chip — versão escura da matiz primária (fundo p/ texto branco ou primary)
+ *
+ * Vars do poster de vídeo (lógica preservada, funcionava bem):
+ *  - --text-poster, --muted-poster, --detail-poster, --line-poster, --amen-bg, --amen-bd
+ *
+ * @param {string} primaryHex  Cor dominante #rrggbb extraída do logo
+ * @param {string|null} darkestHex  Cor mais escura significativa do logo
+ * @param {string|null} lightestHex  Cor mais clara significativa do logo
  */
 export function getPaletteFromPrimary(primaryHex, darkestHex = null, lightestHex = null) {
   const rgb = hexToRgb(primaryHex);
   if (!rgb) return DEFAULT_PALETTE;
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-  const primaryLum = relativeLuminance(primaryHex);
 
-  const primary = rgbToHex(rgb.r, rgb.g, rgb.b);
+  // Saturação normalizada — garante cor de marca viva mesmo para logos dessaturados
+  const sV = Math.max(0.60, Math.min(1.0, s + 0.10));
+
+  // ── Cor de destaque (primary) ─────────────────────────────────────────────
+  // Tom vivo, legível tanto no fundo escuro das páginas web quanto no fundo
+  // branco do poster de vídeo. Lightness fixado em 0.48–0.60.
+  const primL = Math.max(0.44, Math.min(0.60, l + 0.04));
+  const primRgb = hslToRgb(h, sV * 0.95, primL);
+  const primary = rgbToHex(primRgb.r, primRgb.g, primRgb.b);
+
+  // ── Cabeçalho / tela de contato do vídeo (contact-bg) ────────────────────
+  // Versão muito escura e rica da mesma matiz — cria autoridade visual.
+  // Mesma cor em: header web (gradiente), brand-card do poster, tela final do vídeo.
+  const hdrL = Math.min(0.18, l * 0.30 + 0.07);
+  const hdrRgb = hslToRgb(h, Math.min(1.0, sV * 1.05), hdrL);
+  const headerBg = rgbToHex(hdrRgb.r, hdrRgb.g, hdrRgb.b);
+  const headerText = '#ffffff';
+
+  // ── Botão CTA (btn-bg) ────────────────────────────────────────────────────
+  // Split-complementar (H+150°): contrasta com o header e o fundo escuro,
+  // criando hierarquia visual clara para a chamada de ação.
+  const hBtn = (h + 150) % 360;
+  const btnL = Math.max(0.38, Math.min(0.52, l + 0.02));
+  const btnRgb = hslToRgb(hBtn, Math.min(1.0, sV), btnL);
+  const btnBg = rgbToHex(btnRgb.r, btnRgb.g, btnRgb.b);
+  const btnLum = relativeLuminance(btnBg);
+  const btnText = btnLum > 0.28 ? '#0f0f0f' : '#ffffff';
+
+  // ── Badge / chip (bg-poster) ──────────────────────────────────────────────
+  // Versão escura da matiz primária — funciona com texto branco (vídeo) e
+  // com texto primary (catálogo web, onde badgeText = --primary).
+  const badgeL = Math.min(0.26, hdrL + 0.10);
+  const badgeRgb = hslToRgb(h, Math.min(1.0, sV * 0.90), badgeL);
+  const badgeBg = rgbToHex(badgeRgb.r, badgeRgb.g, badgeRgb.b);
+
+  // ── Vars do poster de vídeo (lógica original preservada) ─────────────────
   const darkRgb = darkestHex ? hexToRgb(darkestHex) : null;
   const textRgb = darkRgb
     ? { r: darkRgb.r, g: darkRgb.g, b: darkRgb.b }
     : hslToRgb(h, Math.min(1, s * 0.8), 0.12);
   const text = rgbToHex(textRgb.r, textRgb.g, textRgb.b);
-  const bgPoster = darkRgb ? rgbToHex(darkRgb.r, darkRgb.g, darkRgb.b) : text;
 
   const mutedRgb = hslToRgb(h, s * 0.5, 0.45);
   const muted = rgbToHex(mutedRgb.r, mutedRgb.g, mutedRgb.b);
+
   const detailFromLightest =
     lightestHex && contrastRatio(lightestHex, '#ffffff') >= MIN_CONTRAST_DETAIL_ON_WHITE
       ? lightestHex
@@ -248,29 +291,29 @@ export function getPaletteFromPrimary(primaryHex, darkestHex = null, lightestHex
   const amenBg = rgbToHex(amenBgRgb.r, amenBgRgb.g, amenBgRgb.b);
   const amenBdRgb = hslToRgb(h, s * 0.35, 0.91);
   const amenBd = rgbToHex(amenBdRgb.r, amenBdRgb.g, amenBdRgb.b);
+
   const tintR = Math.round(rgb.r * 0.1 + 255 * 0.9);
   const tintG = Math.round(rgb.g * 0.1 + 255 * 0.9);
   const tintB = Math.round(rgb.b * 0.1 + 255 * 0.9);
   const primaryTint = rgbToHex(tintR, tintG, tintB);
 
-  const lightestLum = lightestHex ? relativeLuminance(lightestHex) : 0;
-  const isLightBackgroundLogo = primaryLum > 0.55 || lightestLum > 0.92;
-  const contactBg = isLightBackgroundLogo ? '#ffffff' : (darkestHex || primary);
-  const contactText = isLightBackgroundLogo ? (darkestHex || text) : '#ffffff';
-
-  return ({
-    '--primary': primary,
-    '--primary-tint': primaryTint,
-    '--text-poster': text,
-    '--bg-poster': bgPoster,
-    '--contact-bg': contactBg,
-    '--contact-text': contactText,
-    '--muted-poster': muted,
+  return {
+    // ── Cores web (aplicadas a todas as páginas públicas) ──
+    '--primary':       primary,
+    '--contact-bg':    headerBg,
+    '--contact-text':  headerText,
+    '--btn-bg':        btnBg,
+    '--btn-text':      btnText,
+    '--bg-poster':     badgeBg,
+    // ── Vars exclusivas do poster de vídeo ──
+    '--primary-tint':  primaryTint,
+    '--text-poster':   text,
+    '--muted-poster':  muted,
     '--detail-poster': detail,
-    '--line-poster': line,
-    '--amen-bg': amenBg,
-    '--amen-bd': amenBd,
-  });
+    '--line-poster':   line,
+    '--amen-bg':       amenBg,
+    '--amen-bd':       amenBd,
+  };
 }
 
 export { DEFAULT_PALETTE };

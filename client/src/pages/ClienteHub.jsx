@@ -22,25 +22,31 @@ const T = {
 // ─── Color fields ──────────────────────────────────────────────────────────────
 // group: which section each field belongs to (for the grouped UI)
 const COLOR_FIELDS = [
-  { key: '--page-bg',       label: 'Cor de Fundo do Site', hint: 'Fundo de todas as páginas — padrão: #131313 (preto)', group: 'site' },
-  { key: '--contact-bg',    label: 'Cor do Cabeçalho',     hint: 'Gradiente do header do perfil, catálogo e vídeo', group: 'header' },
-  { key: '--contact-text',  label: 'Texto do Cabeçalho',   hint: 'Cor do texto no header — use #ffffff se o fundo for escuro', group: 'header' },
-  { key: '--primary',       label: 'Cor Principal',         hint: 'Preços, ícones, destaques e links', group: 'brand' },
-  { key: '--btn-bg',        label: 'Botão CTA — Fundo',    hint: 'Fundo do botão principal (padrão: cor principal)', group: 'brand' },
-  { key: '--btn-text',      label: 'Botão CTA — Texto',    hint: 'Texto dentro do botão principal', group: 'brand' },
-  { key: '--bg-poster',     label: 'Badges / Chips',        hint: 'Tipo do imóvel, pills no catálogo e vídeo', group: 'poster' },
-  { key: '--text-poster',   label: 'Texto Geral (Vídeo)',   hint: 'Preço, endereço no poster de vídeo', group: 'poster' },
-  { key: '--detail-poster', label: 'Texto Secundário (Vídeo)', hint: 'Referências, textos menores no vídeo', group: 'poster' },
-  { key: '--line-poster',   label: 'Linhas (Vídeo)',        hint: 'Separadores no poster de vídeo', group: 'poster' },
-  { key: '--amen-bg',       label: 'Lazer — Fundo (Vídeo)', hint: 'Background dos cards de amenidades no vídeo', group: 'poster' },
-  { key: '--amen-bd',       label: 'Lazer — Borda (Vídeo)', hint: 'Borda dos cards de amenidades no vídeo', group: 'poster' },
+  // ── Fundo geral ──
+  { key: '--page-bg',       label: 'Fundo das Páginas',    hint: 'Fundo de todas as páginas — padrão: #131313 (preto escuro)', group: 'site' },
+  // ── Cabeçalho — header web + tela de contato do vídeo ──
+  { key: '--contact-bg',    label: 'Cor de Marca (Cabeçalho)', hint: 'Fundo do cabeçalho em todas as páginas E tela final do vídeo — gerado escuro e rico automaticamente', group: 'header' },
+  { key: '--contact-text',  label: 'Texto sobre a Cor de Marca', hint: 'Texto e ícones sobre o cabeçalho/tela de contato — mantenha #ffffff para fundo escuro', group: 'header' },
+  // ── Destaque — preços, links, ícones ──
+  { key: '--primary',       label: 'Cor de Destaque',      hint: 'Preços, ícones, links e destaques em todas as páginas e no vídeo', group: 'brand' },
+  // ── Botão CTA ──
+  { key: '--btn-bg',        label: 'Botão — Fundo',        hint: 'Fundo do botão de ação (gerado em cor split-complementar para contrastar com o cabeçalho)', group: 'brand' },
+  { key: '--btn-text',      label: 'Botão — Texto',        hint: 'Texto do botão — calculado automaticamente para contraste, mas pode ajustar', group: 'brand' },
+  // ── Badge / chip — catálogo e vídeo ──
+  { key: '--bg-poster',     label: 'Badge / Chip',         hint: 'Fundo dos chips "À VENDA" nos cards e no vídeo — gerado como versão escura da cor de destaque', group: 'brand' },
+  // ── Vídeo — vars exclusivas (geradas do logo) ──
+  { key: '--text-poster',   label: 'Texto Principal (Vídeo)',    hint: 'Preço e textos principais no poster de vídeo (fundo branco)', group: 'poster' },
+  { key: '--detail-poster', label: 'Texto Secundário (Vídeo)',   hint: 'Referências, rótulos de stats e textos menores no vídeo', group: 'poster' },
+  { key: '--line-poster',   label: 'Linhas / Bordas (Vídeo)',    hint: 'Separadores da seção de quartos/banheiros/vagas no vídeo', group: 'poster' },
+  { key: '--amen-bg',       label: 'Lazer — Fundo (Vídeo)',      hint: 'Fundo dos cards de amenidades no vídeo', group: 'poster' },
+  { key: '--amen-bd',       label: 'Lazer — Borda (Vídeo)',      hint: 'Borda dos cards de amenidades no vídeo', group: 'poster' },
 ];
 
 const COLOR_GROUPS = [
-  { key: 'site',   label: '🖥  Site — Body', hint: 'Fundo de todas as páginas públicas' },
-  { key: 'header', label: '◼  Cabeçalho (Header)', hint: 'Área colorida no topo do perfil, catálogo e poster' },
-  { key: 'brand',  label: '✦  Marca — Botões & Destaques', hint: 'Cor principal, botão CTA e texto do botão' },
-  { key: 'poster', label: '🎬  Vídeo Poster', hint: 'Cores exclusivas do poster de vídeo gerado' },
+  { key: 'site',   label: 'Fundo das Páginas',      hint: 'Cor de fundo de todas as páginas públicas' },
+  { key: 'header', label: 'Cabeçalho & Cor de Marca', hint: 'Aparece no topo de todas as páginas e na tela final do vídeo' },
+  { key: 'brand',  label: 'Destaque, Botões & Badges', hint: 'Cor de destaque (preços/ícones), botão CTA e chips nos cards' },
+  { key: 'poster', label: 'Vídeo Poster (exclusivo)', hint: 'Cores do poster de vídeo gerado — fundo branco, derivadas do logo' },
 ];
 
 const PRESET_COLORS = [
@@ -277,8 +283,27 @@ export default function ClienteHub() {
     }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setLogoUrl(ev.target.result);
-      setLogoUploadMsg(`✓ "${file.name}" carregado`);
+      const dataUrl = ev.target.result;
+      setLogoUrl(dataUrl);
+      setLogoUploadMsg(`✓ "${file.name}" carregado — gerando paleta...`);
+      // Auto-extract palette from uploaded logo
+      getDominantColorFromImageUrl(dataUrl).then((result) => {
+        if (result?.dominant) {
+          const palette = getPaletteFromPrimary(result.dominant, result.darkest ?? null, result.lightest ?? null);
+          setColors((prev) => {
+            const next = { ...prev };
+            COLOR_FIELDS.forEach(({ key }) => {
+              if (key !== '--page-bg' && palette[key]) next[key] = palette[key];
+            });
+            return next;
+          });
+          setColorMsg('Paleta gerada automaticamente do logo. Revise na aba Visual e salve.');
+        } else {
+          setLogoUploadMsg(`✓ "${file.name}" carregado`);
+        }
+      }).catch(() => {
+        setLogoUploadMsg(`✓ "${file.name}" carregado`);
+      });
     };
     reader.onerror = () => setLogoUploadMsg('Erro ao ler arquivo.');
     reader.readAsDataURL(file);
@@ -329,15 +354,6 @@ export default function ClienteHub() {
     reader.onerror = () => setHeroBgMsg('Erro ao ler arquivo.');
     reader.readAsDataURL(file);
     e.target.value = '';
-  }
-
-  // Mini-preview color helpers (mirrors server darkenHex)
-  function darkenHexP(hex, f) {
-    try {
-      const r2 = parseInt(hex.slice(1,3),16), g2=parseInt(hex.slice(3,5),16), b2=parseInt(hex.slice(5,7),16);
-      const d2 = c => Math.max(0,Math.round(c*(1-f))).toString(16).padStart(2,'0');
-      return '#'+d2(r2)+d2(g2)+d2(b2);
-    } catch { return '#0f2b5b'; }
   }
 
   // Layout
@@ -1269,14 +1285,15 @@ export default function ClienteHub() {
 
         {/* ══ Tab 4: Visual ══ */}
         {activeTab === 'visual' && (() => {
-          // Computed preview values
+          // Computed preview values — usa getPaletteFromPrimary como fallback para garantir harmonia
           const pPrimary    = colors['--primary']      || '#f2ca50';
-          const pBtnBg      = colors['--btn-bg']        || pPrimary;
-          const pBtnText    = colors['--btn-text']      || '#1a1200';
-          const pHeroBg     = colors['--contact-bg']    || darkenHexP(pPrimary, 0.35);
+          const _fb         = getPaletteFromPrimary(pPrimary);
+          const pBtnBg      = colors['--btn-bg']        || _fb['--btn-bg'];
+          const pBtnText    = colors['--btn-text']      || _fb['--btn-text'];
+          const pHeroBg     = colors['--contact-bg']    || _fb['--contact-bg'];
           const pHeroText   = colors['--contact-text']  || '#ffffff';
           const pPageBg     = colors['--page-bg']       || '#131313';
-          const pBadge      = colors['--bg-poster']     || '#f5e67a';
+          const pBadge      = colors['--bg-poster']     || _fb['--bg-poster'];
           const pBtnR       = btnRounded ? '50px' : '2px';
           const pPreviewName = name || 'Sua Empresa';
 

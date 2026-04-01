@@ -46,18 +46,61 @@ function parseDesignConfig(raw) {
   try { return typeof raw === 'string' ? JSON.parse(raw) : (raw || {}); } catch { return {}; }
 }
 
-/** Extrai cores do design_config e devolve variáveis CSS */
+/** Extrai cores do design_config e devolve variáveis CSS.
+ *  Quando uma variável não está armazenada, calcula fallback com lógica triádica:
+ *  - header/contact-bg: versão escura e rica da matiz primária
+ *  - btn-bg: split-complementar (H+150°) para contraste harmonioso
+ *  - bg-poster/badge: chip escuro da matiz primária
+ */
 function buildCssVars(designConfig) {
   const d = parseDesignConfig(designConfig);
-  const primary   = d['--primary']      || '#f2ca50';
-  const btnBg     = d['--btn-bg']       || primary;
-  const btnText   = d['--btn-text']     || '#1a1200';
-  const heroBg    = d['--contact-bg']   || darkenHex(primary, 0.35);
-  const heroText  = d['--contact-text'] || '#ffffff';
-  const badge     = d['--bg-poster']    || lightenHex(primary, 0.15);
-  const badgeText = d['--primary']      || primary;
-  const pageBg    = d['--page-bg']      || '#131313';
-  const btnRadius = d['--btn-radius']   || '2px';
+  const primary = d['--primary'] || '#f2ca50';
+  const pageBg  = d['--page-bg']      || '#131313';
+  const btnRadius = d['--btn-radius'] || '2px';
+
+  let heroBg, heroText, btnBg, btnText, badge;
+
+  if (d['--contact-bg']) {
+    heroBg = d['--contact-bg'];
+  } else {
+    // Cabeçalho: versão muito escura e rica da matiz primária
+    try {
+      const { h, s } = hexToHsl(primary);
+      const sV = Math.max(0.60, Math.min(1.0, s + 0.10));
+      heroBg = hslToHex(h, Math.min(1.0, sV * 1.05), 0.14);
+    } catch { heroBg = darkenHex(primary, 0.75); }
+  }
+
+  heroText = d['--contact-text'] || '#ffffff';
+
+  if (d['--btn-bg']) {
+    btnBg = d['--btn-bg'];
+  } else {
+    // Botão CTA: split-complementar (H+150°) para contrastar com cabeçalho
+    try {
+      const { h, s, l } = hexToHsl(primary);
+      const sV = Math.max(0.60, Math.min(1.0, s + 0.10));
+      const hBtn = (h + 150) % 360;
+      const lBtn = Math.max(0.38, Math.min(0.52, l + 0.02));
+      btnBg = hslToHex(hBtn, Math.min(1.0, sV), lBtn);
+    } catch { btnBg = primary; }
+  }
+
+  btnText = d['--btn-text'] || btnTextColor(btnBg);
+
+  if (d['--bg-poster']) {
+    badge = d['--bg-poster'];
+  } else {
+    // Badge/chip: versão escura da matiz primária (contrasta com #fff e com primary text)
+    try {
+      const { h, s } = hexToHsl(primary);
+      const sV = Math.max(0.60, Math.min(1.0, s + 0.10));
+      badge = hslToHex(h, Math.min(1.0, sV * 0.90), 0.22);
+    } catch { badge = darkenHex(primary, 0.60); }
+  }
+
+  const badgeText = primary; // primary color as badge text (high contrast on dark badge)
+
   return { primary, btnBg, btnText, heroBg, heroText, badge, badgeText, pageBg, btnRadius };
 }
 
@@ -72,15 +115,57 @@ function darkenHex(hex, factor) {
   } catch { return '#0f2b5b'; }
 }
 
-/** Clareia uma cor hex (mistura com branco) */
-function lightenHex(hex, factor) {
+/** Converte hex para { h 0-360, s 0-1, l 0-1 } */
+function hexToHsl(hex) {
   try {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const l = (c) => Math.min(255, Math.round(c + (255 - c) * factor)).toString(16).padStart(2, '0');
-    return '#' + l(r) + l(g) + l(b);
-  } catch { return '#eff6ff'; }
+    let r = parseInt(hex.slice(1, 3), 16) / 255;
+    let g = parseInt(hex.slice(3, 5), 16) / 255;
+    let b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        default: h = ((r - g) / d + 4) / 6;
+      }
+    }
+    return { h: h * 360, s, l };
+  } catch { return { h: 210, s: 0.7, l: 0.4 }; }
+}
+
+/** Converte HSL (h 0-360, s 0-1, l 0-1) para hex */
+function hslToHex(h, s, l) {
+  try {
+    h /= 360;
+    let r, g, b;
+    if (s === 0) { r = g = b = l; } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1; if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      r = hue2rgb(p, q, h + 1 / 3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1 / 3);
+    }
+    const toH = c => Math.round(Math.max(0, Math.min(255, c * 255))).toString(16).padStart(2, '0');
+    return '#' + toH(r) + toH(g) + toH(b);
+  } catch { return '#1152d4'; }
+}
+
+/** Luminância simples para decidir contraste do texto no botão */
+function btnTextColor(bgHex) {
+  try {
+    const r = parseInt(bgHex.slice(1, 3), 16);
+    const g = parseInt(bgHex.slice(3, 5), 16);
+    const b = parseInt(bgHex.slice(5, 7), 16);
+    return (r * 0.299 + g * 0.587 + b * 0.114) / 255 > 0.45 ? '#0f0f0f' : '#ffffff';
+  } catch { return '#ffffff'; }
 }
 
 /** Parse completo de um row de listing do banco */
