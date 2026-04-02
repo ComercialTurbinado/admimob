@@ -548,7 +548,7 @@ input, textarea {
 }
 
 .poster-preview .brand-card {
-  padding: 44px 40px 34px;
+  padding: 0;
   border-radius: 22px;
   background: var(--contact-bg);
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -562,11 +562,10 @@ input, textarea {
 .poster-preview .brand-icon {
   width: 186px;
   height: 186px;
-  background: #fff;
-  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .poster-preview .brand-icon .material-symbols-outlined {

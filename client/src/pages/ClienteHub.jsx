@@ -1404,63 +1404,59 @@ export default function ClienteHub() {
                 </div>
               )}
 
-              {/* ── Grupo: Site Body */}
-              {COLOR_GROUPS.map((group) => (
-                <div key={group.key} style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', paddingBottom: '0.4rem', borderBottom: `1px solid ${T.outlineVariant}` }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: T.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{group.label}</span>
-                    <span style={{ fontSize: '0.7rem', color: T.outlineVariant }}>{group.hint}</span>
-                  </div>
-
-                  {/* Hero bg image upload — only on 'header' group */}
-                  {group.key === 'header' && (
-                    <div style={{ marginBottom: '0.65rem', background: T.surface, border: `1px solid ${T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: '0.4rem' }}>Imagem de Fundo do Cabeçalho</div>
-                      <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, marginBottom: '0.6rem' }}>Fica atrás do gradiente de cor — efeito "foto de capa"</div>
-                      {/* Preview strip */}
-                      <div style={{ height: 48, borderRadius: 4, marginBottom: '0.6rem', overflow: 'hidden', background: heroBgImage ? `linear-gradient(160deg,${pHeroBg}cc,${pPageBg}f0), url('${heroBgImage}') center/cover` : `linear-gradient(160deg,${pHeroBg},${pPageBg})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '0.7rem', color: '#fff', opacity: 0.7 }}>{heroBgImage ? '✓ imagem ativa' : 'sem imagem (só cor)'}</span>
-                      </div>
-                      <input ref={heroBgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleHeroBgFileChange} />
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => heroBgFileRef.current?.click()}
-                          style={{ flex: 1, padding: '0.45rem 0.75rem', background: `${T.primaryCt}22`, border: `1px solid ${T.primaryCt}`, borderRadius: 3, color: T.primary, fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
-                          ↑ Upload de imagem
-                        </button>
-                        {heroBgImage && (
-                          <button type="button" onClick={() => { setHeroBgImage(''); setHeroBgMsg(null); }}
-                            style={{ padding: '0.45rem 0.75rem', background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, color: T.danger, fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', cursor: 'pointer' }}>
-                            Remover
-                          </button>
-                        )}
-                      </div>
-                      {heroBgMsg && <p style={{ fontSize: '0.72rem', color: T.success, marginTop: '0.3rem' }}>{heroBgMsg}</p>}
-                      <input type="url" value={heroBgImage.startsWith('data:') ? '' : heroBgImage} onChange={(e) => { setHeroBgImage(e.target.value); setHeroBgMsg(null); }}
-                        placeholder="ou cole URL da imagem…" style={{ ...inputStyle, marginTop: '0.5rem', fontSize: '0.78rem' }} />
-                    </div>
-                  )}
-
-                  {/* Button style — only on 'brand' group */}
-                  {group.key === 'brand' && (
-                    <div style={{ marginBottom: '0.65rem', background: T.surface, border: `1px solid ${T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                      <div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 2 }}>Botões arredondados</div>
-                        <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant }}>
-                          Preview:{' '}
-                          <span style={{ display: 'inline-block', padding: '2px 10px', background: pBtnBg, color: pBtnText, borderRadius: pBtnR, fontSize: '0.7rem', fontWeight: 700 }}>Ver imóvel</span>
-                        </div>
-                      </div>
-                      <Toggle checked={btnRounded} onChange={setBtnRounded} />
-                    </div>
-                  )}
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.5rem' }}>
-                    {COLOR_FIELDS.filter((f) => f.group === group.key).map((field) => (
-                      <ColorRow key={field.key} field={field} />
-                    ))}
-                  </div>
+              {/* ── Cores ── */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: T.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: `1px solid ${T.outlineVariant}` }}>
+                  Cores
                 </div>
-              ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  {COLOR_FIELDS.map((field) => (
+                    <ColorRow key={field.key} field={field} />
+                  ))}
+                </div>
+
+                {/* Button style */}
+                <div style={{ marginBottom: '0.65rem', background: T.surface, border: `1px solid ${T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: T.onSurface, marginBottom: 2 }}>Botões arredondados</div>
+                    <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant }}>
+                      Preview:{' '}
+                      <span style={{ display: 'inline-block', padding: '2px 10px', background: pBtnBg, color: pBtnText, borderRadius: pBtnR, fontSize: '0.7rem', fontWeight: 700 }}>Ver imóvel</span>
+                    </div>
+                  </div>
+                  <Toggle checked={btnRounded} onChange={setBtnRounded} />
+                </div>
+              </div>
+
+              {/* ── Cabeçalho ── */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: T.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: `1px solid ${T.outlineVariant}` }}>
+                  Imagem de Fundo do Cabeçalho
+                </div>
+                <div style={{ background: T.surface, border: `1px solid ${T.outlineVariant}`, borderRadius: 6, padding: '0.75rem 1rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: T.onSurfaceVariant, marginBottom: '0.6rem' }}>Fica atrás da cor — efeito "foto de capa"</div>
+                  {/* Preview strip */}
+                  <div style={{ height: 48, borderRadius: 4, marginBottom: '0.6rem', overflow: 'hidden', background: heroBgImage ? `url('${heroBgImage}') center/cover` : pHeroBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#fff', opacity: 0.7 }}>{heroBgImage ? '✓ imagem ativa' : 'sem imagem (só cor)'}</span>
+                  </div>
+                  <input ref={heroBgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleHeroBgFileChange} />
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => heroBgFileRef.current?.click()}
+                      style={{ flex: 1, padding: '0.45rem 0.75rem', background: `${T.primaryCt}22`, border: `1px solid ${T.primaryCt}`, borderRadius: 3, color: T.primary, fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                      ↑ Upload de imagem
+                    </button>
+                    {heroBgImage && (
+                      <button type="button" onClick={() => { setHeroBgImage(''); setHeroBgMsg(null); }}
+                        style={{ padding: '0.45rem 0.75rem', background: 'transparent', border: `1px solid ${T.outlineVariant}`, borderRadius: 3, color: T.danger, fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', cursor: 'pointer' }}>
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                  {heroBgMsg && <p style={{ fontSize: '0.72rem', color: T.success, marginTop: '0.3rem' }}>{heroBgMsg}</p>}
+                  <input type="url" value={heroBgImage.startsWith('data:') ? '' : heroBgImage} onChange={(e) => { setHeroBgImage(e.target.value); setHeroBgMsg(null); }}
+                    placeholder="ou cole URL da imagem…" style={{ ...inputStyle, marginTop: '0.5rem', fontSize: '0.78rem' }} />
+                </div>
+              </div>
             </div>
 
             {/* RIGHT — preview panel */}

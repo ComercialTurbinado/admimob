@@ -584,7 +584,7 @@ export default function AnimacaoCaracteristicas({ listing, onEnd, backgroundColo
                 marginBottom: 100 + (logoBoxSize.height || 180) * 0.15,
               }}
             >
-              <div style={{ width: logoBoxSize.width, height: logoBoxSize.height, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <div style={{ width: logoBoxSize.width, height: logoBoxSize.height, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 30 }}>
                 {logoimob ? (
                   <img src={logoImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
