@@ -750,6 +750,40 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
       payload = mergeRemotionPayload(payload, safeOverride);
     }
 
+    const remotionWebhookUrl = ((await getSetting('webhook_remotion', '')) || '').trim();
+
+    // ── Modo webhook (n8n faz render + salvar) ───────────────────────────────
+    // Se webhook_remotion estiver configurado nas Settings, envia o payload
+    // completo direto para o n8n e retorna queued imediatamente.
+    if (remotionWebhookUrl) {
+      try {
+        await fetch(remotionWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            imobName: imobname,
+            imovelRef: advertiserCode,
+            listing_id: listingId,
+            filename: `remotion-${animation}.mp4`,
+          }),
+        });
+      } catch (webhookErr) {
+        console.error('[remotion-render] webhook error:', webhookErr.message);
+        return res.status(502).json({ error: 'Falha ao enviar para o webhook: ' + webhookErr.message });
+      }
+      return res.json({
+        ok: true,
+        queued: true,
+        message: 'Dados enviados para o n8n. O vídeo será renderizado e salvo automaticamente.',
+        imobName: imobname,
+        imovelRef: advertiserCode,
+        animation,
+        filename: `remotion-${animation}.mp4`,
+      });
+    }
+
+    // ── Modo direto (sem webhook): chama o serviço Remotion e faz download ──
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REMOTION_RENDER_TIMEOUT_MS);
     let response;
@@ -765,7 +799,6 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
     }
 
     const ct = (response.headers.get('content-type') || '').toLowerCase();
-
     if (!response.ok || ct.includes('application/json')) {
       const text = await response.text();
       let msg = text;
@@ -791,41 +824,7 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
       buf = Buffer.concat(chunks);
     }
 
-    const filename = `remotion-${animation}.mp4`;
-    const remotionWebhookUrl = ((await getSetting('webhook_remotion', '')) || '').trim();
-
-    if (remotionWebhookUrl) {
-      // Envia para n8n como base64 e retorna JSON (sem download no browser)
-      const videoBase64 = buf.toString('base64');
-      try {
-        await fetch(remotionWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            video_base64: videoBase64,
-            imobiliaria: `${imobname}-${advertiserCode}`,
-            imobName: imobname,
-            imovelRef: advertiserCode,
-            animation,
-            listing_id: listingId,
-            filename,
-          }),
-        });
-      } catch (webhookErr) {
-        console.error('[remotion-render] webhook error:', webhookErr.message);
-      }
-      return res.json({
-        ok: true,
-        queued: true,
-        message: 'Vídeo Remotion enviado para o n8n',
-        imobName: imobname,
-        imovelRef: advertiserCode,
-        animation,
-        filename,
-      });
-    }
-
-    // Sem webhook configurado: download direto (fallback)
+    // Download direto no browser
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="remotion-${listingId}-${animation}.mp4"`);
     return res.send(buf);
