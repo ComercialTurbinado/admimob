@@ -550,6 +550,7 @@ input, textarea {
 .poster-preview .brand-card {
   padding: 0;
   border-radius: 22px;
+  overflow: hidden;
   background: var(--contact-bg);
   border: 1px solid rgba(255, 255, 255, 0.28);
   display: flex;
