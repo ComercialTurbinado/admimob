@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { API } from '../api';
 import AnimacaoCaracteristicas from '../components/AnimacaoCaracteristicas';
 import PageHeader from '../components/PageHeader';
+import { buildPalette } from '../lib/dominantColor';
 
 const MATERIAIS_BASE = 'https://firemode.s3.us-east-1.amazonaws.com/firemode/imob';
 
@@ -508,14 +509,10 @@ export default function Materiais() {
         if (data.error) throw new Error(data.error);
         setListing(data.listing);
         const dc = data.listing?.client?.design_config || {};
-        setVideoColors({
-          '--contact-bg':    dc['--contact-bg']    || '',
-          '--bg-poster':     dc['--bg-poster']     || '',
-          '--btn-bg':        dc['--btn-bg']        || '',
-          '--line-poster':   dc['--line-poster']   || '',
-          '--amen-bg':       dc['--amen-bg']       || '',
-          '--amen-bd':       dc['--amen-bd']       || '',
-        });
+        // Inicializa com as 2 cores base; o restante é derivado por buildPalette
+        const brand  = dc['--primary']    || '#1152d4';
+        const accent = dc['--contact-bg'] || '#0a1e4a';
+        setVideoColors(buildPalette(brand, accent));
         setBaseUrl(data.baseUrl || '');
         setFiles(data.files || { videos: [], narration: [], music: [] });
         setFolderListing(data.folderListing ?? null);
@@ -726,34 +723,44 @@ export default function Materiais() {
               </button>
             ))}
           </div>
-          {/* Cores do vídeo */}
+          {/* Cores do vídeo — 2 cores, resto automático */}
           <details style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <summary style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, background: 'var(--bg)', userSelect: 'none' }}>
               Cores do vídeo
             </summary>
-            <div style={{ padding: '0.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              {[
-                { key: '--contact-bg',  label: 'Cor de marca' },
-                { key: '--btn-bg',      label: 'Botão CTA' },
-                { key: '--bg-poster',   label: 'Badge/chip' },
-                { key: '--line-poster', label: 'Linhas' },
-                { key: '--amen-bg',     label: 'Lazer fundo' },
-                { key: '--amen-bd',     label: 'Lazer borda' },
-              ].map(({ key, label }) => (
-                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--muted)' }}>{label}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="color"
-                      value={videoColors[key] || '#000000'}
-                      onChange={(e) => setVideoColors((prev) => ({ ...prev, [key]: e.target.value }))}
-                      style={{ width: 28, height: 28, padding: 0, border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
-                    />
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--muted)' }}>{videoColors[key] || '—'}</span>
-                  </div>
-                </label>
-              ))}
-              <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+            <div style={{ padding: '0.75rem' }}>
+              <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                Defina 2 cores — tudo mais é gerado automaticamente.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                {[
+                  { key: '--primary',    label: 'Cor de Marca',    hint: 'Preço, badge, botão, cards de lazer' },
+                  { key: '--contact-bg', label: 'Cor de Destaque', hint: 'Header, tela final, ícones das stats' },
+                ].map(({ key, label, hint }) => (
+                  <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text)', fontWeight: 600 }}>{label}</span>
+                    <span style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>{hint}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <input
+                        type="color"
+                        value={videoColors[key] || '#000000'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setVideoColors((prev) => {
+                            const brand  = key === '--primary'    ? val : (prev['--primary']    || '#1152d4');
+                            const accent = key === '--contact-bg' ? val : (prev['--contact-bg'] || '#0a1e4a');
+                            return buildPalette(brand, accent);
+                          });
+                          setAnimacaoKey((k) => k + 1);
+                        }}
+                        style={{ width: 32, height: 32, padding: 0, border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                      />
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--muted)' }}>{videoColors[key] || '—'}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
                   type="button"
                   className="btn"

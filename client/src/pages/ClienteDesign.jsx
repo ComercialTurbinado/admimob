@@ -1,21 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API, proxyImageUrl } from '../api';
-import { DEFAULT_PALETTE, getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
+import { DEFAULT_PALETTE, buildPalette, getDominantColorFromImageUrl } from '../lib/dominantColor';
 import AnimacaoCaracteristicas from '../components/AnimacaoCaracteristicas';
 
 const DESIGN_KEYS = [
-  { key: '--primary',      shortLabel: 'Principal',     label: 'Cor principal',         hint: 'Botões, preço, destaques (catálogo e poster)' },
-  { key: '--contact-bg',   shortLabel: 'Hero fundo',    label: 'Fundo do hero',          hint: 'Gradiente do cabeçalho do catálogo público' },
-  { key: '--contact-text', shortLabel: 'Hero texto',    label: 'Texto no hero',          hint: 'Deve ter bom contraste com o fundo do hero' },
-  { key: '--bg-poster',    shortLabel: 'Badges',        label: 'Fundo de badges',        hint: 'Chips e pills no catálogo e poster' },
-  { key: '--text-poster',  shortLabel: 'Texto geral',   label: 'Texto geral do poster',  hint: 'Preço, localização, site no rodapé' },
-  { key: '--detail-poster',shortLabel: 'Detalhes',      label: 'Texto secundário',       hint: 'Ref, textos menores' },
-  { key: '--line-poster',  shortLabel: 'Linhas',        label: 'Linhas e bordas',        hint: 'Separadores do poster' },
-  { key: '--amen-bg',      shortLabel: 'Lazer fundo',   label: 'Fundo de lazer',         hint: 'Background dos cards de amenities' },
-  { key: '--amen-bd',      shortLabel: 'Lazer borda',   label: 'Borda de lazer',         hint: 'Borda dos cards de amenities' },
-  { key: '--btn-bg',       shortLabel: 'Botão fundo',   label: 'Fundo do botão CTA',     hint: 'Cor do botão principal no perfil público (padrão: mesma cor principal)' },
-  { key: '--btn-text',     shortLabel: 'Botão texto',   label: 'Texto do botão CTA',     hint: 'Cor do texto dentro do botão principal do perfil público' },
+  { key: '--primary',    shortLabel: 'Cor de Marca',    label: 'Cor de Marca',    hint: 'Preço, badge, botão, cards de lazer — a cor viva/quente do cliente' },
+  { key: '--contact-bg', shortLabel: 'Cor de Destaque', label: 'Cor de Destaque', hint: 'Cabeçalho, tela final do vídeo, ícones das características' },
 ];
 
 function parseDesignConfig(raw) {
@@ -44,7 +35,7 @@ function CatalogPreview({ client, values }) {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f4f6f9', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', fontSize: '0.7rem' }}>
       {/* Hero */}
-      <div style={{ background: `linear-gradient(135deg, ${heroBg} 0%, ${primary} 100%)`, color: heroText, padding: '1.25rem 1rem', textAlign: 'center' }}>
+      <div style={{ background: heroBg, color: heroText, padding: '1.25rem 1rem', textAlign: 'center' }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fff', margin: '0 auto 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid rgba(255,255,255,.3)' }}>
           {logoUrl
             ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -68,7 +59,7 @@ function CatalogPreview({ client, values }) {
       <div style={{ padding: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.5rem' }}>
         {mockCards.map((c) => (
           <div key={c.title} style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-            <div style={{ background: 'linear-gradient(135deg,#e2e8f0,#cbd5e1)', aspectRatio: '4/3', position: 'relative' }}>
+            <div style={{ background: '#e2e8f0', aspectRatio: '4/3', position: 'relative' }}>
               <span style={{ position: 'absolute', top: 4, left: 4, background: badge, color: badgeTxt, fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 50 }}>{c.type}</span>
             </div>
             <div style={{ padding: '0.35rem 0.4rem' }}>
@@ -103,23 +94,29 @@ export default function ClienteDesign() {
       .then((r) => r.json())
       .then((c) => {
         setClient(c);
-        const config = parseDesignConfig(c.design_config);
-        const next = {};
-        DESIGN_KEYS.forEach(({ key }) => {
-          next[key] = config[key] ?? DEFAULT_PALETTE[key] ?? '';
-        });
-        setValues(next);
+        const dc = parseDesignConfig(c.design_config);
+        // Load full palette; seed 2-color pickers from stored values
+        const brand  = dc['--primary']    || DEFAULT_PALETTE['--primary'];
+        const accent = dc['--contact-bg'] || DEFAULT_PALETTE['--contact-bg'];
+        const palette = buildPalette(brand, accent);
+        setValues({ ...palette, ...dc }); // stored overrides derived
       })
       .catch((e) => setMsg('Erro: ' + e.message))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleChange = (key, value) => setValues((prev) => ({ ...prev, [key]: value || '' }));
+  // When one of the 2 base colors changes, recompute full palette
+  const handleChange = (key, value) => {
+    setValues((prev) => {
+      const next = { ...prev, [key]: value || '' };
+      const brand  = next['--primary']    || DEFAULT_PALETTE['--primary'];
+      const accent = next['--contact-bg'] || DEFAULT_PALETTE['--contact-bg'];
+      return { ...next, ...buildPalette(brand, accent) };
+    });
+  };
 
   const handleReset = () => {
-    const next = {};
-    DESIGN_KEYS.forEach(({ key }) => { next[key] = DEFAULT_PALETTE[key] ?? ''; });
-    setValues(next);
+    setValues({ ...DEFAULT_PALETTE });
   };
 
   const handleExtractFromLogo = async () => {
@@ -134,10 +131,10 @@ export default function ClienteDesign() {
       const url = proxyImageUrl(logoUrl);
       const result = await getDominantColorFromImageUrl(url);
       if (result?.dominant) {
-        const palette = getPaletteFromPrimary(result.dominant, result.darkest ?? null, result.lightest ?? null);
-        const next = {};
-        DESIGN_KEYS.forEach(({ key }) => { next[key] = palette[key] ?? DEFAULT_PALETTE[key] ?? ''; });
-        setValues(next);
+        const { h: hd, s: sd, l: ld } = result;
+        const brand  = result.dominant;
+        const accent = result.darkest || DEFAULT_PALETTE['--contact-bg'];
+        setValues({ ...buildPalette(brand, accent) });
         setMsg('Cores extraídas do logo e preenchidas. Revise e salve.');
       } else {
         setMsg('Não foi possível extrair cores do logo. Tente ajustar manualmente.');
@@ -153,16 +150,15 @@ export default function ClienteDesign() {
     if (!id || !client) return;
     setSaving(true);
     setMsg(null);
-    const config = {};
-    DESIGN_KEYS.forEach(({ key }) => {
-      const v = values[key];
-      if (v && String(v).trim()) config[key] = String(v).trim();
-    });
+    // Save full palette (all derived tokens) to design_config
+    const brand  = values['--primary']    || DEFAULT_PALETTE['--primary'];
+    const accent = values['--contact-bg'] || DEFAULT_PALETTE['--contact-bg'];
+    const config = buildPalette(brand, accent);
     try {
       const res = await fetch(API + '/clients/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ design_config: Object.keys(config).length ? config : null }),
+        body: JSON.stringify({ design_config: config }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -175,17 +171,12 @@ export default function ClienteDesign() {
   };
 
   const designConfigFromValues = useMemo(() => {
-    const config = {};
-    DESIGN_KEYS.forEach(({ key }) => {
-      const v = values[key];
-      if (v && String(v).trim()) config[key] = String(v).trim();
-    });
-    return Object.keys(config).length ? config : null;
+    const brand  = values['--primary']    || DEFAULT_PALETTE['--primary'];
+    const accent = values['--contact-bg'] || DEFAULT_PALETTE['--contact-bg'];
+    return buildPalette(brand, accent);
   }, [values]);
 
   const mockListing = useMemo(() => {
-    const savedConfig = client ? parseDesignConfig(client.design_config) : null;
-    const effectiveConfig = designConfigFromValues || (Object.keys(savedConfig || {}).length ? savedConfig : null);
     return {
       carousel_images: ['https://resizedimgs.vivareal.com/img/vr-listing/9b66eb450db996a1e721b29ea90aab6e/casa-com-2-quartos-a-venda-82m-no-bal-stella-maris-peruibe.webp'],
       imobname: client?.name || 'Cliente',
@@ -195,7 +186,7 @@ export default function ClienteDesign() {
       salePrice: 'R$ 400.000',
       prices: { Venda: 'R$ 400.000' },
       address: 'Peruíbe, SP',
-      client: client ? { ...client, design_config: effectiveConfig } : undefined,
+      client: client ? { ...client, design_config: designConfigFromValues } : undefined,
       'amenities-list': [
         { name: 'numberOfRooms', value: '2 quartos' },
         { name: 'numberOfSuites', value: '1 suíte' },
@@ -233,26 +224,27 @@ export default function ClienteDesign() {
             )}
             <div>
               <h1 style={{ margin: 0, fontSize: '1.2rem' }}>Design — {client.name}</h1>
-              <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>As cores se aplicam ao catálogo público e aos posters de vídeo.</p>
+              <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>Defina 2 cores — todas as demais são geradas automaticamente.</p>
             </div>
           </div>
 
-          {/* Cores em grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '1rem' }}>
+          {/* 2 color pickers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
             {DESIGN_KEYS.map(({ key, shortLabel, label, hint }) => {
-              const val = values[key] || '';
+              const val = values[key] || DEFAULT_PALETTE[key] || '';
               const isValid = val.startsWith('#') && val.length >= 4;
               return (
-                <div key={key} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div key={key} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <input
                     type="color"
                     value={isValid ? val : '#1152d4'}
                     onChange={(e) => handleChange(key, e.target.value)}
                     title={hint}
-                    style={{ width: 28, height: 28, padding: 0, border: 'none', borderRadius: 6, cursor: 'pointer', flexShrink: 0, background: 'none' }}
+                    style={{ width: 36, height: 36, padding: 0, border: 'none', borderRadius: 6, cursor: 'pointer', flexShrink: 0, background: 'none' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{shortLabel}</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{shortLabel}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginBottom: 4 }}>{hint}</div>
                     <input
                       type="text"
                       value={val}

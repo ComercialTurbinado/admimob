@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API, proxyImageUrl } from '../api';
-import { DEFAULT_PALETTE, getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
+import { DEFAULT_PALETTE, buildPalette, getDominantColorFromImageUrl, getPaletteFromPrimary } from '../lib/dominantColor';
 
 // ─── Admin Light theme tokens ──────────────────────────────────────────────────
 const T = {
@@ -19,30 +19,18 @@ const T = {
   success: '#276749',
 };
 
-// ─── Color fields ──────────────────────────────────────────────────────────────
-// group: which section each field belongs to (for the grouped UI)
+// ─── Sistema de 2 cores ────────────────────────────────────────────────────────
+// O usuário define apenas 2 cores; buildPalette() deriva todos os outros tokens.
+//
+//  --primary     = Cor de marca viva (preços, badge, botão, cards de lazer)
+//  --contact-bg  = Cor de destaque escura (header, tela final do vídeo, ícones)
+//
+// Todos os demais tokens (--btn-bg, --bg-poster, --detail-poster, --amen-bg etc.)
+// são computados automaticamente e salvos junto no design_config.
+// ─────────────────────────────────────────────────────────────────────────────
 const COLOR_FIELDS = [
-  // ── Fundo geral (só layout0 dark usa) ──
-  { key: '--page-bg',    label: 'Fundo das Páginas',        hint: 'Fundo das páginas no layout escuro — padrão: #131313', group: 'site' },
-  // ── Cabeçalho — header web + tela final do vídeo ──
-  { key: '--contact-bg', label: 'Cor de Marca (Cabeçalho)', hint: 'Fundo do cabeçalho em todas as páginas e tela final do vídeo', group: 'header' },
-  // ── Destaque ──
-  { key: '--primary',    label: 'Cor de Destaque',           hint: 'Preços, ícones, links e destaques — auto-gerado do logo', group: 'brand' },
-  // ── Botão CTA ──
-  { key: '--btn-bg',     label: 'Botão — Fundo',             hint: 'Fundo do botão CTA — gerado em cor split-complementar', group: 'brand' },
-  // ── Badge / chip ──
-  { key: '--bg-poster',  label: 'Badge / Chip',              hint: 'Fundo dos chips "À VENDA" nos cards e no vídeo', group: 'brand' },
-  // ── Vídeo — bordas/fundos (texto é auto-contrastado) ──
-  { key: '--line-poster', label: 'Linhas / Bordas (Vídeo)', hint: 'Separadores da seção de stats no poster de vídeo', group: 'poster' },
-  { key: '--amen-bg',     label: 'Lazer — Fundo (Vídeo)',   hint: 'Fundo dos cards de amenidades no vídeo', group: 'poster' },
-  { key: '--amen-bd',     label: 'Lazer — Borda (Vídeo)',   hint: 'Borda dos cards de amenidades no vídeo', group: 'poster' },
-];
-
-const COLOR_GROUPS = [
-  { key: 'site',   label: 'Fundo das Páginas',        hint: 'Cor de fundo (layout escuro)' },
-  { key: 'header', label: 'Cor de Marca / Cabeçalho', hint: 'Topo de todas as páginas e tela final do vídeo' },
-  { key: 'brand',  label: 'Destaque, Botões & Badges', hint: 'Cor de destaque, CTA e chips — textos auto-contrastados' },
-  { key: 'poster', label: 'Vídeo Poster (exclusivo)',  hint: 'Fundos e bordas do vídeo — textos gerados automaticamente' },
+  { key: '--primary',    label: 'Cor de Marca',    hint: 'Preços, badge, botão, cards de lazer — a cor viva/quente do cliente' },
+  { key: '--contact-bg', label: 'Cor de Destaque', hint: 'Cabeçalho, tela final do vídeo, ícones das características' },
 ];
 
 const PRESET_COLORS = [
@@ -569,23 +557,26 @@ export default function ClienteHub() {
   }
 
   // ── Color helpers ─────────────────────────────────────────────────────────────
+  // Ao alterar qualquer uma das 2 cores, recalcula TODA a paleta automaticamente.
   function handleColorChange(key, value) {
-    setColors((prev) => ({ ...prev, [key]: value }));
+    setColors((prev) => {
+      const next = { ...prev, [key]: value };
+      const brand  = next['--primary']    || DEFAULT_PALETTE['--primary'];
+      const accent = next['--contact-bg'] || DEFAULT_PALETTE['--contact-bg'];
+      if (brand && accent) {
+        const palette = buildPalette(brand, accent);
+        return { ...next, ...palette };
+      }
+      return next;
+    });
   }
 
   async function handleGenerateFromPrimary() {
-    const primary = colors['--primary'];
-    if (!primary) {
-      setColorMsg('Defina primeiro a Cor Principal.');
-      return;
-    }
-    const palette = getPaletteFromPrimary(primary, null, null);
-    const next = { ...colors };
-    COLOR_FIELDS.forEach(({ key }) => {
-      if (palette[key]) next[key] = palette[key];
-    });
-    setColors(next);
-    setColorMsg('Paleta gerada a partir da cor principal. Revise e salve.');
+    const brand  = colors['--primary']    || DEFAULT_PALETTE['--primary'];
+    const accent = colors['--contact-bg'] || DEFAULT_PALETTE['--contact-bg'];
+    const palette = buildPalette(brand, accent);
+    setColors((prev) => ({ ...prev, ...palette }));
+    setColorMsg('Paleta gerada. Revise e salve.');
   }
 
   async function handleExtractFromLogo() {
