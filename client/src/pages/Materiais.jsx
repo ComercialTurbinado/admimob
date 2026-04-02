@@ -484,6 +484,9 @@ export default function Materiais() {
   const [refreshing, setRefreshing] = useState(false);
   const [sendingFrames, setSendingFrames] = useState(false);
   const [framesMessage, setFramesMessage] = useState(null);
+  const [videoColors, setVideoColors] = useState({});
+  const [savingColors, setSavingColors] = useState(false);
+  const [colorsMsg, setColorsMsg] = useState(null);
 
   const loadMateriais = (refresh = false) => {
     if (!id) return;
@@ -504,6 +507,15 @@ export default function Materiais() {
       .then((data) => {
         if (data.error) throw new Error(data.error);
         setListing(data.listing);
+        const dc = data.listing?.client?.design_config || {};
+        setVideoColors({
+          '--contact-bg':    dc['--contact-bg']    || '',
+          '--bg-poster':     dc['--bg-poster']     || '',
+          '--btn-bg':        dc['--btn-bg']        || '',
+          '--line-poster':   dc['--line-poster']   || '',
+          '--amen-bg':       dc['--amen-bg']       || '',
+          '--amen-bd':       dc['--amen-bd']       || '',
+        });
         setBaseUrl(data.baseUrl || '');
         setFiles(data.files || { videos: [], narration: [], music: [] });
         setFolderListing(data.folderListing ?? null);
@@ -571,6 +583,35 @@ export default function Materiais() {
   }
 
   const urlBase = baseUrl || fallbackBaseUrl;
+
+  // Listing com cores locais aplicadas (para o preview refletir mudanças antes de salvar)
+  const effectiveListing = listing && Object.keys(videoColors).some(k => videoColors[k])
+    ? { ...listing, client: { ...listing.client, design_config: { ...(listing.client?.design_config || {}), ...videoColors } } }
+    : listing;
+
+  const handleSaveVideoColors = async () => {
+    if (!clientId) return;
+    setSavingColors(true);
+    setColorsMsg(null);
+    try {
+      const existing = listing?.client?.design_config || {};
+      const merged = { ...existing };
+      Object.entries(videoColors).forEach(([k, v]) => { if (v) merged[k] = v; });
+      const res = await fetch(API + '/clients/' + clientId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ design_config: merged }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setColorsMsg('Cores salvas!');
+    } catch (e) {
+      setColorsMsg('Erro: ' + e.message);
+    } finally {
+      setSavingColors(false);
+    }
+  };
+
   const videoUrls = (files.videos || []).map((f) => (f.startsWith('http') ? f : urlBase + f));
   const narrationUrls = (files.narration || []).map((f) => (f.startsWith('http') ? f : urlBase + f));
   const musicUrls = (files.music || []).map((f) => (f.startsWith('http') ? f : urlBase + f));
@@ -685,6 +726,52 @@ export default function Materiais() {
               </button>
             ))}
           </div>
+          {/* Cores do vídeo */}
+          <details style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <summary style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, background: 'var(--bg)', userSelect: 'none' }}>
+              Cores do vídeo
+            </summary>
+            <div style={{ padding: '0.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              {[
+                { key: '--contact-bg',  label: 'Cor de marca' },
+                { key: '--btn-bg',      label: 'Botão CTA' },
+                { key: '--bg-poster',   label: 'Badge/chip' },
+                { key: '--line-poster', label: 'Linhas' },
+                { key: '--amen-bg',     label: 'Lazer fundo' },
+                { key: '--amen-bd',     label: 'Lazer borda' },
+              ].map(({ key, label }) => (
+                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.75rem' }}>
+                  <span style={{ color: 'var(--muted)' }}>{label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="color"
+                      value={videoColors[key] || '#000000'}
+                      onChange={(e) => setVideoColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                      style={{ width: 28, height: 28, padding: 0, border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                    />
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--muted)' }}>{videoColors[key] || '—'}</span>
+                  </div>
+                </label>
+              ))}
+              <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
+                  disabled={savingColors}
+                  onClick={handleSaveVideoColors}
+                >
+                  {savingColors ? 'Salvando…' : 'Salvar cores'}
+                </button>
+                {colorsMsg && (
+                  <span style={{ fontSize: '0.8rem', color: colorsMsg.startsWith('Erro') ? 'var(--danger)' : 'var(--success)' }}>
+                    {colorsMsg}
+                  </span>
+                )}
+              </div>
+            </div>
+          </details>
+
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <Link
               to={clientId ? `/cliente/${clientId}/produto/${id}/poster-video` : `/poster-video/${id}`}
@@ -811,7 +898,7 @@ export default function Materiais() {
               >
                 <AnimacaoCaracteristicas
                   key={animacaoKey}
-                  listing={listing}
+                  listing={effectiveListing}
                   onEnd={() => {}}
                   backgroundColor={animBg}
                   itemsPerRow={animItemsPerRow}

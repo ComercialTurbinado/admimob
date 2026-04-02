@@ -478,11 +478,12 @@ export default function ClienteHub() {
         const otherLinks = savedLinks.filter((l) => l.id !== 'catalog' && l.url !== 'auto');
         setLinks(hasAutoLink ? [catalogLink, ...otherLinks] : [catalogLink, ...savedLinks]);
 
-        // Colors
+        // Colors — carrega TODAS as chaves do design_config (incluindo vars do vídeo)
+        // para que sejam preservadas ao salvar, mesmo que não apareçam no formulário
         const dc = parseJson(c.design_config);
-        const colorObj = {};
+        const colorObj = { ...dc };
         COLOR_FIELDS.forEach(({ key }) => {
-          colorObj[key] = dc[key] ?? DEFAULT_PALETTE[key] ?? '';
+          if (!(key in colorObj)) colorObj[key] = DEFAULT_PALETTE[key] ?? '';
         });
         setColors(colorObj);
         setBtnRounded((dc['--btn-radius'] || '2px') !== '2px');

@@ -490,6 +490,9 @@ export function renderProfilePage({ client, baseUrl, apiBase, corretores, listin
   try { pc = typeof client.profile_config === 'string' ? JSON.parse(client.profile_config) : (client.profile_config || {}); } catch {}
 
   const aboutBio = pc.about_bio || '';
+  const heroBgImage = pc.hero_bg_image
+    ? (pc.hero_bg_image.startsWith('data:') ? pc.hero_bg_image : proxyImg(pc.hero_bg_image, apiBase))
+    : null;
 
   const jsonLd = JSON.stringify({
     '@context': 'https://schema.org', '@type': 'RealEstateAgent',
@@ -520,7 +523,9 @@ ${glassHeader(client, proxyImg, apiBase)}
 <main class="pt-20 pb-24 max-w-2xl mx-auto">
 
   <!-- Hero Profile -->
-  <section class="bg-primary px-5 pt-10 pb-10 text-center">
+  <section class="relative px-5 pt-10 pb-10 text-center overflow-hidden bg-primary">
+    ${heroBgImage ? `<div class="absolute inset-0" style="background-image:url('${esc(heroBgImage)}');background-size:cover;background-position:center;opacity:0.25"></div>` : ''}
+    <div class="relative z-10">
     <div class="mb-5">
       ${client.logo_url
         ? `<div class="inline-flex p-1 rounded-2xl bg-surface-container-lowest shadow-md">
@@ -541,6 +546,7 @@ ${glassHeader(client, proxyImg, apiBase)}
         class="flex items-center gap-2 bg-cta-btn text-on-cta-btn font-label font-bold text-sm px-5 py-3 rounded-xl shadow-sm">
         <span class="material-symbols-outlined !text-lg">search</span>Ver Imóveis
       </a>
+    </div>
     </div>
   </section>
 
