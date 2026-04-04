@@ -991,27 +991,32 @@ app.post('/api/listings/:id/remotion-capture', async (req, res) => {
 
   if (isHttpOpenEndpoint) {
     const captureTimeoutMs = Math.max(durationMs * 3, 5 * 60 * 1000);
-    try {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), captureTimeoutMs + 60000);
-      const openRes = await fetch(captureServiceUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: captureUrl, timeoutMs: captureTimeoutMs }),
-        signal: controller.signal,
-      });
-      clearTimeout(tid);
-      if (!openRes.ok) throw new Error(`Captura retornou ${openRes.status}: ${await openRes.text()}`);
-      const result = { ok: true, listing_id: Number(listingId), animation, duration_ms: durationMs, via: 'remotion_capture' };
-      res.json(result);
-      const payload = { listing_id: Number(listingId), status: 'done', animation, duration_ms: durationMs, via: 'remotion_capture' };
-      const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
-      if (webhookDoneUrl) fetch(webhookDoneUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {});
-      const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
-      if (webhookMontarUrl) fetch(webhookMontarUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, action: 'montar_mp4' }) }).catch(() => {});
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
+    // Responde imediatamente — captura roda em background (pode levar 30s+)
+    res.json({ ok: true, listing_id: Number(listingId), animation, duration_ms: durationMs, via: 'remotion_capture' });
+    (async () => {
+      try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), captureTimeoutMs + 60000);
+        const openRes = await fetch(captureServiceUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: captureUrl, timeoutMs: captureTimeoutMs }),
+          signal: controller.signal,
+        });
+        clearTimeout(tid);
+        if (!openRes.ok) {
+          console.error('[remotion-capture] serviço retornou', openRes.status, await openRes.text().catch(() => ''));
+          return;
+        }
+        const payload = { listing_id: Number(listingId), status: 'done', animation, duration_ms: durationMs, via: 'remotion_capture' };
+        const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
+        if (webhookDoneUrl) fetch(webhookDoneUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {});
+        const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
+        if (webhookMontarUrl) fetch(webhookMontarUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, action: 'montar_mp4' }) }).catch(() => {});
+      } catch (e) {
+        console.error('[remotion-capture] background error:', e.message);
+      }
+    })();
     return;
   }
 
