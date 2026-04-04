@@ -880,8 +880,8 @@ app.post('/api/listings/:id/remotion-preview', async (req, res) => {
     // Verificar se existe áudio e SRT salvos para este imóvel
     if (imobname && advertiserCode) {
       const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
-      const audioUrl = `${ffmpegBase}/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.mp3`;
-      const srtUrl   = `${ffmpegBase}/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
+      const audioUrl = `${ffmpegBase}/data/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.mp3`;
+      const srtUrl   = `${ffmpegBase}/data/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
 
       // Checar áudio (HEAD rápido)
       try {
