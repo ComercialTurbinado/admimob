@@ -917,7 +917,58 @@ app.post('/api/listings/:id/remotion-preview', async (req, res) => {
       return res.status(previewResponse.status).json({ error: msg });
     }
 
-    const html = await previewResponse.text();
+    let html = await previewResponse.text();
+
+    // Injetar preloader: esconde o player até todas as imagens estarem cacheadas
+    const carouselImages = payload.input?.listing?.carousel_images || [];
+    const audioUrl = payload.input?.audio_url || '';
+    const preloadInject = `
+<style>
+  #pre-overlay {
+    position:fixed;inset:0;background:#000;z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;color:#fff;font-family:sans-serif;transition:opacity .5s;
+  }
+  #pre-overlay.out{opacity:0;pointer-events:none;}
+  #root{opacity:0;transition:opacity .5s;}
+  #root.rdy{opacity:1;}
+</style>
+<div id="pre-overlay">
+  <div style="font-size:13px;opacity:.6;letter-spacing:.05em">Carregando…</div>
+  <div id="pre-prog" style="font-size:11px;opacity:.4"></div>
+</div>
+<script>
+(function(){
+  var imgs=${JSON.stringify(carouselImages)};
+  var audio=${JSON.stringify(audioUrl)};
+  var total=imgs.length+(audio?1:0);
+  var done=0;
+  var prog=document.getElementById('pre-prog');
+  function tick(){
+    done++;
+    if(prog) prog.textContent=done+' / '+total;
+    if(done>=total) show();
+  }
+  function show(){
+    var ov=document.getElementById('pre-overlay');
+    var root=document.getElementById('root');
+    if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}
+    if(root) root.classList.add('rdy');
+  }
+  if(total===0){show();return;}
+  imgs.forEach(function(src){
+    var i=new Image();i.onload=i.onerror=tick;i.src=src;
+  });
+  if(audio){
+    var a=new Audio();a.preload='auto';
+    a.addEventListener('canplaythrough',tick,{once:true});
+    a.addEventListener('error',tick,{once:true});
+    a.src=audio;
+  }
+})();
+</script>`;
+    html = html.replace('</body>', preloadInject + '\n</body>');
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.send(html);
   } catch (e) {
