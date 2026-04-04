@@ -156,9 +156,13 @@ export function buildRemotionRenderPayload({ listing, animation, subtitlesSrt, b
     },
   };
   if (design_config && typeof design_config === 'object') {
-    const primary = design_config['--primary'] || design_config.primaryColor || design_config.primary || null;
-    if (primary) {
-      remotionListing.design_config = { primaryColor: primary };
+    const primary   = design_config['--primary']    || design_config.primaryColor   || design_config.primary   || null;
+    const secondary = design_config['--contact-bg'] || design_config.secondaryColor || design_config.secondary || null;
+    if (primary || secondary) {
+      remotionListing.design_config = {
+        ...(primary   ? { primaryColor:   primary   } : {}),
+        ...(secondary ? { secondaryColor: secondary } : {}),
+      };
     }
   }
 
