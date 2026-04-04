@@ -877,6 +877,32 @@ app.post('/api/listings/:id/remotion-preview', async (req, res) => {
       payload = mergeRemotionPayload(payload, safeOverride);
     }
 
+    // Verificar se existe áudio e SRT salvos para este imóvel
+    if (imobname && advertiserCode) {
+      const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
+      const audioUrl = `${ffmpegBase}/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.mp3`;
+      const srtUrl   = `${ffmpegBase}/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
+
+      // Checar áudio (HEAD rápido)
+      try {
+        const audioCheck = await fetch(audioUrl, { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+        if (audioCheck.ok) {
+          payload.input = { ...payload.input, audio_url: audioUrl };
+        }
+      } catch (_) {}
+
+      // Checar SRT — se não veio no body, tenta carregar do servidor
+      if (!payload.subtitlesSrt) {
+        try {
+          const srtRes = await fetch(srtUrl, { signal: AbortSignal.timeout(4000) });
+          if (srtRes.ok) {
+            const srtText = await srtRes.text();
+            if (srtText.trim()) payload.subtitlesSrt = srtText;
+          }
+        } catch (_) {}
+      }
+    }
+
     const previewResponse = await fetch(`${REMOTION_RENDER_BASE}/preview`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
