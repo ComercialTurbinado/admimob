@@ -833,6 +833,72 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
   }
 });
 
+/** Proxy para o serviço Remotion: POST JSON → HTML com Player (preview sem render). */
+app.post('/api/listings/:id/remotion-preview', async (req, res) => {
+  try {
+    const listingId = Number(req.params.id);
+    const { animation, subtitlesSrt, inputOverride } = req.body || {};
+    const validAnim = new Set(['op1', 'op2', 'op3', 'op4', 'op5', 'op6']);
+    if (!animation || !validAnim.has(String(animation))) {
+      return res.status(400).json({ error: 'animation deve ser op1, op2, op3, op4, op5 ou op6' });
+    }
+
+    const r = await db.prepare(`SELECT id, client_id, raw_data FROM listings WHERE id = ?`).get(listingId);
+    if (!r) return res.status(404).json({ error: 'Não encontrado' });
+
+    const raw = JSON.parse(r.raw_data);
+    let selected = null;
+    try {
+      const rowSel = await db.prepare('SELECT selected_images FROM listings WHERE id = ?').get(listingId);
+      if (rowSel?.selected_images) selected = JSON.parse(rowSel.selected_images);
+    } catch (_) {}
+    const rawWithSelected = selected && Array.isArray(selected) ? { ...raw, selected_images: selected } : raw;
+
+    const listing = await listingWithClient(r, rawWithSelected);
+
+    const advertiserCode = raw.advertiserCode || '';
+    const imobname = raw.imobname || '';
+    const materiaisBaseUrl =
+      imobname && advertiserCode
+        ? `${MATERIAIS_S3_BASE}firemode/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/`
+        : advertiserCode
+          ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/`
+          : '';
+
+    let payload = buildRemotionRenderPayload({
+      listing,
+      animation: String(animation),
+      subtitlesSrt: typeof subtitlesSrt === 'string' ? subtitlesSrt : '',
+      baseUrl: materiaisBaseUrl || undefined,
+      imageProxyBase: remotionImageProxyBase(req) || undefined,
+    });
+    if (inputOverride && typeof inputOverride === 'object') {
+      const { animation: _ignoredAnim, ...safeOverride } = inputOverride;
+      payload = mergeRemotionPayload(payload, safeOverride);
+    }
+
+    const previewResponse = await fetch(`${REMOTION_RENDER_BASE}/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!previewResponse.ok) {
+      const text = await previewResponse.text();
+      let msg = text;
+      try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch (_) {}
+      return res.status(previewResponse.status).json({ error: msg });
+    }
+
+    const html = await previewResponse.text();
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Duração da animação do poster (ms)
 const POSTER_DURATION_MS = 5000;
 
