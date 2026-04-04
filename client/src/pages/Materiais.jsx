@@ -143,6 +143,34 @@ function RemotionRenderPanel({ listingId, listing }) {
   const [subtitlesSrt, setSubtitlesSrt] = useState('');
   const [openSrt, setOpenSrt] = useState(false);
   const [status, setStatus] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+
+  const handlePreview = async () => {
+    setPreviewing(true);
+    setStatus(null);
+    try {
+      const res = await fetch(`${API}/listings/${listingId}/remotion-preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ animation, subtitlesSrt: subtitlesSrt.trim() || undefined }),
+      });
+      if (!res.ok) {
+        let errMsg = `Erro ${res.status}`;
+        try { const j = await res.json(); if (j?.error) errMsg = j.error; } catch (_) {}
+        setStatus({ error: errMsg });
+        return;
+      }
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      setStatus({ error: e.message || 'Falha ao abrir preview' });
+    } finally {
+      setPreviewing(false);
+    }
+  };
 
   const handleRender = async () => {
     setStatus({ loading: true });
@@ -260,10 +288,16 @@ function RemotionRenderPanel({ listingId, listing }) {
           />
         )}
       </div>
-      <button type="button" className="btn btn-primary" onClick={handleRender} disabled={status?.loading}
-        style={{ fontSize: '0.88rem' }}>
-        {status?.loading ? '⏳ Renderizando… aguarde sem fechar' : '▶ Gerar vídeo Remotion'}
-      </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+        <button type="button" className="btn btn-primary" onClick={handleRender} disabled={status?.loading || previewing}
+          style={{ fontSize: '0.88rem' }}>
+          {status?.loading ? '⏳ Renderizando… aguarde sem fechar' : '▶ Gerar vídeo Remotion'}
+        </button>
+        <button type="button" className="btn" onClick={handlePreview} disabled={status?.loading || previewing}
+          style={{ fontSize: '0.88rem' }}>
+          {previewing ? '⏳ Abrindo…' : '👁 Visualizar animação'}
+        </button>
+      </div>
       {status?.loading && (
         <p style={{ color: 'var(--muted)', marginTop: '0.5rem', fontSize: '0.82rem' }}>
           O render pode levar de 2 a 10 minutos dependendo da animação. Não feche essa aba.
