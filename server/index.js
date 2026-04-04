@@ -987,11 +987,12 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
   const browserlessUrlFromEnv = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
   const browserlessUrl = (await getSetting('browserless_ws_url', '')).trim() || browserlessUrlFromEnv;
   const publicAppUrlFromEnv = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
-  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam, public_app_url: bodyPublicAppUrl } = req.body || {};
+  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam, public_app_url: bodyPublicAppUrl, duration_ms: durationMsParam, poster_url: posterUrlOverride } = req.body || {};
   const fps = Math.min(30, Math.max(10, Number(fpsParam) || 25));
   const layout = (layoutParam && String(layoutParam).trim()) || 'classic';
   const intervalMs = 1000 / fps;
-  const totalFrames = Math.ceil((POSTER_DURATION_MS / 1000) * fps);
+  const effectiveDurationMs = (durationMsParam && Number(durationMsParam) > 0) ? Number(durationMsParam) : POSTER_DURATION_MS;
+  const totalFrames = Math.ceil((effectiveDurationMs / 1000) * fps);
 
   const publicAppUrlFromBody = (bodyPublicAppUrl != null ? String(bodyPublicAppUrl).trim() : '').replace(/\/$/, '');
   const publicAppUrl = publicAppUrlFromBody || publicAppUrlFromEnv;
@@ -1004,7 +1005,7 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
   const isHttpOpenEndpoint = /^https?:\/\//i.test(captureServiceUrl);
 
   if (isHttpOpenEndpoint) {
-    const fullPosterUrl = `${publicAppUrl}/poster-video/${listingId}?capture=1&layout=${encodeURIComponent(layout)}`;
+    const fullPosterUrl = posterUrlOverride || `${publicAppUrl}/poster-video/${listingId}?capture=1&layout=${encodeURIComponent(layout)}`;
     // 156 frames a ~3s/frame ≈ 8 min; timeout da página no serviço de captura (timeoutMs)
     const captureTimeoutMs = 10 * 60 * 1000; // 10 min
     const requestTimeoutMs = captureTimeoutMs + 60000; // 11 min para o fetch não abortar antes
@@ -1054,7 +1055,7 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
     }
   } catch (_) {}
 
-  const posterUrl = `${publicAppUrl}/poster-video/${listingId}?layout=${encodeURIComponent(layout)}`;
+  const posterUrl = posterUrlOverride || `${publicAppUrl}/poster-video/${listingId}?layout=${encodeURIComponent(layout)}`;
 
   try {
     const { chromium } = await import('playwright-core');
