@@ -833,6 +833,191 @@ app.post('/api/listings/:id/remotion-render', async (req, res) => {
   }
 });
 
+/** Calcula duração em ms a partir do conteúdo SRT (último timestamp + margem). */
+function srtDurationMs(srt) {
+  if (!srt || typeof srt !== 'string') return 0;
+  const matches = [...srt.matchAll(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->/g)];
+  if (!matches.length) return 0;
+  const last = matches[matches.length - 1];
+  const [, h, m, s, ms] = last;
+  return (Number(h) * 3600 + Number(m) * 60 + Number(s)) * 1000 + Number(ms) + 2000;
+}
+
+const REMOTION_ANIM_DURATION_MS = { op1: 30000, op2: 30000, op3: 30000, op4: 30000, op5: 25000, op6: 20000 };
+
+/** Monta payload + HTML do preview Remotion para um listing. */
+async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, inputOverride, imageProxyBase }) {
+  const r = await db.prepare(`SELECT id, client_id, raw_data FROM listings WHERE id = ?`).get(listingId);
+  if (!r) return { error: 'Não encontrado', status: 404 };
+
+  const raw = JSON.parse(r.raw_data);
+  let selected = null;
+  try {
+    const rowSel = await db.prepare('SELECT selected_images FROM listings WHERE id = ?').get(listingId);
+    if (rowSel?.selected_images) selected = JSON.parse(rowSel.selected_images);
+  } catch (_) {}
+  const rawWithSelected = selected && Array.isArray(selected) ? { ...raw, selected_images: selected } : raw;
+  const listing = await listingWithClient(r, rawWithSelected);
+
+  const advertiserCode = raw.advertiserCode || '';
+  const imobname = raw.imobname || '';
+  const materiaisBaseUrl =
+    imobname && advertiserCode
+      ? `${MATERIAIS_S3_BASE}firemode/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/`
+      : advertiserCode ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/` : '';
+
+  let payload = buildRemotionRenderPayload({
+    listing, animation: String(animation),
+    subtitlesSrt: typeof subtitlesSrt === 'string' ? subtitlesSrt : '',
+    baseUrl: materiaisBaseUrl || undefined,
+    imageProxyBase: imageProxyBase || undefined,
+  });
+  if (inputOverride && typeof inputOverride === 'object') {
+    const { animation: _a, ...safeOverride } = inputOverride;
+    payload = mergeRemotionPayload(payload, safeOverride);
+  }
+
+  // Auto-inject áudio e SRT salvos
+  if (imobname && advertiserCode) {
+    const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
+    const audioUrl = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.mp3`;
+    const srtUrl   = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
+    try {
+      const audioCheck = await fetch(audioUrl, { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+      if (audioCheck.ok) payload.input = { ...payload.input, audio_url: audioUrl };
+    } catch (_) {}
+    if (!payload.subtitlesSrt) {
+      try {
+        const srtRes = await fetch(srtUrl, { signal: AbortSignal.timeout(4000) });
+        if (srtRes.ok) { const t = await srtRes.text(); if (t.trim()) payload.subtitlesSrt = t; }
+      } catch (_) {}
+    }
+  }
+
+  const previewResponse = await fetch(`${REMOTION_RENDER_BASE}/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!previewResponse.ok) {
+    const text = await previewResponse.text();
+    let msg = text;
+    try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch (_) {}
+    return { error: msg, status: previewResponse.status };
+  }
+
+  let html = await previewResponse.text();
+
+  // Preloader
+  const carouselImages = payload.input?.listing?.carousel_images || [];
+  const audioUrl = payload.input?.audio_url || '';
+  const preloadInject = `
+<style>
+  #pre-overlay{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-family:sans-serif;transition:opacity .5s;}
+  #pre-overlay.out{opacity:0;pointer-events:none;}
+  #root{opacity:0;transition:opacity .5s;}
+  #root.rdy{opacity:1;}
+</style>
+<div id="pre-overlay"><div style="font-size:13px;opacity:.6">Carregando…</div><div id="pre-prog" style="font-size:11px;opacity:.4"></div></div>
+<script>
+(function(){
+  var imgs=${JSON.stringify(carouselImages)};
+  var audio=${JSON.stringify(audioUrl)};
+  var total=imgs.length+(audio?1:0);var done=0;
+  var prog=document.getElementById('pre-prog');
+  function tick(){done++;if(prog)prog.textContent=done+' / '+total;if(done>=total)show();}
+  function show(){var ov=document.getElementById('pre-overlay');var root=document.getElementById('root');if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}if(root)root.classList.add('rdy');}
+  if(total===0){show();return;}
+  imgs.forEach(function(src){var i=new Image();i.onload=i.onerror=tick;i.src=src;});
+  if(audio){var a=new Audio();a.preload='auto';a.addEventListener('canplaythrough',tick,{once:true});a.addEventListener('error',tick,{once:true});a.src=audio;}
+})();
+</script>`;
+  html = html.replace('</body>', preloadInject + '\n</body>');
+
+  const duration = srtDurationMs(payload.subtitlesSrt) || REMOTION_ANIM_DURATION_MS[animation] || 30000;
+  return { html, payload, duration, imobname, advertiserCode };
+}
+
+/** GET: serve o preview HTML diretamente — URL pública acessível pelo Browserless. */
+app.get('/api/listings/:id/remotion-preview-page', async (req, res) => {
+  const listingId = Number(req.params.id);
+  const animation = String(req.query.animation || 'op3');
+  const validAnim = new Set(['op1', 'op2', 'op3', 'op4', 'op5', 'op6']);
+  if (!validAnim.has(animation)) return res.status(400).json({ error: 'animation inválido' });
+  try {
+    const result = await buildRemotionPreviewHtml(listingId, { animation, imageProxyBase: remotionImageProxyBase(req) });
+    if (result.error) return res.status(result.status || 500).json({ error: result.error });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(result.html);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** POST: captura automatizada via Browserless — mesmo fluxo do poster-frames-to-webhook. */
+app.post('/api/listings/:id/remotion-capture', async (req, res) => {
+  const listingId = Number(req.params.id);
+  const { animation = 'op3', subtitlesSrt, fps: fpsParam, webhook_url: bodyWebhookUrl, public_app_url: bodyPublicAppUrl } = req.body || {};
+  const validAnim = new Set(['op1', 'op2', 'op3', 'op4', 'op5', 'op6']);
+  if (!validAnim.has(String(animation))) return res.status(400).json({ error: 'animation inválido' });
+
+  const browserlessUrlFromEnv = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
+  const browserlessUrl = (await getSetting('browserless_ws_url', '')).trim() || browserlessUrlFromEnv;
+  const publicAppUrlFromEnv = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
+  const publicAppUrl = ((bodyPublicAppUrl || '').trim() || publicAppUrlFromEnv).replace(/\/$/, '');
+  if (!publicAppUrl) return res.status(503).json({ error: 'PUBLIC_APP_URL não configurado' });
+
+  // Pré-calcula duração via SRT (sem gerar HTML aqui — só lê o SRT)
+  let durationMs = REMOTION_ANIM_DURATION_MS[animation] || 30000;
+  try {
+    const raw = (await db.prepare('SELECT raw_data FROM listings WHERE id = ?').get(listingId))?.raw_data;
+    if (raw) {
+      const { imobname, advertiserCode } = JSON.parse(raw);
+      if (imobname && advertiserCode) {
+        const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
+        const srtUrl = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
+        const srtRes = await fetch(srtUrl, { signal: AbortSignal.timeout(4000) }).catch(() => null);
+        if (srtRes?.ok) { const t = await srtRes.text(); const d = srtDurationMs(t); if (d > 0) durationMs = d; }
+      }
+    }
+  } catch (_) {}
+
+  // URL pública do preview que o Browserless vai abrir
+  const captureUrl = `${publicAppUrl}/api/listings/${listingId}/remotion-preview-page?animation=${animation}`;
+  const captureServiceUrl = browserlessUrl.trim();
+  const isHttpOpenEndpoint = /^https?:\/\//i.test(captureServiceUrl);
+
+  if (isHttpOpenEndpoint) {
+    const captureTimeoutMs = Math.max(durationMs * 3, 5 * 60 * 1000);
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), captureTimeoutMs + 60000);
+      const openRes = await fetch(captureServiceUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: captureUrl, timeoutMs: captureTimeoutMs }),
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (!openRes.ok) throw new Error(`Captura retornou ${openRes.status}: ${await openRes.text()}`);
+      const result = { ok: true, listing_id: Number(listingId), animation, duration_ms: durationMs, via: 'remotion_capture' };
+      res.json(result);
+      const payload = { listing_id: Number(listingId), status: 'done', animation, duration_ms: durationMs, via: 'remotion_capture' };
+      const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
+      if (webhookDoneUrl) fetch(webhookDoneUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {});
+      const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
+      if (webhookMontarUrl) fetch(webhookMontarUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, action: 'montar_mp4' }) }).catch(() => {});
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+    return;
+  }
+
+  return res.status(503).json({ error: 'Configure o serviço de captura (Browserless) em Configurações' });
+});
+
 /** Proxy para o serviço Remotion: POST JSON → HTML com Player (preview sem render). */
 app.post('/api/listings/:id/remotion-preview', async (req, res) => {
   try {
@@ -842,135 +1027,10 @@ app.post('/api/listings/:id/remotion-preview', async (req, res) => {
     if (!animation || !validAnim.has(String(animation))) {
       return res.status(400).json({ error: 'animation deve ser op1, op2, op3, op4, op5 ou op6' });
     }
-
-    const r = await db.prepare(`SELECT id, client_id, raw_data FROM listings WHERE id = ?`).get(listingId);
-    if (!r) return res.status(404).json({ error: 'Não encontrado' });
-
-    const raw = JSON.parse(r.raw_data);
-    let selected = null;
-    try {
-      const rowSel = await db.prepare('SELECT selected_images FROM listings WHERE id = ?').get(listingId);
-      if (rowSel?.selected_images) selected = JSON.parse(rowSel.selected_images);
-    } catch (_) {}
-    const rawWithSelected = selected && Array.isArray(selected) ? { ...raw, selected_images: selected } : raw;
-
-    const listing = await listingWithClient(r, rawWithSelected);
-
-    const advertiserCode = raw.advertiserCode || '';
-    const imobname = raw.imobname || '';
-    const materiaisBaseUrl =
-      imobname && advertiserCode
-        ? `${MATERIAIS_S3_BASE}firemode/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/`
-        : advertiserCode
-          ? `${MATERIAIS_BASE}/${encodeURIComponent(advertiserCode)}/`
-          : '';
-
-    let payload = buildRemotionRenderPayload({
-      listing,
-      animation: String(animation),
-      subtitlesSrt: typeof subtitlesSrt === 'string' ? subtitlesSrt : '',
-      baseUrl: materiaisBaseUrl || undefined,
-      imageProxyBase: remotionImageProxyBase(req) || undefined,
-    });
-    if (inputOverride && typeof inputOverride === 'object') {
-      const { animation: _ignoredAnim, ...safeOverride } = inputOverride;
-      payload = mergeRemotionPayload(payload, safeOverride);
-    }
-
-    // Verificar se existe áudio e SRT salvos para este imóvel
-    if (imobname && advertiserCode) {
-      const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
-      const audioUrl = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.mp3`;
-      const srtUrl   = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
-
-      // Checar áudio (HEAD rápido)
-      try {
-        const audioCheck = await fetch(audioUrl, { method: 'HEAD', signal: AbortSignal.timeout(4000) });
-        if (audioCheck.ok) {
-          payload.input = { ...payload.input, audio_url: audioUrl };
-        }
-      } catch (_) {}
-
-      // Checar SRT — se não veio no body, tenta carregar do servidor
-      if (!payload.subtitlesSrt) {
-        try {
-          const srtRes = await fetch(srtUrl, { signal: AbortSignal.timeout(4000) });
-          if (srtRes.ok) {
-            const srtText = await srtRes.text();
-            if (srtText.trim()) payload.subtitlesSrt = srtText;
-          }
-        } catch (_) {}
-      }
-    }
-
-    const previewResponse = await fetch(`${REMOTION_RENDER_BASE}/preview`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!previewResponse.ok) {
-      const text = await previewResponse.text();
-      let msg = text;
-      try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch (_) {}
-      return res.status(previewResponse.status).json({ error: msg });
-    }
-
-    let html = await previewResponse.text();
-
-    // Injetar preloader: esconde o player até todas as imagens estarem cacheadas
-    const carouselImages = payload.input?.listing?.carousel_images || [];
-    const audioUrl = payload.input?.audio_url || '';
-    const preloadInject = `
-<style>
-  #pre-overlay {
-    position:fixed;inset:0;background:#000;z-index:9999;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:10px;color:#fff;font-family:sans-serif;transition:opacity .5s;
-  }
-  #pre-overlay.out{opacity:0;pointer-events:none;}
-  #root{opacity:0;transition:opacity .5s;}
-  #root.rdy{opacity:1;}
-</style>
-<div id="pre-overlay">
-  <div style="font-size:13px;opacity:.6;letter-spacing:.05em">Carregando…</div>
-  <div id="pre-prog" style="font-size:11px;opacity:.4"></div>
-</div>
-<script>
-(function(){
-  var imgs=${JSON.stringify(carouselImages)};
-  var audio=${JSON.stringify(audioUrl)};
-  var total=imgs.length+(audio?1:0);
-  var done=0;
-  var prog=document.getElementById('pre-prog');
-  function tick(){
-    done++;
-    if(prog) prog.textContent=done+' / '+total;
-    if(done>=total) show();
-  }
-  function show(){
-    var ov=document.getElementById('pre-overlay');
-    var root=document.getElementById('root');
-    if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}
-    if(root) root.classList.add('rdy');
-  }
-  if(total===0){show();return;}
-  imgs.forEach(function(src){
-    var i=new Image();i.onload=i.onerror=tick;i.src=src;
-  });
-  if(audio){
-    var a=new Audio();a.preload='auto';
-    a.addEventListener('canplaythrough',tick,{once:true});
-    a.addEventListener('error',tick,{once:true});
-    a.src=audio;
-  }
-})();
-</script>`;
-    html = html.replace('</body>', preloadInject + '\n</body>');
-
+    const result = await buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, inputOverride, imageProxyBase: remotionImageProxyBase(req) });
+    if (result.error) return res.status(result.status || 500).json({ error: result.error });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(html);
+    return res.send(result.html);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

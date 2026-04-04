@@ -172,48 +172,22 @@ function RemotionRenderPanel({ listingId, listing }) {
     }
   };
 
-  // Calcula duração em ms a partir do SRT (pega timestamp final da última cue)
-  const getSrtDurationMs = (srt) => {
-    if (!srt) return null;
-    const matches = [...srt.matchAll(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->/g)];
-    if (!matches.length) return null;
-    const last = matches[matches.length - 1];
-    const [, h, m, s, ms] = last;
-    return (Number(h) * 3600 + Number(m) * 60 + Number(s)) * 1000 + Number(ms) + 2000; // +2s margem
-  };
-
-  // Duração padrão por animação (em ms) quando não há SRT
-  const ANIM_DURATION = { op1: 30000, op2: 30000, op3: 30000, op4: 30000, op5: 25000, op6: 20000 };
-
   const handleRender = async () => {
     setStatus({ loading: true });
     try {
-      // Busca o preview HTML do Remotion (já inclui áudio/SRT salvos automaticamente)
-      const res = await fetch(`${API}/listings/${listingId}/remotion-preview`, {
+      const publicAppUrl = window.location.origin;
+      const res = await fetch(`${API}/listings/${listingId}/remotion-capture`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ animation, subtitlesSrt: subtitlesSrt.trim() || undefined }),
+        body: JSON.stringify({
+          animation,
+          subtitlesSrt: subtitlesSrt.trim() || undefined,
+          public_app_url: publicAppUrl,
+        }),
       });
-      if (!res.ok) {
-        let errMsg = `Erro ${res.status}`;
-        try { const j = await res.json(); if (j?.error) errMsg = j.error; } catch (_) {}
-        setStatus({ error: errMsg });
-        return;
-      }
-      const html = await res.text();
-
-      // Extrai SRT do HTML injetado para calcular duração real
-      const srtMatch = html.match(/"subtitlesSrt":"((?:[^"\\]|\\.)*)"/);
-      const embeddedSrt = srtMatch ? srtMatch[1].replace(/\\n/g, '\n') : subtitlesSrt.trim();
-      const durationMs = getSrtDurationMs(embeddedSrt) || ANIM_DURATION[animation] || 30000;
-
-      // Abre como blob URL — mesma mecânica do "Abrir tela para gravar vídeo"
-      const blob = new Blob([html], { type: 'text/html' });
-      const previewUrl = URL.createObjectURL(blob);
-      window.open(previewUrl, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(previewUrl), 120000);
-
-      setStatus({ success: true, message: `✓ Animação aberta (${Math.round(durationMs / 1000)}s). Use a tela aberta para gravar o vídeo.` });
+      const j = await res.json();
+      if (!res.ok) { setStatus({ error: j.error || `Erro ${res.status}` }); return; }
+      setStatus({ success: true, message: `✓ Captura iniciada (${Math.round((j.duration_ms || 30000) / 1000)}s). Você será notificado quando o vídeo estiver pronto.` });
     } catch (e) {
       setStatus({ error: e.message || 'Falha na requisição' });
     }
@@ -223,7 +197,7 @@ function RemotionRenderPanel({ listingId, listing }) {
     <div className="card" style={{ marginTop: '1.5rem' }}>
       <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Vídeo Remotion (templates)</h3>
       <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-        Abre a animação em tela cheia para gravar o vídeo. Escolha a animação desejada e clique em "Abrir para gravar".
+        Gera o vídeo automaticamente via Browserless. Escolha a animação e clique em "Gerar vídeo".
       </p>
       <div style={{ marginBottom: '1rem' }}>
         <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.35rem' }}>Animação</label>
@@ -284,7 +258,7 @@ function RemotionRenderPanel({ listingId, listing }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <button type="button" className="btn btn-primary" onClick={handleRender} disabled={status?.loading || previewing}
           style={{ fontSize: '0.88rem' }}>
-          {status?.loading ? '⏳ Abrindo…' : '🎬 Abrir para gravar'}
+          {status?.loading ? '⏳ Gerando…' : '▶ Gerar vídeo Remotion'}
         </button>
         <button type="button" className="btn" onClick={handlePreview} disabled={status?.loading || previewing}
           style={{ fontSize: '0.88rem' }}>
