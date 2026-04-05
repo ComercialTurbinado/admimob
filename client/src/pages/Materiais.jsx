@@ -175,17 +175,16 @@ function RemotionRenderPanel({ listingId, listing }) {
   const handleRender = async () => {
     setStatus({ loading: true });
     try {
-      const publicAppUrl = window.location.origin;
-      // Usa o mesmo endpoint do "Enviar frames ao webhook", passando a URL do preview Remotion como poster_url
-      // ?capture=1 ativa o script de captura de frames embutido na página
-      const remotionPageUrl = `${publicAppUrl}/api/listings/${listingId}/remotion-preview-page?animation=${animation}&capture=1`;
+      // A URL do preview é no backend (Railway), não no frontend (Amplify)
+      // API já aponta para o backend: ex. https://xxx.railway.app/api
+      const remotionPageUrl = `${API}/listings/${listingId}/remotion-preview-page?animation=${animation}&capture=1`;
       const res = await fetch(`${API}/poster-frames-to-webhook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           listing_id: listingId,
           poster_url: remotionPageUrl,
-          public_app_url: publicAppUrl,
+          public_app_url: API.replace(/\/api$/, ''),
         }),
       });
       const j = await res.json();
