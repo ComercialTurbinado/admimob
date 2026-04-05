@@ -175,14 +175,23 @@ function RemotionRenderPanel({ listingId, listing }) {
   const handleRender = async () => {
     setStatus({ loading: true });
     try {
-      const res = await fetch(`${API}/listings/${listingId}/remotion-capture`, {
+      // API aponta para o backend (Railway) — usar como base da poster_url
+      const backendBase = API.replace(/\/api$/, '');
+      const posterUrl = `${backendBase}/api/listings/${listingId}/remotion-preview-page?animation=${animation}&capture=1`;
+      const res = await fetch(`${API}/poster-frames-to-webhook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ animation }),
+        body: JSON.stringify({
+          listing_id: listingId,
+          poster_url: posterUrl,
+          public_app_url: backendBase,
+          viewport_width: 1080,
+          viewport_height: 1920,
+        }),
       });
       const j = await res.json();
       if (!res.ok) { setStatus({ error: j.error || `Erro ${res.status}` }); return; }
-      setStatus({ success: true, message: `✓ Captura iniciada (${animation}, ~${Math.round((j.duration_ms || 30000) / 1000)}s). Você será notificado quando o vídeo estiver pronto.` });
+      setStatus({ success: true, message: `✓ Captura Remotion iniciada (${animation}). Você será notificado quando o vídeo estiver pronto.` });
     } catch (e) {
       setStatus({ error: e.message || 'Falha na requisição' });
     }

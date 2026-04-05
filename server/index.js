@@ -934,8 +934,8 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
     var root=document.getElementById('root');
     if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}
     if(root)root.classList.add('rdy');
-    // Sinaliza ao Puppeteer que pode começar os screenshots
     setTimeout(function(){ window.__remotionReady=true; }, 1500);
+    document.dispatchEvent(new CustomEvent('remotion-preloader-done'));
   }
   if(total===0){show();return;}
   imgs.forEach(function(src){var i=new Image();i.onload=i.onerror=tick;i.src=src;});
@@ -945,7 +945,104 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
 })();
 </script>`;
 
-  html = html.replace('</body>', preloadInject + '\n</body>');
+  // Script de captura — ativo quando ?capture=1
+  // Usa html2canvas com crop forçado 1080×1920 + 4fps para economizar memória
+  const captureScript = `<script>
+(function(){
+  if(new URLSearchParams(window.location.search).get('capture')!=='1')return;
+  var FPS=4;
+  var DURATION_MS=${duration};
+  var TOTAL_FRAMES=Math.ceil(DURATION_MS/1000*FPS);
+  var FRAME_MS=1000/FPS;
+  var LISTING_ID=${listingId};
+  var IMOBNAME=${JSON.stringify(imobname)};
+  var ADV_CODE=${JSON.stringify(advertiserCode)};
+  var started=false;
+
+  function onReady(){
+    if(started)return; started=true;
+    setTimeout(run,2000);
+  }
+  document.addEventListener('remotion-preloader-done',onReady);
+  var poll=setInterval(function(){if(document.querySelector('#root.rdy')){clearInterval(poll);onReady();}},300);
+  setTimeout(function(){clearInterval(poll);onReady();},22000);
+
+  async function run(){
+    // Lê webhook das configurações
+    var dash={};
+    try{dash=await fetch(window.location.origin+'/api/dashboard',{cache:'no-store'}).then(function(r){return r.json();});}catch(e){}
+    var whFrames=(dash.webhook_frames_save||'').trim();
+    var whDone=(dash.webhook_frames_done||'').trim();
+    var whMontar=(dash.webhook_montar_mp4||'').trim();
+    if(!whFrames){window.__captureDone=true;return;}
+
+    // Carrega html2canvas
+    try{
+      await new Promise(function(res,rej){
+        var s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload=res;s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }catch(e){window.__captureDone=true;return;}
+
+    var el=document.getElementById('root')||document.body;
+    var t0=Date.now();
+    var sent=0;
+
+    for(var i=0;i<TOTAL_FRAMES;i++){
+      // Pace de acordo com o FPS
+      var target=i*FRAME_MS;
+      var elapsed=Date.now()-t0;
+      if(elapsed<target)await new Promise(function(r){setTimeout(r,target-elapsed);});
+      await new Promise(function(r){requestAnimationFrame(r);});
+
+      // Captura e faz crop central para 1080x1920
+      var b64='';
+      try{
+        var raw=await window.html2canvas(el,{useCORS:true,allowTaint:true,scale:1,logging:false,imageTimeout:8000});
+        // Crop: extrai 9:16 centralizado e redimensiona para 1080x1920
+        var vw=raw.width, vh=raw.height;
+        var cropW=Math.round(vh*1080/1920);
+        var cropX=Math.round((vw-cropW)/2);
+        var out=document.createElement('canvas');
+        out.width=1080;out.height=1920;
+        out.getContext('2d').drawImage(raw,cropX,0,cropW,vh,0,0,1080,1920);
+        b64=out.toDataURL('image/jpeg',0.75).split(',')[1];
+        // Libera memória imediatamente
+        raw.width=0;raw.height=0;
+        out.width=0;out.height=0;
+      }catch(e){continue;}
+
+      var fn=i+1;
+      try{
+        await fetch(whFrames,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,
+            frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',
+            image_base64:b64,listing_id:LISTING_ID,
+            imobname:IMOBNAME,advertiserCode:ADV_CODE,
+            mime_type:'image/jpeg',fps:FPS,
+            timestamp_ms:Math.round(i*FRAME_MS),render_source:'remotion'})
+        });
+        sent++;
+      }catch(e){}
+
+      // Pausa a cada 20 frames para aliviar memória
+      if(fn%20===0&&fn<TOTAL_FRAMES)await new Promise(function(r){setTimeout(r,1000);});
+    }
+
+    // Webhooks de conclusão
+    var done={listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADV_CODE,
+      frames_sent:sent,total_frames:TOTAL_FRAMES,status:'done',
+      fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture',render_source:'remotion'};
+    if(whDone)fetch(whDone,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(done)}).catch(function(){});
+    if(whMontar)fetch(whMontar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},done,{action:'montar_mp4'}))}).catch(function(){});
+    window.__captureDone=true;
+  }
+})();
+</script>`;
+
+  html = html.replace('</body>', preloadInject + '\n' + captureScript + '\n</body>');
 
   return { html, payload, duration, imobname, advertiserCode };
 }
