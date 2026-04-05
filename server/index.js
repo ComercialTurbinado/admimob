@@ -998,12 +998,24 @@ app.post('/api/listings/:id/remotion-capture', async (req, res) => {
   const webhookDoneUrl   = (await getSetting('webhook_frames_done', '')).trim();
   const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
 
-  // URL do preview — usa o host da requisição (Railway) para garantir URL correta
-  const reqBase = `${req.protocol}://${req.get('host')}`;
-  const captureUrl = `${reqBase}/api/listings/${listingId}/remotion-preview-page?animation=${animation}`;
+  // URL pública do backend — necessária para o capture service (externo) conseguir acessar
+  // Usa PUBLIC_APP_URL do env (Railway) ou x-forwarded-host se disponível
+  const xForwardedHost = req.get('x-forwarded-host');
+  const xForwardedProto = req.get('x-forwarded-proto') || 'https';
+  const publicBase = (process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : xForwardedHost ? `${xForwardedProto}://${xForwardedHost}` : null);
+
+  if (!publicBase) {
+    return res.status(503).json({ error: 'Configure PUBLIC_APP_URL no Railway para que o capture service consiga acessar o preview.' });
+  }
+
+  const captureUrl = `${publicBase}/api/listings/${listingId}/remotion-preview-page?animation=${animation}`;
 
   // Timeout: duração × 4 + 2 min de margem
   const captureTimeoutMs = Math.max(durationMs * 4, 3 * 60 * 1000) + 2 * 60 * 1000;
+
+  console.log(`[remotion-capture] listing=${listingId} animation=${animation} duration=${durationMs}ms url=${captureUrl} capture_service=${browserlessUrl}`);
 
   // Responde imediatamente — captura roda em background no capture service
   res.json({ ok: true, listing_id: Number(listingId), animation, duration_ms: durationMs, capture_url: captureUrl });
@@ -1034,7 +1046,11 @@ app.post('/api/listings/:id/remotion-capture', async (req, res) => {
         signal: controller.signal,
       });
       clearTimeout(tid);
-      if (!openRes.ok) console.error('[remotion-capture] capture service:', openRes.status, await openRes.text().catch(() => ''));
+      if (!openRes.ok) {
+        console.error('[remotion-capture] capture service erro:', openRes.status, await openRes.text().catch(() => ''));
+      } else {
+        console.log('[remotion-capture] capture service OK para listing', listingId);
+      }
     } catch (e) {
       console.error('[remotion-capture] erro background:', e.message);
     }
