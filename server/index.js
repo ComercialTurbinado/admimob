@@ -952,6 +952,8 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
   var TOTAL_FRAMES=Math.ceil(DURATION_MS/1000*FPS);
   var FRAME_INTERVAL_MS=1000/FPS;
   var LISTING_ID=${listingId};
+  var IMOBNAME=${JSON.stringify(imobname)};
+  var ADVERTISER_CODE=${JSON.stringify(advertiserCode)};
   var captureStarted=false;
 
   function onReady(){
@@ -1006,7 +1008,7 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
       var fn=i+1;
       try{
         await fetch(whFrames,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',image_base64:b64,listing_id:LISTING_ID,mime_type:'image/jpeg',fps:FPS})
+          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',image_base64:b64,listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,mime_type:'image/jpeg',fps:FPS,timestamp_ms:i*FRAME_INTERVAL_MS})
         });
         framesSent++;
       }catch(e){console.warn('[remotion-capture] webhook frame '+fn+':',e.message);}
@@ -1014,7 +1016,7 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
       if((i+1)%30===0&&i<TOTAL_FRAMES-1)await new Promise(function(r){setTimeout(r,1500);});
     }
 
-    var done={listing_id:LISTING_ID,frames_sent:framesSent,total_frames:TOTAL_FRAMES,status:'done',fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture'};
+    var done={listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,frames_sent:framesSent,total_frames:TOTAL_FRAMES,status:'done',fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture'};
     if(whDone)try{await fetch(whDone,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(done)});}catch(e){}
     if(whMontar)try{await fetch(whMontar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},done,{action:'montar_mp4'}))});}catch(e){}
     window.__captureDone=true;
