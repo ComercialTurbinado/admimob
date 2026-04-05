@@ -175,23 +175,14 @@ function RemotionRenderPanel({ listingId, listing }) {
   const handleRender = async () => {
     setStatus({ loading: true });
     try {
-      // A URL do preview é no backend (Railway), não no frontend (Amplify)
-      // API já aponta para o backend: ex. https://xxx.railway.app/api
-      const remotionPageUrl = `${API}/listings/${listingId}/remotion-preview-page?animation=${animation}&capture=1`;
-      const res = await fetch(`${API}/poster-frames-to-webhook`, {
+      const res = await fetch(`${API}/listings/${listingId}/remotion-capture`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listing_id: listingId,
-          poster_url: remotionPageUrl,
-          public_app_url: API.replace(/\/api$/, ''),
-          viewport_width: 1080,
-          viewport_height: 1920,
-        }),
+        body: JSON.stringify({ animation }),
       });
       const j = await res.json();
       if (!res.ok) { setStatus({ error: j.error || `Erro ${res.status}` }); return; }
-      setStatus({ success: true, message: `✓ Captura Remotion iniciada (animação: ${animation}). Você será notificado quando o vídeo estiver pronto.` });
+      setStatus({ success: true, message: `✓ Captura iniciada (${animation}, ~${Math.round((j.duration_ms || 30000) / 1000)}s). Você será notificado quando o vídeo estiver pronto.` });
     } catch (e) {
       setStatus({ error: e.message || 'Falha na requisição' });
     }

@@ -909,7 +909,8 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
 
   let html = await previewResponse.text();
 
-  // Preloader
+  // Preloader: aguarda assets carregarem e sinaliza window.__remotionReady = true
+  // O Puppeteer (capture service) usa esse sinal para começar os screenshots nativos
   const carouselImages = payload.input?.listing?.carousel_images || [];
   const audioUrl = payload.input?.audio_url || '';
   const duration = srtDurationMs(payload.subtitlesSrt) || REMOTION_ANIM_DURATION_MS[animation] || 30000;
@@ -933,98 +934,18 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
     var root=document.getElementById('root');
     if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}
     if(root)root.classList.add('rdy');
-    document.dispatchEvent(new CustomEvent('remotion-preloader-done'));
+    // Sinaliza ao Puppeteer que pode começar os screenshots
+    setTimeout(function(){ window.__remotionReady=true; }, 1500);
   }
   if(total===0){show();return;}
   imgs.forEach(function(src){var i=new Image();i.onload=i.onerror=tick;i.src=src;});
   if(audio){var a=new Audio();a.preload='auto';a.addEventListener('canplaythrough',tick,{once:true});a.addEventListener('error',tick,{once:true});a.src=audio;}
+  // Fallback: força show após 20s mesmo sem todos os assets
+  setTimeout(show,20000);
 })();
 </script>`;
 
-  // Script de captura de frames — ativo apenas quando ?capture=1 (usado pelo capture service)
-  const captureScript = `
-<script>
-(function(){
-  if(new URLSearchParams(window.location.search).get('capture')!=='1')return;
-  var API_BASE=window.location.origin;
-  var FPS=8;
-  var DURATION_MS=${duration};
-  var TOTAL_FRAMES=Math.ceil(DURATION_MS/1000*FPS);
-  var FRAME_INTERVAL_MS=1000/FPS;
-  var LISTING_ID=${listingId};
-  var IMOBNAME=${JSON.stringify(imobname)};
-  var ADVERTISER_CODE=${JSON.stringify(advertiserCode)};
-  var captureStarted=false;
-
-  function onReady(){
-    if(captureStarted)return;
-    captureStarted=true;
-    setTimeout(runCapture,2000); // aguarda animação iniciar
-  }
-  document.addEventListener('remotion-preloader-done',onReady);
-  // Fallback: polling para garantir que dispara mesmo sem o evento
-  var poll=setInterval(function(){
-    if(!document.getElementById('pre-overlay')||document.querySelector('#root.rdy')){
-      clearInterval(poll);onReady();
-    }
-  },400);
-  setTimeout(function(){clearInterval(poll);onReady();},25000);
-
-  async function runCapture(){
-    var dash={};
-    try{dash=await fetch(API_BASE+'/api/dashboard',{cache:'no-store'}).then(function(r){return r.json();});}catch(e){}
-    var whFrames=(dash.webhook_frames_save||'').trim();
-    var whDone=(dash.webhook_frames_done||'').trim();
-    var whMontar=(dash.webhook_montar_mp4||'').trim();
-    if(!whFrames){console.warn('[remotion-capture] webhook_frames_save não configurado');window.__captureDone=true;return;}
-
-    // Carrega html2canvas do CDN
-    try{
-      await new Promise(function(resolve,reject){
-        var s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        s.onload=resolve;s.onerror=function(){reject(new Error('html2canvas load failed'));};
-        document.head.appendChild(s);
-      });
-    }catch(e){console.error('[remotion-capture]',e.message);window.__captureDone=true;return;}
-
-    var playerEl=document.getElementById('root')||document.body;
-    var captureStart=Date.now();
-    var framesSent=0;
-
-    for(var i=0;i<TOTAL_FRAMES;i++){
-      var targetMs=i*FRAME_INTERVAL_MS;
-      var elapsed=Date.now()-captureStart;
-      if(elapsed<targetMs)await new Promise(function(r){setTimeout(r,targetMs-elapsed);});
-      await new Promise(function(r){requestAnimationFrame(r);});
-
-      var b64='';
-      try{
-        var c=await window.html2canvas(playerEl,{useCORS:true,allowTaint:true,scale:1,logging:false,imageTimeout:6000});
-        b64=c.toDataURL('image/jpeg',0.8).split(',')[1];
-        c.width=0;c.height=0;
-      }catch(e){console.warn('[remotion-capture] frame '+(i+1)+':',e.message);continue;}
-
-      var fn=i+1;
-      try{
-        await fetch(whFrames,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',image_base64:b64,listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,mime_type:'image/jpeg',fps:FPS,timestamp_ms:i*FRAME_INTERVAL_MS,render_source:'remotion'})
-        });
-        framesSent++;
-      }catch(e){console.warn('[remotion-capture] webhook frame '+fn+':',e.message);}
-
-      if((i+1)%30===0&&i<TOTAL_FRAMES-1)await new Promise(function(r){setTimeout(r,1500);});
-    }
-
-    var done={listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,frames_sent:framesSent,total_frames:TOTAL_FRAMES,status:'done',fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture',render_source:'remotion'};
-    if(whDone)try{await fetch(whDone,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(done)});}catch(e){}
-    if(whMontar)try{await fetch(whMontar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},done,{action:'montar_mp4'}))});}catch(e){}
-    window.__captureDone=true;
-  }
-})();
-</script>`;
-
-  html = html.replace('</body>', preloadInject + '\n' + captureScript + '\n</body>');
+  html = html.replace('</body>', preloadInject + '\n</body>');
 
   return { html, payload, duration, imobname, advertiserCode };
 }
@@ -1046,71 +967,78 @@ app.get('/api/listings/:id/remotion-preview-page', async (req, res) => {
   }
 });
 
-/** POST: captura automatizada via Browserless — mesmo fluxo do poster-frames-to-webhook. */
+/** POST: captura Remotion via Puppeteer nativo no capture service (sem html2canvas). */
 app.post('/api/listings/:id/remotion-capture', async (req, res) => {
   const listingId = Number(req.params.id);
-  const { animation = 'op3', subtitlesSrt, fps: fpsParam, webhook_url: bodyWebhookUrl, public_app_url: bodyPublicAppUrl } = req.body || {};
+  const { animation = 'op3', fps: fpsParam = 8 } = req.body || {};
   const validAnim = new Set(['op1', 'op2', 'op3', 'op4', 'op5', 'op6']);
   if (!validAnim.has(String(animation))) return res.status(400).json({ error: 'animation inválido' });
 
-  const browserlessUrlFromEnv = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
-  const browserlessUrl = (await getSetting('browserless_ws_url', '')).trim() || browserlessUrlFromEnv;
-  const publicAppUrlFromEnv = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
-  const publicAppUrl = ((bodyPublicAppUrl || '').trim() || publicAppUrlFromEnv).replace(/\/$/, '');
-  if (!publicAppUrl) return res.status(503).json({ error: 'PUBLIC_APP_URL não configurado' });
+  const browserlessUrl = ((await getSetting('browserless_ws_url', '')).trim() || process.env.BROWSERLESS_WS_URL || '');
+  if (!browserlessUrl) return res.status(503).json({ error: 'Configure o serviço de captura em Configurações (browserless_ws_url)' });
 
-  // Pré-calcula duração via SRT (sem gerar HTML aqui — só lê o SRT)
+  // Lê dados do listing
+  const rawRow = await db.prepare('SELECT raw_data FROM listings WHERE id = ?').get(listingId);
+  if (!rawRow) return res.status(404).json({ error: 'Listing não encontrado' });
+  const { imobname = '', advertiserCode = '' } = JSON.parse(rawRow.raw_data);
+
+  // Calcula duração via SRT
   let durationMs = REMOTION_ANIM_DURATION_MS[animation] || 30000;
-  try {
-    const raw = (await db.prepare('SELECT raw_data FROM listings WHERE id = ?').get(listingId))?.raw_data;
-    if (raw) {
-      const { imobname, advertiserCode } = JSON.parse(raw);
-      if (imobname && advertiserCode) {
-        const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
-        const srtUrl = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
-        const srtRes = await fetch(srtUrl, { signal: AbortSignal.timeout(4000) }).catch(() => null);
-        if (srtRes?.ok) { const t = await srtRes.text(); const d = srtDurationMs(t); if (d > 0) durationMs = d; }
-      }
-    }
-  } catch (_) {}
-
-  // URL pública do preview que o Browserless vai abrir
-  const captureUrl = `${publicAppUrl}/api/listings/${listingId}/remotion-preview-page?animation=${animation}`;
-  const captureServiceUrl = browserlessUrl.trim();
-  const isHttpOpenEndpoint = /^https?:\/\//i.test(captureServiceUrl);
-
-  if (isHttpOpenEndpoint) {
-    const captureTimeoutMs = Math.max(durationMs * 3, 5 * 60 * 1000);
-    // Responde imediatamente — captura roda em background (pode levar 30s+)
-    res.json({ ok: true, listing_id: Number(listingId), animation, duration_ms: durationMs, via: 'remotion_capture' });
-    (async () => {
-      try {
-        const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), captureTimeoutMs + 60000);
-        const openRes = await fetch(captureServiceUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: captureUrl, timeoutMs: captureTimeoutMs }),
-          signal: controller.signal,
-        });
-        clearTimeout(tid);
-        if (!openRes.ok) {
-          console.error('[remotion-capture] serviço retornou', openRes.status, await openRes.text().catch(() => ''));
-          return;
-        }
-        const payload = { listing_id: Number(listingId), status: 'done', animation, duration_ms: durationMs, via: 'remotion_capture' };
-        const webhookDoneUrl = (await getSetting('webhook_frames_done', '')).trim();
-        if (webhookDoneUrl) fetch(webhookDoneUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {});
-        const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
-        if (webhookMontarUrl) fetch(webhookMontarUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, action: 'montar_mp4' }) }).catch(() => {});
-      } catch (e) {
-        console.error('[remotion-capture] background error:', e.message);
-      }
-    })();
-    return;
+  if (imobname && advertiserCode) {
+    try {
+      const ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';
+      const srtUrl = `${ffmpegBase}/data/render/imob/${encodeURIComponent(imobname)}/${encodeURIComponent(advertiserCode)}/audio/narracao-${advertiserCode}.srt`;
+      const srtRes = await fetch(srtUrl, { signal: AbortSignal.timeout(4000) }).catch(() => null);
+      if (srtRes?.ok) { const t = await srtRes.text(); const d = srtDurationMs(t); if (d > 0) durationMs = d; }
+    } catch (_) {}
   }
 
-  return res.status(503).json({ error: 'Configure o serviço de captura (Browserless) em Configurações' });
+  // Webhooks das configurações
+  const webhookFramesUrl = (await getSetting('webhook_frames_save', '')).trim();
+  const webhookDoneUrl   = (await getSetting('webhook_frames_done', '')).trim();
+  const webhookMontarUrl = (await getSetting('webhook_montar_mp4', '')).trim();
+
+  // URL do preview — usa o host da requisição (Railway) para garantir URL correta
+  const reqBase = `${req.protocol}://${req.get('host')}`;
+  const captureUrl = `${reqBase}/api/listings/${listingId}/remotion-preview-page?animation=${animation}`;
+
+  // Timeout: duração × 4 + 2 min de margem
+  const captureTimeoutMs = Math.max(durationMs * 4, 3 * 60 * 1000) + 2 * 60 * 1000;
+
+  // Responde imediatamente — captura roda em background no capture service
+  res.json({ ok: true, listing_id: Number(listingId), animation, duration_ms: durationMs, capture_url: captureUrl });
+
+  (async () => {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), captureTimeoutMs + 60000);
+      const openRes = await fetch(browserlessUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: captureUrl,
+          timeoutMs: captureTimeoutMs,
+          viewportWidth: 1080,
+          viewportHeight: 1920,
+          captureFrames: {
+            fps: Number(fpsParam) || 8,
+            durationMs,
+            webhookFramesUrl,
+            webhookDoneUrl,
+            webhookMontarUrl,
+            listingId: Number(listingId),
+            imobname,
+            advertiserCode,
+          },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (!openRes.ok) console.error('[remotion-capture] capture service:', openRes.status, await openRes.text().catch(() => ''));
+    } catch (e) {
+      console.error('[remotion-capture] erro background:', e.message);
+    }
+  })();
 });
 
 /** Proxy para o serviço Remotion: POST JSON → HTML com Player (preview sem render). */
