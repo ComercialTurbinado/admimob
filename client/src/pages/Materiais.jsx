@@ -177,7 +177,8 @@ function RemotionRenderPanel({ listingId, listing }) {
     try {
       const publicAppUrl = window.location.origin;
       // Usa o mesmo endpoint do "Enviar frames ao webhook", passando a URL do preview Remotion como poster_url
-      const remotionPageUrl = `${publicAppUrl}/api/listings/${listingId}/remotion-preview-page?animation=${animation}`;
+      // ?capture=1 ativa o script de captura de frames embutido na página
+      const remotionPageUrl = `${publicAppUrl}/api/listings/${listingId}/remotion-preview-page?animation=${animation}&capture=1`;
       const res = await fetch(`${API}/poster-frames-to-webhook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

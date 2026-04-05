@@ -912,6 +912,7 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
   // Preloader
   const carouselImages = payload.input?.listing?.carousel_images || [];
   const audioUrl = payload.input?.audio_url || '';
+  const duration = srtDurationMs(payload.subtitlesSrt) || REMOTION_ANIM_DURATION_MS[animation] || 30000;
   const preloadInject = `
 <style>
   #pre-overlay{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-family:sans-serif;transition:opacity .5s;}
@@ -927,15 +928,102 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
   var total=imgs.length+(audio?1:0);var done=0;
   var prog=document.getElementById('pre-prog');
   function tick(){done++;if(prog)prog.textContent=done+' / '+total;if(done>=total)show();}
-  function show(){var ov=document.getElementById('pre-overlay');var root=document.getElementById('root');if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}if(root)root.classList.add('rdy');}
+  function show(){
+    var ov=document.getElementById('pre-overlay');
+    var root=document.getElementById('root');
+    if(ov){ov.classList.add('out');setTimeout(function(){ov.remove();},600);}
+    if(root)root.classList.add('rdy');
+    document.dispatchEvent(new CustomEvent('remotion-preloader-done'));
+  }
   if(total===0){show();return;}
   imgs.forEach(function(src){var i=new Image();i.onload=i.onerror=tick;i.src=src;});
   if(audio){var a=new Audio();a.preload='auto';a.addEventListener('canplaythrough',tick,{once:true});a.addEventListener('error',tick,{once:true});a.src=audio;}
 })();
 </script>`;
-  html = html.replace('</body>', preloadInject + '\n</body>');
 
-  const duration = srtDurationMs(payload.subtitlesSrt) || REMOTION_ANIM_DURATION_MS[animation] || 30000;
+  // Script de captura de frames — ativo apenas quando ?capture=1 (usado pelo capture service)
+  const captureScript = `
+<script>
+(function(){
+  if(new URLSearchParams(window.location.search).get('capture')!=='1')return;
+  var API_BASE=window.location.origin;
+  var FPS=8;
+  var DURATION_MS=${duration};
+  var TOTAL_FRAMES=Math.ceil(DURATION_MS/1000*FPS);
+  var FRAME_INTERVAL_MS=1000/FPS;
+  var LISTING_ID=${listingId};
+  var captureStarted=false;
+
+  function onReady(){
+    if(captureStarted)return;
+    captureStarted=true;
+    setTimeout(runCapture,2000); // aguarda animação iniciar
+  }
+  document.addEventListener('remotion-preloader-done',onReady);
+  // Fallback: polling para garantir que dispara mesmo sem o evento
+  var poll=setInterval(function(){
+    if(!document.getElementById('pre-overlay')||document.querySelector('#root.rdy')){
+      clearInterval(poll);onReady();
+    }
+  },400);
+  setTimeout(function(){clearInterval(poll);onReady();},25000);
+
+  async function runCapture(){
+    var dash={};
+    try{dash=await fetch(API_BASE+'/api/dashboard',{cache:'no-store'}).then(function(r){return r.json();});}catch(e){}
+    var whFrames=(dash.webhook_frames_save||'').trim();
+    var whDone=(dash.webhook_frames_done||'').trim();
+    var whMontar=(dash.webhook_montar_mp4||'').trim();
+    if(!whFrames){console.warn('[remotion-capture] webhook_frames_save não configurado');window.__captureDone=true;return;}
+
+    // Carrega html2canvas do CDN
+    try{
+      await new Promise(function(resolve,reject){
+        var s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload=resolve;s.onerror=function(){reject(new Error('html2canvas load failed'));};
+        document.head.appendChild(s);
+      });
+    }catch(e){console.error('[remotion-capture]',e.message);window.__captureDone=true;return;}
+
+    var playerEl=document.getElementById('root')||document.body;
+    var captureStart=Date.now();
+    var framesSent=0;
+
+    for(var i=0;i<TOTAL_FRAMES;i++){
+      var targetMs=i*FRAME_INTERVAL_MS;
+      var elapsed=Date.now()-captureStart;
+      if(elapsed<targetMs)await new Promise(function(r){setTimeout(r,targetMs-elapsed);});
+      await new Promise(function(r){requestAnimationFrame(r);});
+
+      var b64='';
+      try{
+        var c=await window.html2canvas(playerEl,{useCORS:true,allowTaint:true,scale:1,logging:false,imageTimeout:6000});
+        b64=c.toDataURL('image/jpeg',0.8).split(',')[1];
+        c.width=0;c.height=0;
+      }catch(e){console.warn('[remotion-capture] frame '+(i+1)+':',e.message);continue;}
+
+      var fn=i+1;
+      try{
+        await fetch(whFrames,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',image_base64:b64,listing_id:LISTING_ID,mime_type:'image/jpeg',fps:FPS})
+        });
+        framesSent++;
+      }catch(e){console.warn('[remotion-capture] webhook frame '+fn+':',e.message);}
+
+      if((i+1)%30===0&&i<TOTAL_FRAMES-1)await new Promise(function(r){setTimeout(r,1500);});
+    }
+
+    var done={listing_id:LISTING_ID,frames_sent:framesSent,total_frames:TOTAL_FRAMES,status:'done',fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture'};
+    if(whDone)try{await fetch(whDone,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(done)});}catch(e){}
+    if(whMontar)try{await fetch(whMontar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},done,{action:'montar_mp4'}))});}catch(e){}
+    window.__captureDone=true;
+  }
+})();
+</script>`;
+
+  html = html.replace('</body>', preloadInject + '\n' + captureScript + '\n</body>');
+
   return { html, payload, duration, imobname, advertiserCode };
 }
 
