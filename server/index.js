@@ -1008,7 +1008,7 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
       var fn=i+1;
       try{
         await fetch(whFrames,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',image_base64:b64,listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,mime_type:'image/jpeg',fps:FPS,timestamp_ms:i*FRAME_INTERVAL_MS})
+          body:JSON.stringify({frame_number:fn,total_frames:TOTAL_FRAMES,frame_name:'frame_'+String(fn).padStart(4,'0')+'.jpg',image_base64:b64,listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,mime_type:'image/jpeg',fps:FPS,timestamp_ms:i*FRAME_INTERVAL_MS,render_source:'remotion'})
         });
         framesSent++;
       }catch(e){console.warn('[remotion-capture] webhook frame '+fn+':',e.message);}
@@ -1016,7 +1016,7 @@ async function buildRemotionPreviewHtml(listingId, { animation, subtitlesSrt, in
       if((i+1)%30===0&&i<TOTAL_FRAMES-1)await new Promise(function(r){setTimeout(r,1500);});
     }
 
-    var done={listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,frames_sent:framesSent,total_frames:TOTAL_FRAMES,status:'done',fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture'};
+    var done={listing_id:LISTING_ID,imobname:IMOBNAME,advertiserCode:ADVERTISER_CODE,frames_sent:framesSent,total_frames:TOTAL_FRAMES,status:'done',fps:FPS,duration_ms:DURATION_MS,via:'remotion_capture',render_source:'remotion'};
     if(whDone)try{await fetch(whDone,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(done)});}catch(e){}
     if(whMontar)try{await fetch(whMontar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},done,{action:'montar_mp4'}))});}catch(e){}
     window.__captureDone=true;
@@ -1142,7 +1142,7 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
   const browserlessUrlFromEnv = process.env.BROWSERLESS_WS_URL || process.env.BROWSERLESS_URL || '';
   const browserlessUrl = (await getSetting('browserless_ws_url', '')).trim() || browserlessUrlFromEnv;
   const publicAppUrlFromEnv = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || '').replace(/\/$/, '');
-  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam, public_app_url: bodyPublicAppUrl, duration_ms: durationMsParam, poster_url: posterUrlOverride } = req.body || {};
+  const { listing_id: listingId, webhook_url: bodyWebhookUrl, fps: fpsParam, layout: layoutParam, public_app_url: bodyPublicAppUrl, duration_ms: durationMsParam, poster_url: posterUrlOverride, viewport_width: viewportWidthParam, viewport_height: viewportHeightParam } = req.body || {};
   const fps = Math.min(30, Math.max(10, Number(fpsParam) || 25));
   const layout = (layoutParam && String(layoutParam).trim()) || 'classic';
   const intervalMs = 1000 / fps;
@@ -1170,7 +1170,12 @@ app.post('/api/poster-frames-to-webhook', async (req, res) => {
       const openRes = await fetch(captureServiceUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: fullPosterUrl, timeoutMs: captureTimeoutMs }),
+        body: JSON.stringify({
+          url: fullPosterUrl,
+          timeoutMs: captureTimeoutMs,
+          ...(viewportWidthParam ? { viewportWidth: Number(viewportWidthParam) } : {}),
+          ...(viewportHeightParam ? { viewportHeight: Number(viewportHeightParam) } : {}),
+        }),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);

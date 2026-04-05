@@ -168,6 +168,7 @@ export default function PosterVideo() {
           advertiserCode: listing?.advertiserCode ?? '',
           mime_type: 'image/jpeg',
           timestamp_ms: Math.round(i * INTERVAL_MS),
+          render_source: 'poster',
         };
         let res = await fetch(effectiveWebhookUrl, {
           method: 'POST',
@@ -206,6 +207,7 @@ export default function PosterVideo() {
         status: 'done',
         fps: FPS,
         duration_ms: DURATION_MS,
+        render_source: 'poster',
       };
       const doneUrl = webhookFramesDoneUrlRef.current && String(webhookFramesDoneUrlRef.current).trim();
       if (doneUrl) {

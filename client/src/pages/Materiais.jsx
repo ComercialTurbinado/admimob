@@ -185,6 +185,8 @@ function RemotionRenderPanel({ listingId, listing }) {
           listing_id: listingId,
           poster_url: remotionPageUrl,
           public_app_url: API.replace(/\/api$/, ''),
+          viewport_width: 1080,
+          viewport_height: 1920,
         }),
       });
       const j = await res.json();
