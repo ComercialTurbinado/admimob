@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Curated Estate | Luxury Listings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary": "#505f76",
+              "on-error-container": "#93000a",
+              "surface-dim": "#d8dadc",
+              "primary-fixed-dim": "#adc7f7",
+              "inverse-on-surface": "#eff1f3",
+              "outline": "#74777f",
+              "on-tertiary-container": "#3cafa2",
+              "on-surface": "#191c1e",
+              "tertiary-container": "#003d37",
+              "on-tertiary-fixed": "#00201d",
+              "on-secondary-fixed": "#0b1c30",
+              "inverse-surface": "#2d3133",
+              "tertiary-fixed-dim": "#6bd8cb",
+              "surface-container-highest": "#e0e3e5",
+              "on-background": "#191c1e",
+              "on-tertiary-fixed-variant": "#005049",
+              "secondary-fixed": "#d3e4fe",
+              "error": "#ba1a1a",
+              "on-primary-fixed": "#001b3c",
+              "surface": "#f7f9fb",
+              "surface-container": "#eceef0",
+              "inverse-primary": "#adc7f7",
+              "primary": "#002045",
+              "on-primary": "#ffffff",
+              "tertiary": "#002522",
+              "on-secondary-container": "#54647a",
+              "on-error": "#ffffff",
+              "on-secondary": "#ffffff",
+              "background": "#f7f9fb",
+              "on-primary-container": "#86a0cd",
+              "surface-container-low": "#f2f4f6",
+              "secondary-container": "#d0e1fb",
+              "on-tertiary": "#ffffff",
+              "surface-bright": "#f7f9fb",
+              "tertiary-fixed": "#89f5e7",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#b7c8e1",
+              "surface-container-high": "#e6e8ea",
+              "on-surface-variant": "#43474e",
+              "surface-variant": "#e0e3e5",
+              "on-primary-fixed-variant": "#2d476f",
+              "on-secondary-fixed-variant": "#38485d",
+              "error-container": "#ffdad6",
+              "outline-variant": "#c4c6cf",
+              "surface-tint": "#455f88",
+              "primary-container": "#1a365d",
+              "primary-fixed": "#d6e3ff"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Manrope"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2343474e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- Top Navigation Shell -->
+<header class="fixed top-0 w-full z-50 bg-slate-50/60 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,32,69,0.06)]">
+<div class="flex justify-between items-center w-full px-6 h-16">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-900" data-icon="menu">menu</span>
+</div>
+<h1 class="text-xl font-bold tracking-tighter text-blue-950 font-headline">The Curated Estate</h1>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30">
+<img alt="Agent Profile" data-alt="professional real estate agent headshot in a sharp suit with a confident smile against a blurred office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBC8kfDR7FyllJV15fCG3j7fynzXwDpTh8zSIWZhh8QI7Kplir1qJdl-KWzdf-P9thqW2AChFEgDOA44aWiDR_po798v6Q0p0BJQg7hRW4DaLiwnR2lvHDRhcDiJmTry4pN-1g9LEnmdkH7LtSEF8hjx7-rXPdTdxDxXY9ib_YmL4wyqnU4JgmqXcse2k2Cv_IJ3VZVOkWwSiJ9ONQ3o010n30vi_MC-BJx-FJadDjYLiuEVBUC_ugF5M3JJ_evKuXRk3g-1LgpwJ4"/>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6">
+<!-- Editorial Header Section -->
+<section class="mb-8">
+<p class="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-2">Exclusive Collection</p>
+<h2 class="text-4xl font-extrabold tracking-tight text-primary font-headline leading-tight">Find your next <span class="text-primary-container italic font-light">architectural</span> marvel.</h2>
+</section>
+<!-- Search & Filter Cluster -->
+<section class="mb-10 sticky top-20 z-40 bg-surface/80 backdrop-blur-md -mx-6 px-6 py-2">
+<div class="relative mb-4">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+</div>
+<input class="w-full bg-surface-container-highest border-none rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-primary/10 text-on-surface placeholder-on-surface-variant/60 font-label text-sm" placeholder="Search neighborhoods or styles..." type="text"/>
+</div>
+<!-- Enhanced Filter Grid -->
+<div class="grid grid-cols-2 gap-2">
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg py-2.5 pl-3 pr-8 text-on-surface-variant font-label text-xs font-semibold focus:ring-1 focus:ring-primary/20 appearance-none">
+<option value="">Tipo de Imóvel</option>
+<option value="house">House</option>
+<option value="apartment">Apartment</option>
+<option value="villa">Villa</option>
+<option value="land">Land</option>
+</select>
+</div>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg py-2.5 pl-3 pr-8 text-on-surface-variant font-label text-xs font-semibold focus:ring-1 focus:ring-primary/20 appearance-none">
+<option value="">Faixa de Preço</option>
+<option value="1m">$1M - $2M</option>
+<option value="2m">$2M - $5M</option>
+<option value="5m">$5M+</option>
+</select>
+</div>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg py-2.5 pl-3 pr-8 text-on-surface-variant font-label text-xs font-semibold focus:ring-1 focus:ring-primary/20 appearance-none">
+<option value="">Quartos</option>
+<option value="1">1+ Bed</option>
+<option value="3">3+ Beds</option>
+<option value="5">5+ Beds</option>
+</select>
+</div>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg py-2.5 pl-3 pr-8 text-on-surface-variant font-label text-xs font-semibold focus:ring-1 focus:ring-primary/20 appearance-none">
+<option value="">Localização</option>
+<option value="la">Los Angeles</option>
+<option value="ny">New York</option>
+<option value="miami">Miami</option>
+<option value="az">Arizona</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Listing Stream -->
+<section class="space-y-12">
+<!-- Property Card 1 -->
+<div class="group relative">
+<div class="aspect-[4/5] overflow-hidden rounded-xl bg-surface-container shadow-sm">
+<img alt="The Glass Pavilion" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="modern minimalist luxury house with large glass windows and concrete facade at dusk with warm interior lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyIgPFcvhF43kLvFqoW61PK8NLX4eq1IxcY5SfOxDNVM3U0Eq1JqEUWUXU_vXG8jQLGLR0NbtUR6RASrpcdzLOdn2XTj6JvBYosu2za9RVmSQlkjFbX8UpzpmkF2f32VXy4pUhVmAUdPTWSHCezaikBzQf8p1l9fm7vHz1eC2_m1WnV8dlQdpJzSPEaokKeIcEifDuryX5ruCImAFgM8dd7KquJvYeSVDlzsLvE4SfP3cY40Sac_Kz3fRCfqiEApNIttYgZkNJRAA"/>
+</div>
+<!-- Interactive Overlay Components -->
+<button class="absolute top-4 right-4 bg-white/20 backdrop-blur-md p-2 rounded-full text-white active:scale-90 transition-all">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+<div class="absolute top-4 left-4">
+<span class="bg-tertiary-container text-on-tertiary-container text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm">New Listing</span>
+</div>
+<!-- Floating Content Block (Intentional Asymmetry) -->
+<div class="relative -mt-20 mx-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_20px_40px_rgba(0,32,69,0.06)] border border-outline-variant/5">
+<div class="flex justify-between items-start mb-3">
+<h3 class="text-2xl font-bold text-primary font-headline tracking-tight">The Glass Pavilion</h3>
+<p class="text-xl font-extrabold text-primary font-label">$3,450,000</p>
+</div>
+<p class="flex items-center text-on-surface-variant font-label text-sm mb-5">
+<span class="material-symbols-outlined text-xs mr-1" data-icon="location_on">location_on</span>
+                        Bel Air, Los Angeles, CA
+                    </p>
+<div class="flex items-center gap-6 border-t border-outline-variant/10 pt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bed">bed</span>
+<span class="font-label text-sm font-semibold text-primary">5</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bathtub">bathtub</span>
+<span class="font-label text-sm font-semibold text-primary">4.5</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="square_foot">square_foot</span>
+<span class="font-label text-sm font-semibold text-primary">4,200</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Property Card 2 -->
+<div class="group relative">
+<div class="aspect-[4/5] overflow-hidden rounded-xl bg-surface-container shadow-sm">
+<img alt="Desert Horizon Estate" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="contemporary desert mansion with infinity pool and sharp architectural lines under a clear twilight sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtwbWf_MwNSKzhTU4KXkMEd-aBtEXvfKgqVEseWKkEp8wpLDNKObqLXURyMi4xvEwlbM9BBOgRsRbacdFIvKYeioswq2kk1R0VJ8sA4R4Z5sAJzBT5kSE9DKE4ck0URQX9hLh9Nmz1JzLjqGA5kn5yAg84hudoGzNq-75gJPsn9sgYxNHzqPd87tfTmR1nqy5Zo7Lx-CrSWuu14f1HzDj4LSe0dZ_OVeqkvJjMFGtW9TFHtkuCRNLGbgb7b6hYUFoFiryd8KPEIIE"/>
+</div>
+<button class="absolute top-4 right-4 bg-white/20 backdrop-blur-md p-2 rounded-full text-white active:scale-90 transition-all">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+<div class="relative -mt-20 mx-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_20px_40px_rgba(0,32,69,0.06)] border border-outline-variant/5">
+<div class="flex justify-between items-start mb-3">
+<h3 class="text-2xl font-bold text-primary font-headline tracking-tight">Desert Horizon</h3>
+<p class="text-xl font-extrabold text-primary font-label">$2,180,000</p>
+</div>
+<p class="flex items-center text-on-surface-variant font-label text-sm mb-5">
+<span class="material-symbols-outlined text-xs mr-1" data-icon="location_on">location_on</span>
+                        Paradise Valley, Scottsdale, AZ
+                    </p>
+<div class="flex items-center gap-6 border-t border-outline-variant/10 pt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bed">bed</span>
+<span class="font-label text-sm font-semibold text-primary">4</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bathtub">bathtub</span>
+<span class="font-label text-sm font-semibold text-primary">3.5</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="square_foot">square_foot</span>
+<span class="font-label text-sm font-semibold text-primary">3,850</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Property Card 3 (Bento-style variation for Land/Development) -->
+<div class="grid grid-cols-2 gap-4">
+<div class="col-span-2 bg-primary-container p-8 rounded-2xl relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="text-white text-3xl font-bold font-headline mb-2 leading-tight">Emerald Heights<br/>Development Plot</h4>
+<p class="text-primary-fixed text-sm font-label mb-6">4.2 Acres of prime hillside land</p>
+<button class="bg-white text-primary px-6 py-2 rounded-lg font-bold font-label text-sm active:scale-95 transition-all">View Details</button>
+</div>
+<!-- Abstract Background Element -->
+<div class="absolute -bottom-10 -right-10 w-48 h-48 bg-primary-fixed opacity-10 rounded-full blur-3xl"></div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pt-3 pb-8 bg-white/80 backdrop-blur-2xl z-50 rounded-t-3xl shadow-[0_-10px_30px_rgba(0,32,69,0.04)]">
+<a class="flex flex-col items-center justify-center bg-blue-950 text-white rounded-xl px-4 py-2 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="search">search</span>
+<span class="font-manrope text-[10px] uppercase tracking-widest font-bold">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-4 py-2 hover:text-blue-700 transition-colors active:scale-90 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="favorite">favorite</span>
+<span class="font-manrope text-[10px] uppercase tracking-widest font-bold">Favorites</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-4 py-2 hover:text-blue-700 transition-colors active:scale-90 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-manrope text-[10px] uppercase tracking-widest font-bold">Messages</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-4 py-2 hover:text-blue-700 transition-colors active:scale-90 duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-manrope text-[10px] uppercase tracking-widest font-bold">Profile</span>
+</a>
+</nav>
+<!-- Map FAB -->
+<button class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-primary px-6 py-3 rounded-full flex items-center gap-2 text-white shadow-[0_20px_40px_rgba(0,32,69,0.15)] z-40 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="map">map</span>
+<span class="font-label font-bold text-sm tracking-wide">Map View</span>
+</button>
+</body></html>

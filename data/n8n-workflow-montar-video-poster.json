@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const path = require('path');\nconst body = $input.item.json.body || $input.item.json;\nconst listingId = body.listing_id;\nconst baseDir = process.env.FRAMES_BASE_PATH || '/data/frames';\nconst outDir = process.env.VIDEOS_BASE_PATH || '/data/videos';\nconst framesPath = path.join(baseDir, String(listingId));\nconst outPath = path.join(outDir, listingId + '.mp4');\nconst fps = body.fps || 25;\nreturn [{ json: { listing_id: listingId, frames_path: framesPath, out_path: outPath, fps } }];"
+        "jsCode": "const path = require('path');\nconst body = $input.item.json.body || $input.item.json;\n\nconst listingId  = body.listing_id;\nconst imobName   = (body.imobname   || body.imobName   || '').replace(/[^a-zA-Z0-9_-]/g, '_');\nconst imovelRef  = (body.advertiserCode || body.imovelRef || '').replace(/[^a-zA-Z0-9_-]/g, '_');\nconst fps        = body.fps || 25;\n\nconst framesPath = `/data/frames/${listingId}`;\nconst outPath    = `/data/render/imob/${imobName}/${imovelRef}/videos/poster-${imovelRef}.mp4`;\n\n// URLs públicas dos arquivos de áudio e legenda\nconst ffmpegBase = 'https://n8n-srcleads-ffmpeg-api.dtna1d.easypanel.host';\nconst audioUrl   = body.audio_url  || `${ffmpegBase}/data/render/imob/${imobName}/${imovelRef}/audio/narracao-${imovelRef}.mp3`;\nconst srtUrl     = body.srt_url    || `${ffmpegBase}/data/render/imob/${imobName}/${imovelRef}/audio/narracao-${imovelRef}.srt`;\nconst srtTmp     = `/tmp/narracao-${imovelRef}-${Date.now()}.srt`;\n\nreturn [{ json: { listing_id: listingId, frames_path: framesPath, out_path: outPath, fps, audio_url: audioUrl, srt_url: srtUrl, srt_tmp: srtTmp, imob_name: imobName, imovel_ref: imovelRef } }];"
       },
       "id": "code-paths",
       "name": "Preparar caminhos",
@@ -27,69 +27,82 @@
     },
     {
       "parameters": {
-        "command": "=ffmpeg -y -framerate {{ $json.fps }} -i \"{{ $json.frames_path }}/frame_%04d.jpg\" -c:v libx264 -pix_fmt yuv420p \"{{ $json.out_path }}\""
+        "command": "=curl -sf \"{{ $json.srt_url }}\" -o \"{{ $json.srt_tmp }}\" && echo 'SRT_OK' || echo 'SRT_SKIP'"
+      },
+      "id": "download-srt",
+      "name": "Baixar SRT",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "continueOnFail": true,
+      "notes": "Baixa o SRT para /tmp. Se não existir, o ffmpeg roda sem legenda."
+    },
+    {
+      "parameters": {
+        "jsCode": "const body       = $('Preparar caminhos').item.json;\nconst srtDownload = ($input.item.json.stdout || '').trim();\nconst hasSrt      = srtDownload === 'SRT_OK';\n\n// Monta o filtro de legenda apenas se o SRT foi baixado com sucesso\nconst srtFilter   = hasSrt ? `,subtitles='${body.srt_tmp}':force_style='FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Shadow=1,Alignment=2'` : '';\n\n// Escapa o caminho de saída para mkdir\nconst outDir = body.out_path.substring(0, body.out_path.lastIndexOf('/'));\n\nconst cmd = [\n  `mkdir -p \"${outDir}\"`,\n  `ffmpeg -y`,\n  `-framerate ${body.fps}`,\n  `-i \"${body.frames_path}/frame_%04d.jpg\"`,\n  `-i \"${body.audio_url}\"`,\n  `-vf \"scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2${srtFilter}\"`,\n  `-c:v libx264 -preset fast -crf 23`,\n  `-c:a aac -b:a 128k`,\n  `-pix_fmt yuv420p -movflags +faststart`,\n  `-shortest`,\n  `\"${body.out_path}\"`\n].join(' ');\n\nreturn [{ json: { ...body, cmd, has_srt: hasSrt } }];"
+      },
+      "id": "build-cmd",
+      "name": "Montar comando FFmpeg",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.cmd }}"
       },
       "id": "exec-ffmpeg",
       "name": "Executar FFmpeg",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [680, 300],
-      "notesInFlow": true,
-      "notes": "Requer FFmpeg instalado no sistema onde o n8n roda. Frames devem estar em frame_0001.png, frame_0002.png, etc."
+      "position": [1120, 300],
+      "notes": "Junta frames + áudio + legenda queimada. Requer ffmpeg instalado onde o n8n roda."
+    },
+    {
+      "parameters": {
+        "command": "=rm -f \"{{ $('Montar comando FFmpeg').item.json.srt_tmp }}\""
+      },
+      "id": "cleanup-srt",
+      "name": "Limpar SRT tmp",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "continueOnFail": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { ok: true, video_path: $('Preparar caminhos').item.json.out_path, listing_id: $('Preparar caminhos').item.json.listing_id } }}",
+        "responseBody": "={{ JSON.stringify({ ok: true, video_path: $('Montar comando FFmpeg').item.json.out_path, listing_id: $('Montar comando FFmpeg').item.json.listing_id, has_srt: $('Montar comando FFmpeg').item.json.has_srt, has_audio: true }) }}",
         "options": {}
       },
       "id": "respond-video",
       "name": "Responder com path do vídeo",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [900, 300]
+      "position": [1560, 300]
     }
   ],
   "connections": {
     "Webhook - Montar vídeo": {
-      "main": [
-        [
-          {
-            "node": "Preparar caminhos",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Preparar caminhos", "type": "main", "index": 0 }]]
     },
     "Preparar caminhos": {
-      "main": [
-        [
-          {
-            "node": "Executar FFmpeg",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Baixar SRT", "type": "main", "index": 0 }]]
+    },
+    "Baixar SRT": {
+      "main": [[{ "node": "Montar comando FFmpeg", "type": "main", "index": 0 }]]
+    },
+    "Montar comando FFmpeg": {
+      "main": [[{ "node": "Executar FFmpeg", "type": "main", "index": 0 }]]
     },
     "Executar FFmpeg": {
-      "main": [
-        [
-          {
-            "node": "Responder com path do vídeo",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Limpar SRT tmp", "type": "main", "index": 0 }]]
+    },
+    "Limpar SRT tmp": {
+      "main": [[{ "node": "Responder com path do vídeo", "type": "main", "index": 0 }]]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "meta": {
-    "templateCredsSetupCompleted": false
-  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false },
   "pinData": {}
 }

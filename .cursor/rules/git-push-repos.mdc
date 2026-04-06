@@ -1,0 +1,23 @@
+---
+description: Ao fazer push, enviar apenas no repositório que foi alterado (divulgaimob, ffmpeg ou browseless)
+alwaysApply: true
+---
+
+# Git push: um repo por vez
+
+Este workspace contém **três repositórios Git separados**:
+
+| Pasta | Repositório | Onde fazer push |
+|-------|-------------|------------------|
+| **Raiz** (client/, server/, etc.) | divulgaimob (admimob) | `git add/commit/push` na **raiz** do projeto |
+| **ffmpeg/** | ffmpeg | `cd ffmpeg` → `git add/commit/push` |
+| **browseless/** | browseless | `cd browseless` → `git add/commit/push` |
+
+## Regra
+
+- Se alterou **só** arquivos da raiz (client, server, etc.) → commit e push **na raiz** (divulgaimob).
+- Se alterou **só** arquivos em `ffmpeg/` → commit e push **dentro de** `ffmpeg/`.
+- Se alterou **só** arquivos em `browseless/` → commit e push **dentro de** `browseless/`.
+- Se alterou em **mais de um** (ex.: divulgaimob + browseless) → fazer **dois** commits e **dois** pushes, um em cada pasta.
+
+Nunca fazer `git add .` na raiz e incluir as pastas ffmpeg ou browseless: elas estão no `.gitignore` do divulgaimob de propósito. Cada uma sobe no seu próprio remoto no GitHub.

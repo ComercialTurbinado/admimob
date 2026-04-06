@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-highest": "#e0e3e5",
+                        "tertiary-fixed-dim": "#6bd8cb",
+                        "outline": "#74777f",
+                        "primary-container": "#1a365d",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#002522",
+                        "on-primary-fixed": "#001b3c",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-fixed": "#d3e4fe",
+                        "primary": "#002045",
+                        "surface-container-low": "#f2f4f6",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "primary-fixed-dim": "#adc7f7",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "on-surface": "#191c1e",
+                        "background": "#f7f9fb",
+                        "on-tertiary-fixed": "#00201d",
+                        "on-primary-container": "#86a0cd",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#f7f9fb",
+                        "secondary-container": "#d0e1fb",
+                        "secondary": "#505f76",
+                        "on-tertiary-container": "#3cafa2",
+                        "surface-container-high": "#e6e8ea",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-secondary-fixed": "#0b1c30",
+                        "inverse-surface": "#2d3133",
+                        "outline-variant": "#c4c6cf",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-container": "#54647a",
+                        "surface-tint": "#455f88",
+                        "surface-container": "#eceef0",
+                        "on-background": "#191c1e",
+                        "inverse-primary": "#adc7f7",
+                        "tertiary-container": "#003d37",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "primary-fixed": "#d6e3ff",
+                        "on-primary-fixed-variant": "#2d476f",
+                        "on-surface-variant": "#43474e",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#89f5e7"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-nav {
+            background: rgba(247, 249, 251, 0.6);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface antialiased">
+<!-- Focused View Header -->
+<header class="sticky top-0 z-50 glass-nav flex items-center justify-between px-6 py-4">
+<a class="flex items-center text-primary" href="#">
+<span class="material-symbols-outlined">arrow_back</span>
+</a>
+<h1 class="font-headline font-bold text-lg tracking-tight">Agent Profile</h1>
+<button class="flex items-center text-primary">
+<span class="material-symbols-outlined" data-icon="Share">share</span>
+</button>
+</header>
+<main class="max-w-md mx-auto pb-24">
+<!-- Hero Section: Profile Intro -->
+<section class="px-6 pt-6 flex flex-col items-center">
+<div class="relative mb-6">
+<div class="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-container-lowest shadow-sm">
+<img alt="Alex Johnson" class="w-full h-full object-cover" data-alt="professional portrait of a confident male real estate agent in a tailored navy suit with soft office lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuByQybdUiNyzKMYVR7QU6Taz4IjSAzq68gS-ISx-INI9WXrVvlFS5keUQHxHhrxKAKWa05oEDG4B_rP3AQ_AYkhUTZ3OpJD2vfyGKFTUz_l_3kJDjv0JJVuJd4lxVFi6ipTP_B_3cyTtDVcrGv_ORKAiKVsvrhrwQBpRBGhccH1myCMndboPYTBQ4pSddCR2ozGwd9dA0cE_L1CyuOcugXyEdVsVz3Xne6O5lfO9CeEhjn_zWJURfwNdEhfxPbse5HseYgXgZlXVG0"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-tertiary-container text-on-tertiary-container px-2 py-1 rounded-lg text-xs font-label font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined !text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                    4.9
+                </div>
+</div>
+<h2 class="font-headline text-3xl font-bold text-primary mb-1 tracking-tighter">Alex Johnson</h2>
+<p class="text-on-surface-variant font-label text-sm uppercase tracking-widest mb-6">Real Estate Specialist • 10 Years Exp.</p>
+<!-- Quick Action Buttons -->
+<div class="flex w-full mb-8 flex-col gap-4">
+<button class="bg-surface-container-lowest text-primary border-outline-variant/15 border h-14 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors w-full"><span class="material-symbols-outlined" data-icon="chat">chat</span>
+                    Chamar no WhatsApp</button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary h-14 rounded-lg font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/10 w-full"><span class="material-symbols-outlined" data-icon="search">search</span>
+                    Ver Imóveis</button>
+</div>
+</section>
+<!-- About Me Section -->
+<section class="px-6 mb-12">
+<h3 class="font-headline text-xl font-bold text-primary mb-4">About Me</h3>
+<div class="bg-primary-fixed/20 p-6 rounded-xl relative overflow-hidden">
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-primary opacity-5 !text-8xl">format_quote</span>
+<p class="text-on-surface-variant leading-relaxed font-body">
+                    With a decade of experience in high-end residential sales, I specialize in curating luxury experiences for discerning buyers in the metropolitan area. My approach combines deep market analysis with an eye for architectural detail, ensuring every transaction is as refined as the properties I represent.
+                </p>
+</div>
+</section>
+<!-- Managed Properties Grid -->
+<section class="px-6 mb-10">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline text-xl font-bold text-primary">Active Listings</h3>
+<span class="font-label text-xs font-bold text-on-secondary-container bg-secondary-container px-3 py-1 rounded-full uppercase tracking-wider">
+                    45 Total
+                </span>
+</div>
+<div class="space-y-12">
+<!-- Property Card 1 - Updated to match SCREEN_10 style -->
+<div class="group relative">
+<div class="aspect-[4/5] overflow-hidden rounded-xl bg-surface-container shadow-sm">
+<img alt="Luxury Villa" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="modern minimalist luxury house with large glass windows and concrete facade at dusk with warm interior lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAATmH-G4Ag_r3RxwFwnLrZipi_Vq5g8t9h-zfRX4vD2G74WKksHMkbxSu5EO6xY4evuvUXZjY1ehgYmROLrPrXAoARcRhzkO95zgPWeVInvfVt7Yenx3cFspLwhOUkJH-wkO2CpnPs-qiNnLbtmrxjl5brLE0G9D1AYdQxajOI9hxcKBdnzUGOG8wcPeKlvfHcqs3ZEFdansiDJm3qLnD7Nzyay18s-n-3sTpZ0FQy3977XA04k4trzV0pq3hFJRx7g4kYpTurDEU"/>
+</div>
+<div class="absolute top-4 left-4">
+<span class="bg-tertiary-container text-on-tertiary-container text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm">Featured</span>
+</div>
+<div class="relative -mt-20 mx-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_20px_40px_rgba(0,32,69,0.06)] border border-outline-variant/5">
+<div class="flex justify-between items-start mb-3">
+<h3 class="text-2xl font-bold text-primary font-headline tracking-tight">Oakwood Heights</h3>
+<p class="text-xl font-extrabold text-primary font-label">$3,450,000</p>
+</div>
+<p class="flex items-center text-on-surface-variant font-label text-sm mb-5">
+<span class="material-symbols-outlined text-xs mr-1" data-icon="location_on">location_on</span>
+                            Skyview Terrace, CA
+                        </p>
+<div class="flex items-center gap-6 border-t border-outline-variant/10 pt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bed">bed</span>
+<span class="font-label text-sm font-semibold text-primary">4</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bathtub">bathtub</span>
+<span class="font-label text-sm font-semibold text-primary">3</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="square_foot">square_foot</span>
+<span class="font-label text-sm font-semibold text-primary">3,200</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Property Card 2 - Updated to match SCREEN_10 style -->
+<div class="group relative">
+<div class="aspect-[4/5] overflow-hidden rounded-xl bg-surface-container shadow-sm">
+<img alt="Modern Penthouse" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="high-end penthouse interior with floor-to-ceiling windows overlooking a city skyline during sunset with luxury furniture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN6Gp426zou32uq-OW0GfGxkq2TpFau42QhpXCGEke7IvvXOgIA-3cYLu4Hm1K00F9QeOWkIgW1m4xC1JATA6_oDte7waNtKrV-wHWmBs4T4F6zd6c8PhwiRjQyDpNHuY6CPx3AwDOxn4fPmIP7Y6Y92G5IIhrQlZ1-C4WKMIMBSTAl7sBFsyV5AjfRSFdW_Un67xzGCgUt7YxXzWG1424Sb5qTtGXWzTffQGtfhKDLoniTImvXM0KpUZzP9FvLs-5IyIJRGt1TeY"/>
+</div>
+<div class="relative -mt-20 mx-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_20px_40px_rgba(0,32,69,0.06)] border border-outline-variant/5">
+<div class="flex justify-between items-start mb-3">
+<h3 class="text-2xl font-bold text-primary font-headline tracking-tight">The Met Residences</h3>
+<p class="text-xl font-extrabold text-primary font-label">$1,890,000</p>
+</div>
+<p class="flex items-center text-on-surface-variant font-label text-sm mb-5">
+<span class="material-symbols-outlined text-xs mr-1" data-icon="location_on">location_on</span>
+                            Downtown Core, CA
+                        </p>
+<div class="flex items-center gap-6 border-t border-outline-variant/10 pt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bed">bed</span>
+<span class="font-label text-sm font-semibold text-primary">2</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="bathtub">bathtub</span>
+<span class="font-label text-sm font-semibold text-primary">2</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="square_foot">square_foot</span>
+<span class="font-label text-sm font-semibold text-primary">1,450</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- View More Button -->
+<button class="w-full mt-8 h-12 border-outline-variant/30 border text-primary font-bold rounded-lg font-label text-sm tracking-wide">
+                View All Listings
+            </button>
+</section>
+</main>
+</body></html>

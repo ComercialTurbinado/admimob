@@ -13,7 +13,6 @@ const DEFAULT_DATA = {
   browserless_ws_url: '',
   webhook_montar_mp4: '',
   webhook_logo: '',
-  webhook_remotion: '',
   plans: [
     { id: '297', label: 'R$ 297', price: 297, credit_label: 'Vídeos simples', credit_count: 5, payment_url: '' },
     { id: '497', label: 'R$ 497', price: 497, credit_label: 'Vídeos simples', credit_count: 10, payment_url: '' },
@@ -42,7 +41,6 @@ export default function Config() {
           browserless_ws_url: d.browserless_ws_url ?? '',
           webhook_montar_mp4: d.webhook_montar_mp4 ?? '',
           webhook_logo: d.webhook_logo ?? '',
-          webhook_remotion: d.webhook_remotion ?? '',
           plans,
         });
       })
@@ -93,7 +91,6 @@ export default function Config() {
           browserless_ws_url: data.browserless_ws_url,
           webhook_montar_mp4: data.webhook_montar_mp4,
           webhook_logo: data.webhook_logo,
-          webhook_remotion: data.webhook_remotion,
           plans: data.plans,
         }),
       });
@@ -117,29 +114,7 @@ export default function Config() {
       />
       {loading && <p className="muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>Carregando dados do servidor...</p>}
 
-      {/* 1. Vídeo Remotion */}
-      <section className="card config-section">
-        <h2 className="config-section-title">1. Vídeo Remotion</h2>
-        <p className="config-section-desc">
-          Fluxo do botão <strong>"▶ Gerar vídeo Remotion"</strong> na página Materiais:<br />
-          Cliente clica → Railway monta o payload do imóvel → envia para o webhook abaixo → n8n gera narração (ElevenLabs), legenda (SRT) e chama o Remotion para renderizar o MP4 final.
-        </p>
-        <div className="form-group">
-          <label><span className="config-field-name">[Webhook n8n]</span> URL que recebe o payload e inicia o render</label>
-          <input
-            name="webhook_remotion"
-            type="url"
-            value={data.webhook_remotion ?? ''}
-            onChange={(e) => update('webhook_remotion', null, e.target.value)}
-            placeholder="https://n8n.../webhook/remotion-render"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Railway envia: <code>animation</code>, <code>input</code> (listing completo), <code>design_config</code>, <code>imobName</code>, <code>imovelRef</code>, <code>listing_id</code>, <code>filename</code>. Se não configurado, o Railway tenta renderizar diretamente e faz download no browser.
-          </p>
-        </div>
-      </section>
-
-      {/* 2. Poster animado — captura de frames */}
+      {/* 1. Poster animado — captura de frames */}
       <section className="card config-section">
         <h2 className="config-section-title">2. Poster animado — captura de frames</h2>
         <p className="config-section-desc">
