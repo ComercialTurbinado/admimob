@@ -117,12 +117,155 @@ export default function Config() {
       />
       {loading && <p className="muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>Carregando dados do servidor...</p>}
 
-      {/* 1. Planos + créditos + link de pagamento */}
+      {/* 1. Vídeo Remotion */}
       <section className="card config-section">
-        <h2 className="config-section-title">1. Planos e links de pagamento</h2>
+        <h2 className="config-section-title">1. Vídeo Remotion</h2>
         <p className="config-section-desc">
-          Cada plano aparece no cadastro do cliente (select) e controla os créditos (ex.: 10 vídeos simples).
-          Se preencher <strong>Link de pagamento</strong>, um botão com esse valor aparece no dashboard para gerar cobrança.
+          Fluxo do botão <strong>"▶ Gerar vídeo Remotion"</strong> na página Materiais:<br />
+          Cliente clica → Railway monta o payload do imóvel → envia para o webhook abaixo → n8n gera narração (ElevenLabs), legenda (SRT) e chama o Remotion para renderizar o MP4 final.
+        </p>
+        <div className="form-group">
+          <label><span className="config-field-name">[Webhook n8n]</span> URL que recebe o payload e inicia o render</label>
+          <input
+            name="webhook_remotion"
+            type="url"
+            value={data.webhook_remotion ?? ''}
+            onChange={(e) => update('webhook_remotion', null, e.target.value)}
+            placeholder="https://n8n.../webhook/remotion-render"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Railway envia: <code>animation</code>, <code>input</code> (listing completo), <code>design_config</code>, <code>imobName</code>, <code>imovelRef</code>, <code>listing_id</code>, <code>filename</code>. Se não configurado, o Railway tenta renderizar diretamente e faz download no browser.
+          </p>
+        </div>
+      </section>
+
+      {/* 2. Poster animado — captura de frames */}
+      <section className="card config-section">
+        <h2 className="config-section-title">2. Poster animado — captura de frames</h2>
+        <p className="config-section-desc">
+          Fluxo do botão <strong>"Enviar frames ao webhook"</strong> na página Materiais (layouts Opção 1 / Opção 2):<br />
+          Serviço de captura abre a página do poster → tira prints frame a frame → envia cada frame → ao terminar notifica e solicita montagem do MP4.
+        </p>
+        <div className="form-group">
+          <label><span className="config-field-name">[1 — Serviço de captura]</span> URL do serviço que abre o navegador headless</label>
+          <input
+            name="browserless_ws_url"
+            type="text"
+            value={data.browserless_ws_url ?? ''}
+            onChange={(e) => update('browserless_ws_url', null, e.target.value)}
+            placeholder="https://capture-service.../open"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Railway envia a URL do poster para este serviço; ele abre a página no Chrome (Puppeteer/CDP) e captura os frames nativamente. Se vazio, abre um popup no próprio navegador do usuário.
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[2 — Salvar frame]</span> Webhook que recebe cada frame individualmente</label>
+          <input
+            name="webhook_frames_save"
+            type="url"
+            value={data.webhook_frames_save ?? ''}
+            onChange={(e) => update('webhook_frames_save', null, e.target.value)}
+            placeholder="https://n8n.../webhook/salvar-frame-poster"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Chamado uma vez por frame. Payload: <code>frame_number</code>, <code>total_frames</code>, <code>frame_name</code>, <code>image_base64</code>, <code>listing_id</code>, <code>imobname</code>, <code>advertiserCode</code>, <code>fps</code>, <code>timestamp_ms</code>, <code>render_source</code>.
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[3 — Conclusão]</span> Webhook chamado quando todos os frames foram enviados</label>
+          <input
+            name="webhook_frames_done"
+            type="url"
+            value={data.webhook_frames_done ?? ''}
+            onChange={(e) => update('webhook_frames_done', null, e.target.value)}
+            placeholder="https://n8n.../webhook/frames-done"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Opcional. POST com <code>listing_id</code>, <code>imobname</code>, <code>advertiserCode</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>fps</code>, <code>duration_ms</code>, <code>render_source</code>, <code>status: "done"</code>.
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[4 — Montar MP4]</span> Webhook para solicitar a montagem dos frames em vídeo</label>
+          <input
+            name="webhook_montar_mp4"
+            type="url"
+            value={data.webhook_montar_mp4 ?? ''}
+            onChange={(e) => update('webhook_montar_mp4', null, e.target.value)}
+            placeholder="https://n8n.../webhook/montar-video-poster"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Opcional. Mesmo payload de [Conclusão] acrescido de <code>action: "montar_mp4"</code>. Acionar o ffmpeg-api para juntar os frames em MP4.
+          </p>
+        </div>
+      </section>
+
+      {/* 3. Captação, produção e materiais */}
+      <section className="card config-section">
+        <h2 className="config-section-title">3. Captação, produção e materiais</h2>
+        <p className="config-section-desc">
+          Webhooks dos demais fluxos automáticos da plataforma.
+        </p>
+        <div className="form-group">
+          <label><span className="config-field-name">[Captação]</span> Importar anúncio por link</label>
+          <input
+            name="webhook_captacao"
+            type="url"
+            value={data.webhook_captacao ?? ''}
+            onChange={(e) => update('webhook_captacao', null, e.target.value)}
+            placeholder="https://n8n.../webhook/..."
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Chamado em <strong>Adicionar imóvel → Importar por link</strong>. Recebe o link do anúncio e <code>client_id</code>; deve responder com os dados do imóvel para cadastro automático.
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[Produção]</span> FireMode Now</label>
+          <input
+            name="webhook_producao"
+            type="url"
+            value={data.webhook_producao ?? ''}
+            onChange={(e) => update('webhook_producao', null, e.target.value)}
+            placeholder="https://seu-n8n.com/webhook/..."
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Chamado pelo botão FireMode Now. Inicia o fluxo de produção completo do imóvel.
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[Materiais]</span> Listar arquivos gerados do imóvel</label>
+          <input
+            name="webhook_materiais"
+            type="url"
+            value={data.webhook_materiais ?? ''}
+            onChange={(e) => update('webhook_materiais', null, e.target.value)}
+            placeholder="https://n8n.../webhook/listagem-materiais"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Ao abrir a página <strong>Materiais</strong>, envia <code>imobname</code> e <code>advertiserCode</code>. Deve responder com array de arquivos no formato S3 (<code>Key</code>, <code>LastModified</code>, <code>Size</code>, <code>url</code>).
+          </p>
+        </div>
+        <div className="form-group">
+          <label><span className="config-field-name">[Logo]</span> Enviar logo do cliente para o storage</label>
+          <input
+            name="webhook_logo"
+            type="url"
+            value={data.webhook_logo ?? ''}
+            onChange={(e) => update('webhook_logo', null, e.target.value)}
+            placeholder="https://n8n.../webhook/logo"
+          />
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+            Chamado em <strong>Área do cliente → Enviar logo</strong>. Envia <code>client_id</code>, <code>client_name</code>, <code>logo_url</code>.
+          </p>
+        </div>
+      </section>
+
+      {/* 4. Planos e links de pagamento */}
+      <section className="card config-section">
+        <h2 className="config-section-title">4. Planos e links de pagamento</h2>
+        <p className="config-section-desc">
+          Cada plano aparece no cadastro do cliente e controla a quantidade de créditos disponíveis.
+          O <strong>Link de pagamento</strong> exibe um botão no dashboard para gerar cobrança.
         </p>
         <div className="config-plans-table-wrap">
           <table className="config-plans-table">
@@ -211,140 +354,6 @@ export default function Config() {
         <button type="button" className="btn" onClick={addPlan} style={{ marginTop: '0.75rem' }}>
           + Adicionar plano
         </button>
-      </section>
-
-      {/* 2. Webhooks gerais */}
-      <section className="card config-section">
-        <h2 className="config-section-title">2. Webhooks gerais (n8n)</h2>
-        <p className="config-section-desc">
-          URLs usadas no fluxo de <strong>captação</strong> (importar anúncio por link), <strong>produção</strong> (FireMode Now) e <strong>materiais</strong> (listagem de arquivos).
-        </p>
-        <div className="form-group">
-          <label><span className="config-field-name">[Captação]</span> Importar anúncio por link</label>
-          <input
-            name="webhook_captacao"
-            type="url"
-            value={data.webhook_captacao ?? ''}
-            onChange={(e) => update('webhook_captacao', null, e.target.value)}
-            placeholder="https://n8n.../webhook/..."
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Chamado em <strong>Adicionar imóvel → Importar por link</strong>. Envia o link do anúncio e <code>client_id</code>; se o n8n devolver os dados do imóvel, ele é cadastrado.
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Produção]</span> FireMode Now</label>
-          <input
-            name="webhook_producao"
-            type="url"
-            value={data.webhook_producao ?? ''}
-            onChange={(e) => update('webhook_producao', null, e.target.value)}
-            placeholder="https://seu-n8n.com/webhook/..."
-          />
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Materiais]</span> Listagem de arquivos do vídeo</label>
-          <input
-            name="webhook_materiais"
-            type="url"
-            value={data.webhook_materiais ?? ''}
-            onChange={(e) => update('webhook_materiais', null, e.target.value)}
-            placeholder="https://n8n.../webhook/listagem-materiais"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Ao abrir a página <strong>Materiais</strong>, o sistema envia <code>imobname</code> e <code>advertiserCode</code>. O webhook deve responder com array no formato S3 (<code>Key</code>, <code>LastModified</code>, etc.).
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Logo]</span> Enviar logo do cliente</label>
-          <input
-            name="webhook_logo"
-            type="url"
-            value={data.webhook_logo ?? ''}
-            onChange={(e) => update('webhook_logo', null, e.target.value)}
-            placeholder="https://n8n.../webhook/logo"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Chamado em <strong>Área do cliente → Enviar logo</strong>. Envia <code>client_id</code>, <code>client_name</code>, <code>logo_url</code>.
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Remotion]</span> Salvar vídeo Remotion</label>
-          <input
-            name="webhook_remotion"
-            type="url"
-            value={data.webhook_remotion ?? ''}
-            onChange={(e) => update('webhook_remotion', null, e.target.value)}
-            placeholder="https://n8n.../webhook/remotion-save"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Após o render, envia o MP4 em base64 para esse webhook n8n. Payload: <code>video_base64</code>, <code>imobiliaria</code> (<code>imobName-imovelRef</code>), <code>imobName</code>, <code>imovelRef</code>, <code>animation</code>, <code>listing_id</code>, <code>filename</code>. Se não configurado, o vídeo é baixado direto no browser.
-          </p>
-        </div>
-      </section>
-
-      {/* 3. Captura de frames do poster */}
-      <section className="card config-section">
-        <h2 className="config-section-title">3. Captura de frames do poster</h2>
-        <p className="config-field-name" style={{ marginBottom: '0.5rem' }}>Fluxo:</p>
-        <ol style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 1rem 0', paddingLeft: '1.25rem', lineHeight: 1.6 }}>
-          <li>Você clica em <strong>Enviar frames ao webhook</strong> na página Materiais (com Opção 1 ou 2 selecionada).</li>
-          <li>Se <strong>[Onde rodar]</strong> estiver preenchido: o servidor envia a URL do poster para esse serviço; o serviço abre a página, ela tira os prints e envia cada frame para <strong>[Onde salvar cada frame]</strong>. Não abre popup.</li>
-          <li>Se <strong>[Onde rodar]</strong> estiver vazio: abre um popup mínimo; a página do poster envia os frames para <strong>[Onde salvar cada frame]</strong>.</li>
-          <li>Ao terminar, o sistema chama <strong>[Ao terminar]</strong> e <strong>[Montar MP4]</strong> (se preenchidos), com <code>imobname</code>, <code>advertiserCode</code>, etc.</li>
-        </ol>
-        <div className="form-group">
-          <label><span className="config-field-name">[Onde rodar]</span> Serviço de captura (HTTP …/open ou WebSocket Browserless)</label>
-          <input
-            name="browserless_ws_url"
-            type="text"
-            value={data.browserless_ws_url ?? ''}
-            onChange={(e) => update('browserless_ws_url', null, e.target.value)}
-            placeholder="https://.../open ou wss://chrome.browserless.io?token=..."
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            <strong>HTTP(S):</strong> servidor faz POST com a URL do poster e <code>waitMs: 30000</code>; o serviço abre a página (sem popup). <strong>wss://:</strong> captura no servidor com Playwright. <strong>Vazio:</strong> abre popup no navegador.
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Onde salvar cada frame]</span> Webhook que recebe cada frame (base64)</label>
-          <input
-            name="webhook_frames_save"
-            type="url"
-            value={data.webhook_frames_save ?? ''}
-            onChange={(e) => update('webhook_frames_save', null, e.target.value)}
-            placeholder="https://n8n.../webhook/salvar-frame-poster"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            Cada frame é enviado em POST com <code>frame_number</code>, <code>total_frames</code>, <code>image_base64</code>, <code>listing_id</code>, <code>imobname</code>, <code>advertiserCode</code>.
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Ao terminar]</span> Webhook chamado quando todos os frames foram enviados</label>
-          <input
-            name="webhook_frames_done"
-            type="url"
-            value={data.webhook_frames_done ?? ''}
-            onChange={(e) => update('webhook_frames_done', null, e.target.value)}
-            placeholder="https://n8n.../webhook/frames-done"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            POST com <code>imobname</code>, <code>advertiserCode</code>, <code>listing_id</code>, <code>frames_sent</code>, <code>total_frames</code>, <code>layout</code>, <code>status: &quot;done&quot;</code>. Opcional.
-          </p>
-        </div>
-        <div className="form-group">
-          <label><span className="config-field-name">[Montar MP4]</span> Webhook para solicitar montagem do vídeo após os frames</label>
-          <input
-            name="webhook_montar_mp4"
-            type="url"
-            value={data.webhook_montar_mp4 ?? ''}
-            onChange={(e) => update('webhook_montar_mp4', null, e.target.value)}
-            placeholder="https://n8n.../webhook/montar-video-poster"
-          />
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
-            POST com o mesmo payload de [Ao terminar] mais <code>action: &quot;montar_mp4&quot;</code>. Opcional.
-          </p>
-        </div>
       </section>
 
       {msg && (
